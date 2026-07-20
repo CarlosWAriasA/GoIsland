@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -15,7 +15,9 @@ export const Input: React.FC<InputProps> = ({
   style,
   ...props
 }) => {
-  const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const inputId = id || generatedId;
+  const errorId = `${inputId}-error`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', marginBottom: '16px', ...style }}>
@@ -54,6 +56,8 @@ export const Input: React.FC<InputProps> = ({
         
         <input
           id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : props['aria-describedby']}
           className={`input-glass ${className}`}
           style={{
             width: '100%',
@@ -75,6 +79,7 @@ export const Input: React.FC<InputProps> = ({
 
       {error && (
         <span
+          id={errorId}
           style={{
             fontSize: '0.8rem',
             color: '#ef4444',

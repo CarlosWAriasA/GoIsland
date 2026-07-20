@@ -14,6 +14,7 @@ public class GoIslandDbContext : DbContext
     public DbSet<Experience> Experiences => Set<Experience>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,7 +43,10 @@ public class GoIslandDbContext : DbContext
             entity.Property(experience => experience.Category).HasColumnName("category").HasMaxLength(80).IsRequired();
             entity.Property(experience => experience.Price).HasColumnName("price").HasPrecision(10, 2);
             entity.Property(experience => experience.Capacity).HasColumnName("capacity").IsRequired();
-            entity.Property(experience => experience.AvailableSpots).HasColumnName("available_spots").IsRequired();
+            entity.Property(experience => experience.AvailableSpots)
+                .HasColumnName("available_spots")
+                .IsRequired()
+                .IsConcurrencyToken();
             entity.Property(experience => experience.IsApproved).HasColumnName("is_approved").IsRequired();
             entity.Property(experience => experience.CreatedAt).HasColumnName("created_at").IsRequired();
         });
@@ -69,6 +73,20 @@ public class GoIslandDbContext : DbContext
             entity.Property(payment => payment.Amount).HasColumnName("amount").HasPrecision(10, 2);
             entity.Property(payment => payment.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
             entity.Property(payment => payment.CreatedAt).HasColumnName("created_at").IsRequired();
+        });
+
+        modelBuilder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.ToTable("password_reset_tokens");
+            entity.HasKey(token => token.Id);
+            entity.Property(token => token.Id).HasColumnName("id");
+            entity.Property(token => token.UserId).HasColumnName("user_id").IsRequired();
+            entity.Property(token => token.TokenHash).HasColumnName("token_hash").HasMaxLength(64).IsRequired();
+            entity.Property(token => token.ExpiresAt).HasColumnName("expires_at").IsRequired();
+            entity.Property(token => token.UsedAt).HasColumnName("used_at");
+            entity.Property(token => token.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.HasIndex(token => token.TokenHash).IsUnique();
+            entity.HasIndex(token => token.UserId);
         });
     }
 }

@@ -34,6 +34,38 @@ Accept: application/json
 
 ###
 
+PUT {{GoIsland.Api_HostAddress}}/api/auth/change-password
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "Password123",
+  "newPassword": "NuevaPassword456",
+  "confirmPassword": "NuevaPassword456"
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "carlos@example.com"
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "token-recibido-por-correo",
+  "newPassword": "PasswordRestaurada789",
+  "confirmPassword": "PasswordRestaurada789"
+}
+
+###
+
 PUT {{GoIsland.Api_HostAddress}}/api/users/profile
 Authorization: Bearer {{GoIsland.Api_Token}}
 Content-Type: application/json
@@ -41,5 +73,58 @@ Content-Type: application/json
 {
   "fullName": "Carlos Arias Updated"
 }
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/experiences
+Accept: application/json
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/experiences/search?location=Santo Domingo&category=Aventura&maxPrice=150
+Accept: application/json
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/experiences/1
+Accept: application/json
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/experiences
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "title": "Ruta en kayak por Los Haitises",
+  "description": "Recorrido guiado en kayak por manglares y cuevas del parque nacional.",
+  "location": "Samana",
+  "category": "Aventura",
+  "price": 75.00,
+  "capacity": 12
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/reservations
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "experienceId": 1,
+  "quantity": 2
+}
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/reservations/my
+Authorization: Bearer {{GoIsland.Api_Token}}
+Accept: application/json
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/reservations/1
+Authorization: Bearer {{GoIsland.Api_Token}}
+Accept: application/json
 
 ###

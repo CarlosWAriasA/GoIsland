@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
+import { toApiError } from '../services/apiError';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
@@ -57,10 +58,12 @@ export const Login: React.FC = () => {
       await login({ email, password });
       toast.success("Sesión iniciada correctamente");
       navigate('/experiences');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      const msg = err.response?.data?.message || 'Error al iniciar sesión. Por favor, verifica tus credenciales.';
-      toast.error(msg);
+      toast.error(toApiError(
+        err,
+        'Error al iniciar sesión. Por favor, verifica tus credenciales.',
+      ).message);
     }
   };
 

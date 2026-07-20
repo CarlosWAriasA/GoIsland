@@ -27,15 +27,14 @@ public class EfUserRepository : IUserRepository
     public async Task<User> AddAsync(User user)
     {
         user.Email = NormalizeEmail(user.Email);
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+        await _context.Users.AddAsync(user);
         return user;
     }
 
     public Task UpdateAsync(User user)
     {
         _context.Users.Update(user);
-        return _context.SaveChangesAsync();
+        return Task.CompletedTask;
     }
 
     private static string NormalizeEmail(string email)

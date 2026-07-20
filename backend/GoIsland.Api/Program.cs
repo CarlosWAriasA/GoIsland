@@ -2,6 +2,10 @@ using System.Text;
 using GoIsland.Api.Data;
 using GoIsland.Api.Repositories;
 using GoIsland.Api.Services.Auth;
+using GoIsland.Api.Services.Email;
+using GoIsland.Api.Services.Experiences;
+using GoIsland.Api.Services.Reservations;
+using GoIsland.Api.Services.Reservations.Observers;
 using GoIsland.Api.Services.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
@@ -37,7 +41,7 @@ builder.Services
             });
         };
     });
-var frontendUrl = builder.Configuration["Cors:FrontendUrl"] ?? "http://localhost:5001";
+var frontendUrl = builder.Configuration["Cors:FrontendUrl"] ?? "http://localhost:5173";
 
 builder.Services.AddCors(options =>
 {
@@ -62,9 +66,19 @@ builder.Services.AddScoped<IUserRepository, EfUserRepository>();
 builder.Services.AddScoped<IExperienceRepository, EfExperienceRepository>();
 builder.Services.AddScoped<IReservationRepository, EfReservationRepository>();
 builder.Services.AddScoped<IPaymentRepository, EfPaymentRepository>();
+builder.Services.AddScoped<IPasswordResetTokenRepository, EfPasswordResetTokenRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+builder.Services.AddSingleton<IPasswordResetTokenGenerator, PasswordResetTokenGenerator>();
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IExperienceService, ExperienceService>();
+builder.Services.AddScoped<IReservationObserver, EmailNotificationObserver>();
+builder.Services.AddScoped<IReservationObserver, PushNotificationObserver>();
+builder.Services.AddScoped<IReservationObserver, CapacityManagerObserver>();
+builder.Services.AddScoped<IReservationObserver, DashboardObserver>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
 
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key no esta configurado.");
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));

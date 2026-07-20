@@ -1,6 +1,6 @@
 using System.Security.Claims;
+using GoIsland.Api.Data;
 using GoIsland.Api.DTOs.Users;
-using GoIsland.Api.Repositories;
 using GoIsland.Api.Services.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,11 +12,11 @@ namespace GoIsland.Api.Controllers;
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
-    private readonly IUserRepository _users;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UsersController(IUserRepository users)
+    public UsersController(IUnitOfWork unitOfWork)
     {
-        _users = users;
+        _unitOfWork = unitOfWork;
     }
 
     [HttpPut("profile")]
@@ -28,14 +28,15 @@ public class UsersController : ControllerBase
             return Unauthorized(new { message = "El token no es valido." });
         }
 
-        var user = await _users.GetByIdAsync(userId);
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
         if (user is null)
         {
             return NotFound(new { message = "No se encontro el usuario." });
         }
 
         user.FullName = request.FullName.Trim();
-        await _users.UpdateAsync(user);
+        await _unitOfWork.Users.UpdateAsync(user);
+        await _unitOfWork.CommitAsync();
 
         return Ok(AuthService.ToResponse(user));
     }

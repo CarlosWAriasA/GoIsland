@@ -15,17 +15,31 @@ public class EfExperienceRepository : IExperienceRepository
 
     public async Task<IEnumerable<Experience>> GetAllAsync()
     {
-        return await _context.Experiences.ToListAsync();
+        return await _context.Experiences
+            .AsNoTracking()
+            .Where(experience => experience.IsApproved)
+            .OrderByDescending(experience => experience.CreatedAt)
+            .ToListAsync();
     }
 
     public Task<Experience?> GetByIdAsync(int id)
     {
-        return _context.Experiences.FindAsync(id).AsTask();
+        return _context.Experiences
+            .AsNoTracking()
+            .FirstOrDefaultAsync(experience => experience.Id == id && experience.IsApproved);
+    }
+
+    public Task<Experience?> GetForReservationAsync(int id)
+    {
+        return _context.Experiences
+            .FirstOrDefaultAsync(experience => experience.Id == id && experience.IsApproved);
     }
 
     public async Task<IEnumerable<Experience>> SearchAsync(string? location, string? category, decimal? maxPrice)
     {
-        var query = _context.Experiences.AsQueryable();
+        var query = _context.Experiences
+            .AsNoTracking()
+            .Where(experience => experience.IsApproved);
 
         if (!string.IsNullOrWhiteSpace(location))
         {
@@ -44,19 +58,20 @@ public class EfExperienceRepository : IExperienceRepository
             query = query.Where(experience => experience.Price <= maxPrice.Value);
         }
 
-        return await query.ToListAsync();
+        return await query
+            .OrderByDescending(experience => experience.CreatedAt)
+            .ToListAsync();
     }
 
     public async Task<Experience> AddAsync(Experience experience)
     {
-        _context.Experiences.Add(experience);
-        await _context.SaveChangesAsync();
+        await _context.Experiences.AddAsync(experience);
         return experience;
     }
 
     public Task UpdateAsync(Experience experience)
     {
         _context.Experiences.Update(experience);
-        return _context.SaveChangesAsync();
+        return Task.CompletedTask;
     }
 }

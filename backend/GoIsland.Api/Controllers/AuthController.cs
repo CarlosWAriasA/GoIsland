@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using GoIsland.Api.Data;
 using GoIsland.Api.DTOs.Auth;
 using GoIsland.Api.Services.Auth;
 using Microsoft.AspNetCore.Authorization;
@@ -10,10 +12,12 @@ namespace GoIsland.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, IUnitOfWork unitOfWork)
     {
         _authService = authService;
+        _unitOfWork = unitOfWork;
     }
 
     [HttpPost("register")]
@@ -42,16 +46,75 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPut("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            return Unauthorized(new { message = "El token no es valido." });
+        }
+
+        var result = await _authService.ChangePasswordAsync(userId, request);
+        return result switch
+        {
+            ChangePasswordStatus.Success => NoContent(),
+            ChangePasswordStatus.InvalidCurrentPassword => BadRequest(
+                new { message = "La contrasena actual no es correcta." }),
+            ChangePasswordStatus.NewPasswordMatchesCurrent => BadRequest(
+                new { message = "La nueva contrasena debe ser diferente a la actual." }),
+            _ => Unauthorized(new { message = "No fue posible identificar al usuario." })
+        };
+    }
+
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
+    {
+        var result = await _authService.RequestPasswordResetAsync(request);
+        if (result == RequestPasswordResetStatus.EmailDeliveryNotConfigured)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                message = "El servicio de recuperacion por correo no esta configurado."
+            });
+        }
+
+        return Accepted(new
+        {
+            message = "Si el correo esta registrado, recibira instrucciones para restablecer la contrasena."
+        });
+    }
+
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
+    {
+        var result = await _authService.ResetPasswordAsync(request);
+        return result switch
+        {
+            ResetPasswordStatus.Success => NoContent(),
+            ResetPasswordStatus.NewPasswordMatchesCurrent => BadRequest(
+                new { message = "La nueva contrasena debe ser diferente a la anterior." }),
+            _ => BadRequest(new { message = "El token de recuperacion no es valido o ha expirado." })
+        };
+    }
+
     [HttpGet("me")]
     [Authorize]
-    public IActionResult Me()
+    public async Task<ActionResult<UserResponse>> Me()
     {
-        return Ok(new
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            id = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
-            fullName = User.Identity?.Name,
-            email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value,
-            role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
-        });
+            return Unauthorized(new { message = "El token no es valido." });
+        }
+
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        if (user is null)
+        {
+            return NotFound(new { message = "No se encontro el usuario." });
+        }
+
+        return Ok(AuthService.ToResponse(user));
     }
 }

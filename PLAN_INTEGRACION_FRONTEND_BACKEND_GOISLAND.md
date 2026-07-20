@@ -1,0 +1,569 @@
+# Plan de Integracion Frontend-Backend y Mejora UX/UI - GoIsland
+
+## Estado de ejecucion
+
+Inicio: 19 de julio de 2026.
+
+### Primera entrega completada - base del Bloque 0
+
+- El catalogo consume `GET /api/experiences` y `GET /api/experiences/search`.
+- Se eliminaron `experiencesMock.json`, la latencia artificial y los campos no respaldados
+  `featured`, `rating` y `reviewCount`.
+- Se retiraron del flujo Favoritos y la confirmacion de reserva simulada.
+- Los filtros del cliente coinciden con el contrato real: `location`, una `category` y `maxPrice`.
+- Se agregaron tipos TypeScript exactos, cancelacion de solicitudes y traduccion central de errores
+  con `message` y `errors`.
+- El registro publico del cliente crea turistas y ya no presenta seleccion directa de anfitrion.
+- Vite, CORS y la URL local de recuperacion quedaron alineados en `http://localhost:5173`.
+- `GET /api/auth/me` ahora devuelve el mismo `UserResponse` que login, registro y perfil.
+- Verificacion aprobada: `npm run lint`, `npm run build`, compilacion backend Release, salud,
+  catalogo, busqueda y preflight CORS.
+
+### Pendiente para cerrar el Bloque 0
+
+- Reiniciar la instancia Debug de la API para cargar el nuevo binario de `/api/auth/me`.
+- Ejecutar las 18 pruebas de integracion con una conexion PostgreSQL de pruebas accesible; la
+  configuracion disponible durante esta entrega no permitio conectar.
+- Completar ejemplos positivos y negativos en `GoIsland.Api.http`.
+- Confirmar Swagger con el binario reiniciado.
+
+## Fuente de diseno analizada
+
+Este plan aplica la guia `Guia_Diseno_UX_UI_Prototipos_IA_Julissa_Mateo_Abad.pdf`, revisada en
+sus 13 paginas, al producto GoIsland y a los contratos que el backend ofrece actualmente.
+
+Principios tomados de la guia:
+
+- Disenar alrededor de la tarea critica y no de una plantilla generica.
+- Definir usuario, contexto, dispositivo, personalidad, arquitectura y estados antes de decorar.
+- Usar jerarquia, consistencia, retroalimentacion, prevencion de errores y control del usuario.
+- Asignar una funcion a cada color y mantener contraste suficiente.
+- Para turismo: usar turquesa, arena, coral y azul oceano con fotografia autentica del destino.
+- Para marketplace: destacar busqueda, disponibilidad, confianza, comparacion y reputacion.
+- Para reservas: hacer central la disponibilidad/calendario cuando el backend lo permita.
+- Disenar mobile-first, con acciones al alcance del pulgar y navegacion simple.
+- Incluir estados vacio, carga, error, exito, sin conexion y permisos insuficientes.
+- Validar teclado, foco visible, tamanos tactiles, contraste e independencia del color.
+
+## Restricciones del plan
+
+- La ejecucion comenzo por el Bloque 0 y avanzara en entregas verticales verificables.
+- Los datos funcionales deben proceder del backend y PostgreSQL.
+- No se permitiran experiencias, calificaciones, resenas, favoritos ni confirmaciones inventadas.
+- Stripe es la unica integracion que podra usar un gateway mock temporal claramente identificado.
+- Una pantalla no se considerara integrada si solamente se ve bien con datos locales.
+- Las mejoras futuras que requieran endpoints inexistentes se mostraran como bloqueadas, no como
+  funcionalidades aparentes.
+
+## Auditoria del frontend actual
+
+### Hallazgos funcionales
+
+| Hallazgo | Estado actual | Accion obligatoria |
+|---|---|---|
+| Catalogo | Usa `experiencesMock.json` y demora artificial | Consumir `GET /api/experiences` y eliminar el JSON |
+| Busqueda | Filtra localmente titulo, descripcion y multiples categorias | Ajustarse a `location`, una `category` y `maxPrice`, o ampliar primero el backend |
+| Reserva | Muestra "Reserva confirmada" sin llamar la API | Usar `POST /api/reservations` y mostrar el estado real `Pending` |
+| Destacadas | Depende de un campo `featured` inexistente en backend | Eliminar la seccion o renombrarla con un criterio real verificable |
+| Reputacion | Muestra `rating` y `reviewCount` inventados | Ocultarlos hasta implementar el modulo de resenas |
+| Favoritos | Solo vive en `localStorage` | Retirar del flujo principal hasta disponer de endpoints persistentes |
+| Fotografias | Usa imagenes genericas de destinos fuera de RD | Usar placeholder honesto hasta que backend entregue imagenes; luego fotografia dominicana autentica |
+| Registro Host | Concede la apariencia de anfitrion directo | Registrar turista por defecto y esperar el flujo de validacion de anfitrion |
+| Sesion | JWT solamente en memoria; se pierde al recargar | Definir persistencia temporal segura y restaurar identidad con `/auth/me` |
+| Recuperacion | Backend existe, pantallas no | Crear solicitar, restablecer y cambiar contrasena |
+| Reservas del usuario | Backend existe, pantalla no | Crear listado y detalle de reservas reales |
+
+### Hallazgos UX/UI y accesibilidad
+
+- La pagina inicial todavia sigue el patron generico de hero, buscador y tarjetas repetidas.
+- El mensaje habla de islas de todo el mundo, mientras el proyecto esta enfocado en Republica
+  Dominicana.
+- En un viewport de 390 px existe desbordamiento horizontal y el `h1` conserva 48 px.
+- El navbar no cambia a menu movil y comprime logo, enlaces y botones en una sola fila.
+- Existen controles interactivos menores de 44 x 44 px.
+- Varias hojas `<style>` se renderizan dentro de botones o enlaces; su contenido termina formando
+  parte del nombre accesible del control.
+- `Input` genera identificadores con `Math.random()` durante el render, provocando IDs inestables.
+- Existen enlaces `href="#"` que aparentan navegar pero no llevan a contenido real.
+- Hay variables CSS usadas pero no definidas, como `--text-secondary`, `--text-primary` y
+  `--text-muted`.
+- Hay demasiados estilos inline, lo que dificulta consistencia, responsive y estados de foco.
+- El pie de pagina ocupa demasiado espacio para los pocos flujos reales disponibles.
+- El diseño usa imagenes remotas de Unsplash sin control de disponibilidad ni coherencia local.
+
+### Estado tecnico medido
+
+- `npm run build`: aprobado.
+- `npm run lint`: falla actualmente con 8 errores y 2 advertencias.
+- Los errores incluyen pureza de React, tipos `any`, efectos con actualizaciones encadenadas y
+  separacion incorrecta de exports para Fast Refresh.
+
+## Ficha UX de GoIsland
+
+| Pregunta | Decision para GoIsland |
+|---|---|
+| Usuario principal | Turista nacional o extranjero que quiere descubrir y reservar experiencias locales confiables |
+| Contexto | Telefono movil, frecuentemente durante un viaje, con luz exterior y conectividad variable |
+| Tarea critica | Encontrar una experiencia disponible y crear una reserva sin confundir precio, cupos o estado |
+| Error grave | Mostrar disponibilidad falsa, duplicar una reserva o afirmar que esta confirmada sin estarlo |
+| Personalidad | Dominicana, cercana, confiable, viva y organizada; no generica ni excesivamente premium |
+| Dispositivo prioritario | Mobile-first desde 360 px, seguido de tablet y escritorio |
+| Confianza | Precio claro, cupos reales, estado visible, anfitrion y reputacion cuando existan en backend |
+
+## Direccion visual propuesta
+
+### Estilo
+
+Combinar **editorial turistico + marketplace mobile-first**:
+
+- Fotografia y contexto dominicano como entrada visual.
+- Busqueda y disponibilidad como acciones principales.
+- Tarjetas mas simples, informativas y comparables.
+- Superficies limpias; evitar llamar `glass` a paneles que realmente son tarjetas blancas.
+- Menos hero decorativo en movil y mas espacio para descubrir rapidamente.
+- Dashboard operativo reservado para anfitrion y administrador en fases futuras.
+
+### Sistema de color propuesto
+
+| Token | Color inicial | Funcion |
+|---|---|---|
+| `--color-ocean-700` | `#075985` | Marca, navegacion y texto de accion |
+| `--color-turquoise-600` | `#0F766E` | Accion primaria y seleccion |
+| `--color-sand-50` | `#FFF8ED` | Fondo calido y secciones editoriales |
+| `--color-coral-500` | `#F26B5B` | Acentos puntuales, no errores |
+| `--color-ink-900` | `#16323F` | Texto principal |
+| `--color-slate-600` | `#5D6E75` | Texto secundario con contraste |
+| `--color-border` | `#D9E4E5` | Bordes y divisores |
+| `--color-success` | `#15803D` | Exito y disponibilidad confirmada |
+| `--color-warning` | `#B45309` | Pocos cupos o accion sensible |
+| `--color-error` | `#B42318` | Error y cancelacion destructiva |
+
+La composicion seguira aproximadamente 60% neutros/arena, 30% oceano/turquesa y 10% coral u
+otros acentos. Ningun estado dependera solamente del color.
+
+### Tipografia, iconografia e imagenes
+
+- Usar Manrope como familia principal para interfaz y contenido.
+- Si se desea una voz editorial, usar una serif solamente en titulares promocionales, nunca en
+  formularios o datos operativos.
+- Mantener una sola familia de iconos: Lucide.
+- Sustituir SVGs manuales duplicados por iconos de la familia seleccionada.
+- Tamano minimo de 16 px para contenido esencial y 14 px para ayuda secundaria.
+- Usar fotografias reales de Republica Dominicana con tratamiento consistente.
+- Mientras el backend no tenga imagenes, mostrar un placeholder de categoria claramente neutral;
+  no asignar una fotografia externa como si perteneciera a la experiencia.
+
+## Arquitectura de informacion inmediata
+
+### Publica
+
+```text
+/experiences                 Explorar y buscar
+/experiences/:id             Detalle real de una experiencia
+/login                       Iniciar sesion
+/register                    Registro de turista
+/forgot-password             Solicitar recuperacion
+/reset-password              Restablecer contrasena
+```
+
+### Turista autenticado
+
+```text
+/reservations                Mis reservas
+/reservations/:id            Detalle y estado de reserva
+/profile                     Perfil
+/profile/security            Cambio de contrasena
+```
+
+### Diferidas hasta que exista backend
+
+- Favoritos persistentes.
+- Resenas y calificaciones.
+- Mapa y cercania.
+- Calendario por horario.
+- Panel de anfitrion.
+- Moderacion administrativa.
+- Notificaciones persistentes.
+
+## Matriz del backend disponible actualmente
+
+| Flujo | Endpoint real | Pantalla frontend |
+|---|---|---|
+| Salud | `GET /api/health` | Diagnostico, no navegacion principal |
+| Registro | `POST /api/auth/register` | Registro de turista |
+| Login | `POST /api/auth/login` | Inicio de sesion |
+| Identidad | `GET /api/auth/me` | Restauracion de sesion y perfil |
+| Perfil | `PUT /api/users/profile` | Editar nombre |
+| Cambiar clave | `PUT /api/auth/change-password` | Seguridad de cuenta |
+| Solicitar recuperacion | `POST /api/auth/forgot-password` | Olvide mi contrasena |
+| Restablecer clave | `POST /api/auth/reset-password` | Nueva contrasena por token |
+| Catalogo | `GET /api/experiences` | Explorar experiencias aprobadas |
+| Detalle | `GET /api/experiences/{id}` | Detalle de experiencia |
+| Busqueda | `GET /api/experiences/search` | Filtros por ubicacion, categoria y precio maximo |
+| Crear experiencia | `POST /api/experiences` | Diferido hasta completar propiedad/aprobacion |
+| Crear reserva | `POST /api/reservations` | Formulario de cantidad y confirmacion del estado real |
+| Mis reservas | `GET /api/reservations/my` | Listado privado |
+| Detalle reserva | `GET /api/reservations/{id}` | Detalle privado |
+
+## Decision recomendada
+
+No esperar a terminar todo el backend. La estrategia recomendada es integrar ahora los flujos que
+ya existen y continuar por entregas verticales pequenas.
+
+Esto permite comprobar temprano autenticacion, formatos JSON, validaciones, CORS, estados HTTP y
+necesidades reales del cliente sin bloquear el desarrollo de los modulos pendientes.
+
+Este documento es solamente un plan de coordinacion. No autoriza modificaciones del frontend por
+parte del responsable de backend.
+
+## Principios de integracion
+
+- Swagger/OpenAPI sera el contrato principal entre los equipos.
+- El frontend nunca accedera directamente a PostgreSQL.
+- La URL de la API se configurara por ambiente.
+- Los errores conservaran una estructura coherente: `message` y, cuando aplique, `errors`.
+- Los contratos ya integrados no se cambiaran sin versionarlos o coordinar la migracion.
+- Cada entrega debe tener criterios de aceptacion verificables desde Swagger y desde el frontend.
+- Los datos funcionales siempre procederan del backend y PostgreSQL.
+- El gateway mock de pagos sera la unica simulacion autorizada y se identificara como `Mock`.
+
+## Bloque 0 - Congelar contrato y eliminar comportamientos falsos
+
+### Trabajo backend
+
+- Confirmar que la solucion compila y que las pruebas PostgreSQL pasan.
+- Reiniciar la API con el binario actual.
+- Revisar que Swagger muestre autenticacion Bearer y todos los DTOs.
+- Mantener CORS configurable para la URL local del frontend.
+- Documentar ejemplos positivos y negativos en `GoIsland.Api.http`.
+- Definir una lista de endpoints estables para la primera integracion.
+
+### Trabajo frontend
+
+- Eliminar `experiencesMock.json` y la demora artificial de `experienceService`.
+- Eliminar el toast que afirma una reserva confirmada sin crearla.
+- Retirar `featured`, `rating` y `reviewCount` del contrato actual.
+- Ocultar Favoritos de la navegacion hasta que exista persistencia backend.
+- Retirar enlaces con `href="#"` o reemplazarlos por contenido real.
+- Crear tipos TypeScript que reflejen exactamente los DTOs del backend.
+- Definir `ApiError` y una funcion unica para traducir `message` y `errors`.
+
+### Entregable al equipo frontend
+
+- URL local o de QA de la API.
+- URL de Swagger.
+- Lista de variables de entorno requeridas por el cliente.
+- Credenciales de usuarios de QA creados en PostgreSQL de QA, nunca en el repositorio.
+- Tabla de endpoints, roles, request, response y errores esperados.
+
+### Criterios de terminado
+
+- Frontend puede alcanzar `/api/health`.
+- CORS permite solamente el origen configurado.
+- Swagger representa el comportamiento real de la API.
+- Ninguna pantalla depende de JSON local o estados inventados.
+- No existe una accion que anuncie exito sin respuesta positiva del backend.
+
+---
+
+## Bloque 1 - Sistema visual, shell responsive y componentes base
+
+### Objetivo
+
+Aplicar una identidad propia antes de extender mas pantallas.
+
+### Trabajo frontend
+
+- Reemplazar los tokens actuales por el sistema oceano, turquesa, arena, coral y semanticos.
+- Mover estilos inline repetidos y todos los `<style>` internos a hojas o modulos de estilo.
+- Renombrar `glass-card` y `glass-panel` segun su funcion real.
+- Unificar tipografia, escala, espaciado, radio, sombras y anchos de contenido.
+- Corregir `Input` usando `useId()` y asociaciones label/control estables.
+- Definir componentes base:
+  - `Button`
+  - `TextField`
+  - `SelectField`
+  - `PriceField`
+  - `StatusBadge`
+  - `Alert`
+  - `Skeleton`
+  - `EmptyState`
+  - `ErrorState`
+  - `Dialog`
+  - `Pagination` cuando el backend la soporte
+- Crear un navbar mobile-first con menu accesible o navegacion inferior para las tareas principales.
+- Reducir el hero en movil y priorizar busqueda/resultados dentro del primer viewport.
+- Simplificar el footer y mostrar solamente enlaces funcionales.
+- Agregar `Skip to content`, foco visible y soporte de `prefers-reduced-motion`.
+
+### Breakpoints de verificacion
+
+```text
+360 x 800   telefono pequeno
+390 x 844   telefono comun
+768 x 1024  tablet
+1280 x 720  escritorio
+1440 x 900  escritorio amplio
+```
+
+### Criterios de terminado
+
+- No existe desplazamiento horizontal en ningun breakpoint.
+- Todo control tactil principal mide al menos 44 x 44 px.
+- Los nombres accesibles de botones y enlaces contienen solamente su etiqueta util.
+- Paleta, tipografia, iconos y estados son consistentes.
+- La tarea primaria se identifica en menos de cinco segundos.
+
+---
+
+## Bloque 2 - Autenticacion, sesion y cuenta
+
+### Endpoints a integrar
+
+```text
+POST /api/auth/register
+POST /api/auth/login
+GET  /api/auth/me
+PUT  /api/users/profile
+PUT  /api/auth/change-password
+POST /api/auth/forgot-password
+POST /api/auth/reset-password
+```
+
+### Contrato que debe entregar backend
+
+- Registro e inicio de sesion devuelven JWT, expiracion y usuario.
+- Rutas privadas responden `401` sin token valido.
+- Validaciones responden `400` con errores por campo.
+- Email duplicado responde `409`.
+- Recuperacion mantiene una respuesta que no revela si el correo existe.
+- `forgot-password` queda listo cuando termine el Bloque 7 de Resend.
+- El frontend registra inicialmente turistas; la solicitud de anfitrion se incorporara con el
+  bloque backend correspondiente.
+- Se acuerda una estrategia temporal de sesion compatible con el JWT actual.
+
+### Trabajo esperado del frontend
+
+- Formularios de registro, login, perfil y contrasena.
+- Almacenamiento y envio controlado del Bearer token.
+- Restauracion de identidad mediante `GET /api/auth/me` al recargar.
+- Manejo global de `401` y expiracion de sesion.
+- Presentacion de errores de validacion sin inventar mensajes distintos al contrato.
+- Pantallas separadas para solicitar recuperacion, restablecer por token y cambiar contrasena.
+- Redireccion a la ruta originalmente solicitada despues del login.
+- Indicadores de mostrar/ocultar contrasena con nombre accesible.
+
+### Criterios de aceptacion compartidos
+
+- Un usuario se registra, inicia sesion y consulta su identidad real.
+- Actualizar perfil modifica PostgreSQL y se refleja al volver a consultar.
+- Cambiar o restablecer contrasena invalida la anterior.
+- Recargar el navegador conserva o cierra la sesion de forma deliberada, nunca accidental.
+- Se verifican carga, error, exito, token expirado y servicio de correo no configurado.
+
+---
+
+## Bloque 3 - Catalogo, busqueda y detalle reales
+
+### Endpoints a integrar
+
+```text
+GET /api/experiences
+GET /api/experiences/{id}
+GET /api/experiences/search?location=&category=&maxPrice=
+```
+
+### Contrato que debe entregar backend
+
+- Solo se devuelven experiencias aprobadas.
+- Una experiencia inexistente o no aprobada responde `404`.
+- Los filtros son opcionales y combinables.
+- La respuesta contiene precio y cupos disponibles provenientes de PostgreSQL.
+- El backend no entrega actualmente imagen, calificacion, resenas ni condicion destacada.
+
+### Trabajo esperado del frontend
+
+- Listado de experiencias.
+- Vista de detalle.
+- Formulario de busqueda ajustado al contrato: ubicacion, una categoria y precio maximo.
+- Estados de carga, vacio y error.
+- Debounce y cancelacion de la solicitud anterior al cambiar filtros.
+- URL con query string para que una busqueda pueda recargarse o compartirse.
+- Placeholder visual honesto cuando no exista imagen.
+- Precio, ubicacion, categoria y cupos con jerarquia clara.
+- Ocultar calificacion, reputacion y fotografias especificas mientras el backend no las provea.
+- Redactar contenido y ejemplos para Republica Dominicana.
+
+### Criterios de aceptacion compartidos
+
+- Crear o actualizar datos en PostgreSQL cambia los resultados del catalogo.
+- Los filtros mostrados coinciden con la respuesta real del backend.
+- No existen arreglos locales de experiencias como fuente de datos.
+- No existen campos presentados que el backend no pueda respaldar.
+- El detalle devuelve `404` visible y recuperable cuando la experiencia no existe.
+
+---
+
+## Bloque 4 - Creacion y consulta de reservas reales
+
+### Endpoints a integrar
+
+```text
+POST /api/reservations
+GET  /api/reservations/my
+GET  /api/reservations/{id}
+```
+
+### Contrato que debe entregar backend
+
+- Crear una reserva requiere JWT.
+- Cupos insuficientes responden `409`.
+- La reserva y el descuento de cupos son atomicos.
+- Un usuario no puede consultar reservas ajenas.
+- La respuesta identifica claramente el estado `Pending` actual.
+
+### Trabajo esperado del frontend
+
+- Vista o dialogo de reserva con seleccion de cantidad.
+- Resumen de experiencia, precio por persona, cantidad y total estimado.
+- Confirmacion previa que explique que la reserva quedara `Pending`, no pagada ni confirmada.
+- Listado de reservas del usuario.
+- Detalle y estado de cada reserva.
+- Navegacion directa a `/reservations/:id` despues de una creacion exitosa.
+- Tratamiento especifico de `400`, `401`, `404` y `409`.
+- Deshabilitar doble envio y conservar idempotencia visual mientras el backend completa su soporte.
+- Actualizar cupos visibles despues de reservar.
+
+### Criterios de aceptacion compartidos
+
+- La reserva aparece en PostgreSQL y en `GET /api/reservations/my`.
+- Los cupos disminuyen y una sobreventa concurrente es rechazada.
+- La interfaz muestra el estado devuelto, no un estado calculado localmente.
+- Nunca se muestra correo enviado o pago confirmado si esos efectos no ocurrieron.
+- Reintentar despues de un `409` vuelve a consultar disponibilidad.
+
+---
+
+## Bloque 5 - Accesibilidad, calidad y validacion integral
+
+### Accesibilidad
+
+- Navegar todos los flujos usando solamente teclado.
+- Verificar orden de foco y retorno del foco al cerrar dialogos.
+- Asociar errores con campos mediante `aria-describedby`.
+- Usar `aria-live` para resultados asincronos importantes sin duplicar mensajes.
+- Asegurar contraste WCAG AA para texto y controles.
+- Acompanar estados con texto o icono, no solamente color.
+- Verificar zoom al 200% y texto aumentado.
+- Probar con movimiento reducido.
+
+### Calidad tecnica
+
+- Hacer que `npm run lint` termine sin errores ni advertencias.
+- Mantener `npm run build` aprobado.
+- Eliminar `any` en manejo de errores y DTOs.
+- Separar providers, hooks y constantes para Fast Refresh.
+- Evitar efectos que disparen cadenas de actualizaciones innecesarias.
+- Centralizar estilos y eliminar CSS duplicado dentro de componentes.
+- Revisar peso del bundle e imagenes.
+
+### Pruebas de integracion
+
+- Ejecutar pruebas end-to-end contra la API real y PostgreSQL de QA.
+- No usar MSW, JSON local ni una API falsa para los criterios de aceptacion.
+- Probar al menos:
+  1. Registro y login.
+  2. Restauracion de sesion.
+  3. Actualizacion de perfil.
+  4. Cambio y recuperacion de contrasena.
+  5. Catalogo y busqueda.
+  6. Detalle de experiencia.
+  7. Reserva exitosa.
+  8. Cupos insuficientes.
+  9. Mis reservas y reserva ajena.
+  10. Sesion expirada.
+
+### Criterios de terminado
+
+- Build y lint aprobados.
+- Cero desbordamiento horizontal en los cinco viewports definidos.
+- Flujos principales completables con teclado.
+- Estados reales verificables en PostgreSQL.
+- Checklist final de la guia UX/UI respondido con evidencia.
+
+---
+
+## Bloque 6 - Entregas verticales futuras
+
+A partir de aqui, cada bloque backend debe integrarse antes de comenzar demasiados bloques nuevos.
+
+### Entrega A - Anfitriones y moderacion
+
+- Backend: bloques 8 y 9.
+- Integrar solicitud de anfitrion, experiencias propias y aprobacion administrativa.
+- No avanzar al calendario hasta validar permisos y propiedad desde los tres roles.
+
+### Entrega B - Calendario y reservas completas
+
+- Backend: bloques 10 y 11.
+- Integrar horarios, disponibilidad, cancelacion y reprogramacion.
+- Sustituir la reserva por experiencia por una reserva asociada a un horario.
+
+### Entrega C - Pagos mock persistentes
+
+- Backend: bloque 12.
+- Integrar creacion de pago y consulta de estado usando el contrato neutral del gateway.
+- Mostrar claramente que el proveedor es `Mock` en desarrollo/QA.
+- No recolectar ni representar numeros reales de tarjeta.
+- Preparar el cliente para consultar estados sin asumir exito inmediato.
+
+### Entrega D - Notificaciones y resenas
+
+- Backend: bloques 13 y 14.
+- Integrar bandeja de notificaciones, preferencias y resena posterior a una reserva completada.
+
+### Entrega E - Mapas y dashboard
+
+- Backend: bloques 15 y 16.
+- Integrar cercania, ubicacion, rutas acordadas y metricas del anfitrion.
+
+## Compatibilidad de contratos
+
+Antes de cambiar un endpoint ya integrado:
+
+1. Documentar el cambio propuesto.
+2. Identificar pantallas consumidoras.
+3. Mantener temporalmente campos compatibles cuando sea seguro.
+4. Agregar pruebas del nuevo contrato.
+5. Coordinar una misma entrega entre backend y frontend.
+6. Retirar el contrato anterior solo cuando el cliente ya no lo consuma.
+
+Los cambios grandes, como pasar de reserva por `ExperienceId` a reserva por `ScheduleId`, deben
+planificarse como una version coordinada y no introducirse silenciosamente.
+
+## Lista minima para cada entrega al frontend
+
+- Endpoints y metodos HTTP.
+- Autenticacion y roles requeridos.
+- DTO de entrada con validaciones.
+- DTO de respuesta.
+- Estados HTTP positivos y negativos.
+- Ejemplos reales de Swagger.
+- Script SQL aplicado en el ambiente compartido.
+- Pruebas PostgreSQL aprobadas.
+- Limitaciones conocidas.
+- Fecha a partir de la cual el contrato se considera estable.
+
+## Orden inmediato recomendado
+
+1. Terminar Resend y reiniciar la API actual.
+2. Ejecutar Bloque 0 para congelar contrato y eliminar datos/acciones falsas.
+3. Implementar Bloque 1 para corregir shell responsive, accesibilidad base e identidad visual.
+4. Integrar autenticacion y cuenta del Bloque 2.
+5. Integrar catalogo, busqueda y detalle del Bloque 3.
+6. Integrar reservas reales del Bloque 4.
+7. Completar la validacion del Bloque 5.
+8. Continuar bloques backend 8 y 9 e integrar cada entrega vertical antes de acumular la siguiente.
+
+Este enfoque evita tanto el extremo de detener el backend por completo como el de terminar todos
+los modulos sin haber comprobado que el frontend puede consumir correctamente sus contratos.

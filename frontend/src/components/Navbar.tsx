@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import Button from './Button';
 import Logo from './Logo';
 
@@ -68,14 +68,6 @@ export const Navbar: React.FC = () => {
 
           {isAuthenticated ? (
             <>
-              <Link
-                to="/favorites"
-                style={getNavLinkStyle('/favorites')}
-                className="nav-link-item"
-              >
-                Favoritos
-              </Link>
-
               <Link
                 to="/profile"
                 style={getNavLinkStyle('/profile')}

@@ -5,7 +5,6 @@ import Experiences from '../pages/Experiences';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Profile from '../pages/Profile';
-import Favorites from '../pages/Favorites';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -16,7 +15,6 @@ export const AppRoutes: React.FC = () => {
       
       <Route element={<ProtectedRoute />}>
         <Route path="/profile" element={<Profile />} />
-        <Route path="/favorites" element={<Favorites />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/experiences" replace />} />

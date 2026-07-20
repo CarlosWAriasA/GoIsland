@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
-import { FavoritesProvider } from './context/FavoritesContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import AppRoutes from './routes/AppRoutes';
@@ -11,7 +10,7 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <FavoritesProvider>
+        <>
           <div style={{
             display: 'flex',
             flexDirection: 'column',
@@ -56,7 +55,7 @@ export const App: React.FC = () => {
               },
             }}
           />
-        </FavoritesProvider>
+        </>
       </AuthProvider>
     </BrowserRouter>
   );

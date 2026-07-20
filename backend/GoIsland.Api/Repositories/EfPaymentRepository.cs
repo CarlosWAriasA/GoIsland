@@ -27,14 +27,13 @@ public class EfPaymentRepository : IPaymentRepository
 
     public async Task<Payment> AddAsync(Payment payment)
     {
-        _context.Payments.Add(payment);
-        await _context.SaveChangesAsync();
+        await _context.Payments.AddAsync(payment);
         return payment;
     }
 
     public Task UpdateAsync(Payment payment)
     {
         _context.Payments.Update(payment);
-        return _context.SaveChangesAsync();
+        return Task.CompletedTask;
     }
 }

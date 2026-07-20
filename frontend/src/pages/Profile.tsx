@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
+import { toApiError } from '../services/apiError';
 import Input from '../components/Input';
 import Button from '../components/Button';
 
@@ -31,13 +32,9 @@ export const Profile: React.FC = () => {
       await updateUser(trimmedName);
       setSuccess('¡Perfil actualizado con éxito!');
       setTimeout(() => setSuccess(null), 4000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('Error al actualizar el perfil. Inténtalo de nuevo.');
-      }
+      setError(toApiError(err, 'Error al actualizar el perfil. Inténtalo de nuevo.').message);
     }
   };
 

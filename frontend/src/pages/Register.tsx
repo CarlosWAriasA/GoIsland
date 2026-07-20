@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
+import { toApiError } from '../services/apiError';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import Logo from '../components/Logo';
@@ -14,7 +15,6 @@ export const Register: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
-  const [role, setRole] = useState<'Tourist' | 'Host'>('Tourist');
   const [fieldErrors, setFieldErrors] = useState<{
     fullName?: string;
     email?: string;
@@ -76,22 +76,15 @@ export const Register: React.FC = () => {
         fullName: fullName.trim(),
         email,
         password,
-        role,
       });
       toast.success("¡Cuenta creada! Bienvenido a GoIsland 🌴");
       navigate('/experiences');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      if (err.response?.data?.message) {
-        toast.error(err.response.data.message);
-      } else if (err.response?.data?.errors) {
-        // Errores de validación devueltos por el ModelState de ASP.NET
-        const apiErrors = err.response.data.errors;
-        const mainError = Object.values(apiErrors).flat()[0] as string;
-        toast.error(mainError || 'Error de validación en el servidor.');
-      } else {
-        toast.error('Error al registrar usuario. Inténtalo de nuevo más tarde.');
-      }
+      toast.error(toApiError(
+        err,
+        'Error al registrar usuario. Inténtalo de nuevo más tarde.',
+      ).message);
     }
   };
 
@@ -178,74 +171,6 @@ export const Register: React.FC = () => {
               </svg>
             }
           />
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              color: 'var(--color-text)',
-              fontFamily: "'Poppins', sans-serif",
-              marginBottom: '6px',
-              display: 'block',
-            }}>
-              Tipo de Usuario
-            </label>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <label className="radio-container" style={{
-                flex: 1,
-                padding: '12px',
-                borderRadius: '8px',
-                border: role === 'Tourist' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                background: role === 'Tourist' ? '#EAF1FB' : 'var(--color-white)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                transition: 'all 0.2s',
-              }}>
-                <input
-                  type="radio"
-                  name="role"
-                  value="Tourist"
-                  checked={role === 'Tourist'}
-                  onChange={() => setRole('Tourist')}
-                  style={{ accentColor: 'var(--color-primary)' }}
-                />
-                <div>
-                  <strong style={{ display: 'block', color: 'var(--color-primary)', fontSize: '0.88rem' }}>Turista</strong>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Reservar experiencias</span>
-                </div>
-              </label>
-
-              <label className="radio-container" style={{
-                flex: 1,
-                padding: '12px',
-                borderRadius: '8px',
-                border: role === 'Host' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                background: role === 'Host' ? '#EAF1FB' : 'var(--color-white)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                transition: 'all 0.2s',
-              }}>
-                <input
-                  type="radio"
-                  name="role"
-                  value="Host"
-                  checked={role === 'Host'}
-                  onChange={() => setRole('Host')}
-                  style={{ accentColor: 'var(--color-primary)' }}
-                />
-                <div>
-                  <strong style={{ display: 'block', color: 'var(--color-primary)', fontSize: '0.88rem' }}>Anfitrión</strong>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Publicar actividades</span>
-                </div>
-              </label>
-            </div>
-          </div>
 
           <Input
             label="Contraseña"

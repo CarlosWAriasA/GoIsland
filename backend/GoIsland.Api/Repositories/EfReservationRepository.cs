@@ -16,25 +16,28 @@ public class EfReservationRepository : IReservationRepository
     public async Task<IEnumerable<Reservation>> GetByUserIdAsync(int userId)
     {
         return await _context.Reservations
+            .AsNoTracking()
             .Where(reservation => reservation.UserId == userId)
+            .OrderByDescending(reservation => reservation.ReservationDate)
             .ToListAsync();
     }
 
     public Task<Reservation?> GetByIdAsync(int id)
     {
-        return _context.Reservations.FindAsync(id).AsTask();
+        return _context.Reservations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(reservation => reservation.Id == id);
     }
 
     public async Task<Reservation> AddAsync(Reservation reservation)
     {
-        _context.Reservations.Add(reservation);
-        await _context.SaveChangesAsync();
+        await _context.Reservations.AddAsync(reservation);
         return reservation;
     }
 
     public Task UpdateAsync(Reservation reservation)
     {
         _context.Reservations.Update(reservation);
-        return _context.SaveChangesAsync();
+        return Task.CompletedTask;
     }
 }
