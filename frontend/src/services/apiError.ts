@@ -36,6 +36,13 @@ export const toApiError = (error: unknown, fallback = fallbackMessage): ApiError
   };
 };
 
+export const getFieldError = (error: ApiError, fieldName: string) => {
+  const matchingEntry = Object.entries(error.errors ?? {}).find(
+    ([key]) => key.toLowerCase() === fieldName.toLowerCase(),
+  );
+  return matchingEntry?.[1][0];
+};
+
 const isValidationErrors = (value: unknown): value is Record<string, string[]> => {
   if (!value || typeof value !== 'object') {
     return false;

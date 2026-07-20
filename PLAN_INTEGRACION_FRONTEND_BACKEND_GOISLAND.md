@@ -19,13 +19,139 @@ Inicio: 19 de julio de 2026.
 - Verificacion aprobada: `npm run lint`, `npm run build`, compilacion backend Release, salud,
   catalogo, busqueda y preflight CORS.
 
-### Pendiente para cerrar el Bloque 0
+### Bloque 0 cerrado
 
-- Reiniciar la instancia Debug de la API para cargar el nuevo binario de `/api/auth/me`.
-- Ejecutar las 18 pruebas de integracion con una conexion PostgreSQL de pruebas accesible; la
-  configuracion disponible durante esta entrega no permitio conectar.
-- Completar ejemplos positivos y negativos en `GoIsland.Api.http`.
-- Confirmar Swagger con el binario reiniciado.
+- La instancia anterior fue sustituida por un binario actual recompilado y saludable.
+- Swagger confirma 14 rutas, autenticacion Bearer y los contratos de identidad y busqueda.
+- `GoIsland.Api.http` contiene ejemplos positivos y negativos para `400`, `401` y `404`.
+- Las excepciones de conectividad PostgreSQL se traducen a `503` con un objeto JSON `message`, sin
+  exponer una pagina de excepcion ni detalles internos al frontend.
+- Las 18 pruebas de integracion PostgreSQL pasan al ejecutarse con acceso de red al servidor
+  administrado.
+
+### Bloque 1 completado
+
+- Se aplicaron los tokens oceano, turquesa, arena, coral y colores semanticos.
+- La navegacion principal ahora tiene menu movil accesible, estados activos y controles de 44 px.
+- Se agrego `Saltar al contenido principal` y foco visible global.
+- El footer se redujo a rutas funcionales y contenido centrado en Republica Dominicana.
+- Los estilos internos de `Button`, `Navbar`, `Footer` y `Logo` se trasladaron al sistema global.
+- Se adopto Manrope como tipografia principal.
+- Se incorporaron `Input`, `SelectField`, `PriceField`, `StatusBadge`, `Alert`, `Skeleton`,
+  `EmptyState`, `ErrorState` y `Dialog` con asociaciones y estados accesibles.
+- Login, registro, perfil y ruta protegida usan el shell responsive y no contienen hojas `<style>`
+  embebidas.
+- Las clases genericas `glass-*` se sustituyeron por `surface-panel` y `surface-card`.
+- La validacion real en `360x800`, `390x844`, `768x1024`, `1280x720` y `1440x900` confirmo
+  cero desbordamiento horizontal y cero controles visibles menores de `44x44`.
+- El menu movil expone `aria-expanded`, abre y cierra correctamente y conserva nombres accesibles.
+- Los errores de formulario usan `aria-invalid` y `aria-describedby`; el enlace de salto lleva el
+  foco a `main`.
+- `npm run lint` y `npm run build` finalizan sin errores ni advertencias de aplicacion.
+
+### Bloque 2 completado
+
+- Login y registro conservan temporalmente `token`, expiracion y usuario en `sessionStorage`; la
+  sesion sobrevive una recarga dentro de la pestana y se elimina al cerrar sesion o expirar.
+- El cliente adjunta Bearer de forma central, restaura la identidad con `GET /api/auth/me` y limpia
+  la sesion mediante un interceptor global ante respuestas `401` autenticadas.
+- Las rutas privadas conservan la ruta solicitada y regresan a ella despues de iniciar sesion.
+- Perfil actualiza el nombre real mediante `PUT /api/users/profile` y mantiene sincronizada la
+  identidad almacenada.
+- Se agregaron pantallas separadas para solicitar recuperacion, restablecer mediante token y cambiar
+  la contrasena desde una ruta privada.
+- Todos los campos de contrasena incluyen mostrar/ocultar con nombre accesible, `aria-pressed` y
+  area interactiva de `44x44`.
+- Los errores `400` se presentan por campo desde `errors`; `401`, `409`, token invalido y correo no
+  configurado conservan el mensaje del contrato backend.
+- La prueba HTTP real confirmo registro `201`, identidad y perfil `200`, cambio de contrasena `204`,
+  rechazo de la contrasena anterior `401`, login con la nueva `200`, duplicado `409`, privado sin
+  token `401`, correo no configurado `503` y restablecimiento invalido `400`.
+- La interfaz confirmo restauracion despues de recargar, redireccion post-login, cierre deliberado,
+  perfil actualizado y cero desbordamiento o controles pequenos en las nuevas pantallas moviles.
+- `npm run lint`, `npm run build` y las 18 pruebas de integracion PostgreSQL finalizan correctamente.
+
+### Bloque 3 completado
+
+- El catalogo y la busqueda consumen exclusivamente `GET /api/experiences` y
+  `GET /api/experiences/search`; no existen arreglos locales como fuente de datos.
+- Los filtros `location`, `category` y `maxPrice` se reflejan en el query string, se restauran al
+  recargar y se aplican automaticamente con debounce de 450 ms.
+- Cada cambio de consulta cancela la solicitud anterior mediante `AbortController` y evita que una
+  respuesta obsoleta reemplace resultados mas recientes.
+- Las tarjetas muestran solamente titulo, descripcion, ubicacion, categoria, precio, capacidad y
+  cupos reales; el espacio visual indica honestamente que la imagen no esta disponible.
+- Se agrego `/experiences/:id` con carga, error recuperable, detalle real y estado visible cuando el
+  backend responde `404` para una experiencia inexistente o no aprobada.
+- El regreso desde el detalle conserva la busqueda original y sus filtros compartibles.
+- PostgreSQL de QA contiene tres experiencias dominicanas aprobadas para validar catalogo y detalle:
+  Samana, San Francisco de Macoris y Santo Domingo.
+- La validacion HTTP confirmo catalogo `200`, detalle `200`, filtros combinados `200`, filtro invalido
+  `400` y detalle inexistente `404`.
+- La interfaz confirmo tres resultados reales, debounce, recarga de URL, un resultado filtrado,
+  detalle positivo, `404`, estado vacio y cero desbordamiento o controles pequenos en movil.
+- `npm run lint`, `npm run build`, `git diff --check` y las 18 pruebas PostgreSQL finalizan
+  correctamente.
+
+### Bloque 4 completado
+
+- El detalle de experiencia permite crear una reserva real mediante `POST /api/reservations` solo
+  para usuarios autenticados; el login conserva y recupera la ruta de origen.
+- El dialogo resume experiencia, precio unitario, cantidad y total antes de enviar, valida la
+  disponibilidad y bloquea cierres o envios duplicados mientras la solicitud esta en curso.
+- La interfaz comunica de forma explicita el estado real `Pending`; no presenta pago confirmado,
+  correo enviado ni confirmacion final inexistente.
+- Ante un conflicto `409`, el detalle vuelve a consultar la experiencia y actualiza los cupos
+  visibles; tambien conserva los mensajes reales para `400`, `401` y errores recuperables.
+- Se agregaron las rutas privadas `/reservations` y `/reservations/:id`, enlazadas desde la
+  navegacion, con carga, error, vacio, estado, cantidad, total y fecha obtenidos del backend.
+- El detalle no revela reservas ajenas: el backend responde `404` tanto para una reserva inexistente
+  como para una que pertenece a otro usuario, y la interfaz usa un unico estado seguro.
+- La prueba HTTP real creo una reserva de dos personas por USD 116 con estado `Pending`, redujo los
+  cupos de 10 a 8 y confirmo su presencia en `GET /api/reservations/my` y su detalle propio.
+- Una solicitud superior a los cupos respondio `409` sin modificar la disponibilidad; otro usuario
+  obtuvo `404` y una solicitud anonima obtuvo `401`.
+- La interfaz confirmo retorno post-login, total dinamico, validacion de cupos, listado, detalle,
+  estado no disponible, menu movil y cero desbordamiento horizontal; la consola no registro errores.
+- `npm run lint`, `npm run build` y las 18 pruebas de integracion PostgreSQL finalizan correctamente.
+
+### Bloque 5 completado
+
+- Se eliminaron los anuncios repetidos de cada skeleton y se sustituyeron las regiones vivas
+  extensas por mensajes breves para carga, error y cantidad de resultados o reservas.
+- Los errores de formulario conservan `aria-invalid` y referencias validas mediante
+  `aria-describedby`; `Input` y `SelectField` combinan mensajes propios y descripciones externas.
+- El dialogo mantiene el foco dentro de sus controles, cierra con `Escape` y devuelve el foco al
+  boton que lo abrio sin reiniciar el ciclo cuando cambia el estado de envio.
+- El enlace de salto enfoca explicitamente `main`, todos los controles auditados tienen nombre
+  accesible y no existen indices de tabulacion positivos.
+- El estilo del toast se traslado de React al CSS global y no quedan `any`, hojas `<style>`,
+  excepciones de TypeScript ni desactivaciones de ESLint en `frontend/src`.
+- El coral de marca se ajusto a `#E65A4B`: alcanza 3.54:1 sobre blanco y 3.8:1 sobre el footer;
+  texto, primario, errores y advertencias superan 4.5:1 en sus fondos funcionales.
+- Los cinco viewports `360x800`, `390x844`, `768x1024`, `1280x720` y `1440x900` tienen cero
+  desbordamiento horizontal y cero controles visibles menores de `44x44` en el flujo critico.
+- El reflujo equivalente a 200 % sobre 1280 px se valido a 640 px CSS sin desbordamiento; la regla
+  `prefers-reduced-motion` elimina desplazamiento suave y reduce animaciones y transiciones.
+- La matriz HTTP real cubrio registro, login, identidad restaurable, perfil, cambio y recuperacion
+  de contrasena, catalogo, busqueda, detalle, reserva, sobrecupo, propiedad y token rechazado.
+- La prueba integral creo la reserva `#40` con estado `Pending`, redujo los cupos de 14 a 13 y
+  confirmo `409` sin descuento adicional, `404` para otro propietario y `401` para token rechazado.
+- El bundle de produccion no contiene imagenes empaquetadas: JavaScript gzip es aproximadamente
+  110.6 kB y CSS gzip 6.1 kB; no se detectaron errores de consola en el navegador.
+
+Checklist final de la guia UX/UI:
+
+- Tarea critica: catalogo, detalle y reserva usan exclusivamente API y PostgreSQL reales.
+- Jerarquia y consistencia: shell, tokens, componentes y estados compartidos se usan en todos los
+  flujos implementados.
+- Retroalimentacion y prevencion: carga, error, vacio, validacion, doble envio y conflicto de cupos
+  tienen respuestas visibles y accesibles.
+- Accesibilidad: foco visible, salto a contenido, controles de 44 px, contraste, etiquetas,
+  descripciones, regiones vivas breves y movimiento reducido fueron verificados.
+- Honestidad funcional: no se muestran imagenes, reputacion, pago, correo o confirmacion que el
+  backend no haya entregado.
+- Adaptacion: los cinco viewports definidos y el reflujo ampliado finalizan sin desbordamiento.
 
 ## Fuente de diseno analizada
 

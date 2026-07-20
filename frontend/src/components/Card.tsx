@@ -1,4 +1,5 @@
-import { AlertCircle, Compass, MapPin, Ship, TreePine, Utensils, Waves } from 'lucide-react';
+import { AlertCircle, ArrowRight, Compass, MapPin, Ship, TreePine, Utensils, Waves } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import type { Experience } from '../types';
 
 interface CardProps {
@@ -30,7 +31,9 @@ const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
 }).format(price);
 
 export const Card = ({ experience }: CardProps) => {
+  const currentLocation = useLocation();
   const {
+    id,
     title,
     description,
     location,
@@ -42,10 +45,11 @@ export const Card = ({ experience }: CardProps) => {
   const isLowAvailability = availableSpots > 0 && capacity > 0 && availableSpots / capacity <= 0.3;
 
   return (
-    <article className="experience-card glass-card">
-      <div className="experience-card__placeholder" role="img" aria-label={`Ilustración para ${category}`}>
+    <article className="experience-card surface-card">
+      <div className="experience-card__placeholder" role="img" aria-label="Imagen no disponible">
         {getCategoryIcon(category)}
         <span>{category}</span>
+        <small>Imagen no disponible</small>
       </div>
 
       <div className="experience-card__body">
@@ -53,8 +57,23 @@ export const Card = ({ experience }: CardProps) => {
           <MapPin size={16} aria-hidden="true" />
           <span>{location}</span>
         </div>
-        <h3>{title}</h3>
+        <h3>
+          <Link
+            to={`/experiences/${id}`}
+            state={{ from: `${currentLocation.pathname}${currentLocation.search}` }}
+          >
+            {title}
+          </Link>
+        </h3>
         <p>{description}</p>
+        <Link
+          className="experience-card__detail-link"
+          to={`/experiences/${id}`}
+          state={{ from: `${currentLocation.pathname}${currentLocation.search}` }}
+          aria-label={`Ver detalles de ${title}`}
+        >
+          Ver detalles <ArrowRight size={17} aria-hidden="true" />
+        </Link>
       </div>
 
       <div className="experience-card__footer">

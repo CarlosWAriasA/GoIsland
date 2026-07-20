@@ -12,8 +12,19 @@ Content-Type: application/json
 {
   "fullName": "Carlos Arias",
   "email": "carlos@example.com",
-  "password": "Password123",
-  "role": "Tourist"
+  "password": "Password123"
+}
+
+###
+
+# 400 - datos de registro invalidos
+POST {{GoIsland.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "",
+  "email": "correo-invalido",
+  "password": "123"
 }
 
 ###
@@ -28,8 +39,25 @@ Content-Type: application/json
 
 ###
 
+# 401 - credenciales incorrectas
+POST {{GoIsland.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "carlos@example.com",
+  "password": "Incorrecta123"
+}
+
+###
+
 GET {{GoIsland.Api_HostAddress}}/api/auth/me
 Authorization: Bearer {{GoIsland.Api_Token}}
+Accept: application/json
+
+###
+
+# 401 - identidad sin Bearer token
+GET {{GoIsland.Api_HostAddress}}/api/auth/me
 Accept: application/json
 
 ###
@@ -86,7 +114,19 @@ Accept: application/json
 
 ###
 
+# 400 - precio maximo fuera del contrato
+GET {{GoIsland.Api_HostAddress}}/api/experiences/search?maxPrice=-1
+Accept: application/json
+
+###
+
 GET {{GoIsland.Api_HostAddress}}/api/experiences/1
+Accept: application/json
+
+###
+
+# 404 - experiencia inexistente
+GET {{GoIsland.Api_HostAddress}}/api/experiences/2147483647
 Accept: application/json
 
 ###
@@ -113,6 +153,29 @@ Content-Type: application/json
 {
   "experienceId": 1,
   "quantity": 2
+}
+
+###
+
+# 401 - reserva sin autenticacion
+POST {{GoIsland.Api_HostAddress}}/api/reservations
+Content-Type: application/json
+
+{
+  "experienceId": 1,
+  "quantity": 2
+}
+
+###
+
+# 400 - cantidad invalida con sesion autenticada
+POST {{GoIsland.Api_HostAddress}}/api/reservations
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "experienceId": 1,
+  "quantity": 0
 }
 
 ###

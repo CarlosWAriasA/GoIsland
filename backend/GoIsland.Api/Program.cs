@@ -139,6 +139,34 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseExceptionHandler(errorApplication =>
+{
+    errorApplication.Run(async context =>
+    {
+        var exception = context.Features
+            .Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?
+            .Error;
+        var databaseUnavailable = HasInnerException<NpgsqlException>(exception);
+        var logger = context.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("GlobalExceptionHandler");
+
+        logger.LogError(exception, "Unhandled exception while processing {Path}.", context.Request.Path);
+
+        context.Response.StatusCode = databaseUnavailable
+            ? StatusCodes.Status503ServiceUnavailable
+            : StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+
+        await context.Response.WriteAsJsonAsync(new
+        {
+            message = databaseUnavailable
+                ? "La base de datos no esta disponible temporalmente."
+                : "Ocurrio un error inesperado al procesar la solicitud."
+        });
+    });
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -197,4 +225,20 @@ static Dictionary<string, string> ParseQueryString(string query)
         .ToDictionary(
             parts => Uri.UnescapeDataString(parts[0]).ToLowerInvariant(),
             parts => Uri.UnescapeDataString(parts[1]));
+}
+
+static bool HasInnerException<TException>(Exception? exception)
+    where TException : Exception
+{
+    while (exception is not null)
+    {
+        if (exception is TException)
+        {
+            return true;
+        }
+
+        exception = exception.InnerException;
+    }
+
+    return false;
 }

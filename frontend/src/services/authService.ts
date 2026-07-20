@@ -1,5 +1,14 @@
 import { api } from './api';
-import type { AuthResponse, LoginRequest, RegisterRequest, UserResponse } from '../types';
+import type {
+  AuthResponse,
+  ChangePasswordRequest,
+  ForgotPasswordRequest,
+  LoginRequest,
+  MessageResponse,
+  RegisterRequest,
+  ResetPasswordRequest,
+  UserResponse,
+} from '../types';
 
 export const authService = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
@@ -20,6 +29,19 @@ export const authService = {
   updateProfile: async (fullName: string): Promise<UserResponse> => {
     const response = await api.put<UserResponse>('/users/profile', { fullName });
     return response.data;
+  },
+
+  changePassword: async (data: ChangePasswordRequest): Promise<void> => {
+    await api.put('/auth/change-password', data);
+  },
+
+  forgotPassword: async (data: ForgotPasswordRequest): Promise<MessageResponse> => {
+    const response = await api.post<MessageResponse>('/auth/forgot-password', data);
+    return response.data;
+  },
+
+  resetPassword: async (data: ResetPasswordRequest): Promise<void> => {
+    await api.post('/auth/reset-password', data);
   },
 };
 export type { LoginRequest, RegisterRequest };

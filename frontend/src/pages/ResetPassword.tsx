@@ -1,0 +1,119 @@
+import { LockKeyhole, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import Alert from '../components/Alert';
+import Button from '../components/Button';
+import Input from '../components/Input';
+import Logo from '../components/Logo';
+import { getFieldError, toApiError } from '../services/apiError';
+import { authService } from '../services/authService';
+
+interface ResetErrors {
+  token?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+}
+
+export const ResetPassword = () => {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token')?.trim() || '';
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<ResetErrors>({});
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validate = () => {
+    const errors: ResetErrors = {};
+    if (!token) errors.token = 'El token de recuperacion es obligatorio.';
+    if (!newPassword) errors.newPassword = 'La nueva contrasena es obligatoria.';
+    else if (newPassword.length < 6 || newPassword.length > 100) {
+      errors.newPassword = 'La nueva contrasena debe tener entre 6 y 100 caracteres.';
+    }
+    if (!confirmPassword) errors.confirmPassword = 'La confirmacion de la contrasena es obligatoria.';
+    else if (newPassword !== confirmPassword) {
+      errors.confirmPassword = 'La confirmacion no coincide con la nueva contrasena.';
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    if (!validate()) return;
+
+    setIsSubmitting(true);
+    try {
+      await authService.resetPassword({ token, newPassword, confirmPassword });
+      setSuccess(true);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (requestError: unknown) {
+      const apiError = toApiError(requestError);
+      setFieldErrors({
+        token: getFieldError(apiError, 'Token'),
+        newPassword: getFieldError(apiError, 'NewPassword'),
+        confirmPassword: getFieldError(apiError, 'ConfirmPassword'),
+      });
+      setError(apiError.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="auth-page animate-fade-in">
+      <section className="auth-card surface-panel" aria-labelledby="reset-password-title">
+        <header className="auth-card__header">
+          <Logo showUnderline fontSize="2.2rem" />
+          <h1 id="reset-password-title">Crea una nueva contraseña</h1>
+          <p>Elige una contraseña diferente a la utilizada anteriormente.</p>
+        </header>
+
+        {!token && <Alert tone="error">El enlace de recuperación no contiene un token válido.</Alert>}
+        {fieldErrors.token && <Alert tone="error">{fieldErrors.token}</Alert>}
+        {error && <Alert tone="error">{error}</Alert>}
+        {success && (
+          <Alert tone="success">
+            Contraseña actualizada. Ya puedes iniciar sesión con tu nueva contraseña.
+          </Alert>
+        )}
+
+        {!success && (
+          <form className="auth-form" onSubmit={handleSubmit} noValidate>
+            <Input
+              label="Nueva contraseña"
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              error={fieldErrors.newPassword}
+              icon={<LockKeyhole size={18} />}
+            />
+            <Input
+              label="Confirmar nueva contraseña"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              error={fieldErrors.confirmPassword}
+              icon={<ShieldCheck size={18} />}
+            />
+            <Button type="submit" fullWidth isLoading={isSubmitting} disabled={!token}>
+              Restablecer contraseña
+            </Button>
+          </form>
+        )}
+
+        <p className="auth-card__footer">
+          <Link to="/login">Volver a iniciar sesión</Link>
+        </p>
+      </section>
+    </div>
+  );
+};
+
+export default ResetPassword;

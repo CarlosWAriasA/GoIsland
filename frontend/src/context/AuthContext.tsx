@@ -1,27 +1,97 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import type { UserResponse, AuthResponse, LoginRequest, RegisterRequest } from '../types';
 import { authService } from '../services/authService';
-import { setAuthToken } from '../services/api';
+import { setAuthToken, setUnauthorizedHandler } from '../services/api';
+import { clearAuthSession, loadAuthSession, saveAuthSession } from '../services/authSession';
 import { AuthContext } from './AuthContextDefinition';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
-  // Sincroniza el token con los headers de las peticiones de Axios
+  const clearAuthentication = useCallback((expired: boolean) => {
+    setToken(null);
+    setExpiresAt(null);
+    setUser(null);
+    setSessionExpired(expired);
+    setAuthToken(null);
+    clearAuthSession();
+  }, []);
+
   useEffect(() => {
-    setAuthToken(token);
-  }, [token]);
+    let cancelled = false;
+    setUnauthorizedHandler(() => clearAuthentication(true));
+
+    const restoreSession = async () => {
+      const stored = loadAuthSession();
+      if (!stored.session) {
+        if (!cancelled) {
+          setSessionExpired(stored.expired);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      const session = stored.session;
+      setAuthToken(session.token);
+      if (!cancelled) {
+        setToken(session.token);
+        setExpiresAt(session.expiresAt);
+        setUser(session.user);
+      }
+
+      try {
+        const currentUser = await authService.getMe();
+        if (!cancelled) {
+          setUser(currentUser);
+          saveAuthSession({ ...session, user: currentUser });
+        }
+      } catch {
+        // Un 401 se procesa en el interceptor. Ante un fallo de red se conserva
+        // la sesión temporal hasta que el servidor pueda volver a validarla.
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    void restoreSession();
+
+    return () => {
+      cancelled = true;
+      setUnauthorizedHandler(null);
+    };
+  }, [clearAuthentication]);
+
+  useEffect(() => {
+    if (!expiresAt) return;
+
+    const remainingMilliseconds = Date.parse(expiresAt) - Date.now();
+    const expirationTimer = window.setTimeout(
+      () => clearAuthentication(true),
+      Math.max(0, remainingMilliseconds),
+    );
+    return () => window.clearTimeout(expirationTimer);
+  }, [clearAuthentication, expiresAt]);
+
+  const applyAuthResponse = (response: AuthResponse) => {
+    setAuthToken(response.token);
+    setToken(response.token);
+    setExpiresAt(response.expiresAt);
+    setUser(response.user);
+    setSessionExpired(false);
+    saveAuthSession(response);
+  };
 
   const login = async (data: LoginRequest) => {
     setIsLoading(true);
     try {
       const res: AuthResponse = await authService.login(data);
-      setToken(res.token);
-      setUser(res.user);
+      applyAuthResponse(res);
     } catch (error) {
-      logout();
+      clearAuthentication(false);
       throw error;
     } finally {
       setIsLoading(false);
@@ -32,10 +102,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const res: AuthResponse = await authService.register(data);
-      setToken(res.token);
-      setUser(res.user);
+      applyAuthResponse(res);
     } catch (error) {
-      logout();
+      clearAuthentication(false);
       throw error;
     } finally {
       setIsLoading(false);
@@ -43,9 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    setToken(null);
-    setUser(null);
-    setAuthToken(null);
+    clearAuthentication(false);
   };
 
   const updateUser = async (fullName: string) => {
@@ -53,6 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const updatedUser = await authService.updateProfile(fullName);
       setUser(updatedUser);
+      if (token && expiresAt) {
+        saveAuthSession({ token, expiresAt, user: updatedUser });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -65,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         token,
         isAuthenticated: !!token,
         isLoading,
+        sessionExpired,
         login,
         register,
         logout,

@@ -11,10 +11,15 @@ export const api = axios.create({
 });
 
 let authToken: string | null = null;
+let unauthorizedHandler: (() => void) | null = null;
 
 // Actualiza el token guardado en memoria
 export const setAuthToken = (token: string | null) => {
   authToken = token;
+};
+
+export const setUnauthorizedHandler = (handler: (() => void) | null) => {
+  unauthorizedHandler = handler;
 };
 
 // Interceptor que adjunta el token JWT a cada petición si existe en memoria
@@ -28,4 +33,14 @@ api.interceptors.request.use(
   (error) => {
     return Promise.reject(error);
   }
+);
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && authToken) {
+      unauthorizedHandler?.();
+    }
+    return Promise.reject(error);
+  },
 );
