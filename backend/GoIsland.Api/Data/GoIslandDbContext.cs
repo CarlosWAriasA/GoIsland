@@ -15,6 +15,9 @@ public class GoIslandDbContext : DbContext
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<HostProfile> HostProfiles => Set<HostProfile>();
+    public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
+    public DbSet<UserExternalLogin> UserExternalLogins => Set<UserExternalLogin>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,11 +35,29 @@ public class GoIslandDbContext : DbContext
             entity.Property(user => user.CreatedAt).HasColumnName("created_at").IsRequired();
         });
 
+        modelBuilder.Entity<UserExternalLogin>(entity =>
+        {
+            entity.ToTable("user_external_logins");
+            entity.HasKey(login => login.Id);
+            entity.Property(login => login.Id).HasColumnName("id");
+            entity.Property(login => login.UserId).HasColumnName("user_id").IsRequired();
+            entity.Property(login => login.Provider).HasColumnName("provider").HasMaxLength(40).IsRequired();
+            entity.Property(login => login.ProviderSubject).HasColumnName("provider_subject").HasMaxLength(255).IsRequired();
+            entity.Property(login => login.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.HasIndex(login => new { login.Provider, login.ProviderSubject }).IsUnique();
+            entity.HasIndex(login => new { login.UserId, login.Provider }).IsUnique();
+            entity.HasOne(login => login.User)
+                .WithMany()
+                .HasForeignKey(login => login.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<Experience>(entity =>
         {
             entity.ToTable("experiences");
             entity.HasKey(experience => experience.Id);
             entity.Property(experience => experience.Id).HasColumnName("id");
+            entity.Property(experience => experience.HostId).HasColumnName("host_id").IsRequired();
             entity.Property(experience => experience.Title).HasColumnName("title").HasMaxLength(160).IsRequired();
             entity.Property(experience => experience.Description).HasColumnName("description").HasMaxLength(2000).IsRequired();
             entity.Property(experience => experience.Location).HasColumnName("location").HasMaxLength(160).IsRequired();
@@ -48,7 +69,14 @@ public class GoIslandDbContext : DbContext
                 .IsRequired()
                 .IsConcurrencyToken();
             entity.Property(experience => experience.IsApproved).HasColumnName("is_approved").IsRequired();
+            entity.Property(experience => experience.ApprovalStatus).HasColumnName("approval_status").HasMaxLength(40).IsRequired();
+            entity.Property(experience => experience.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
+            entity.Property(experience => experience.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(experience => experience.ReviewedByAdminId).HasColumnName("reviewed_by_admin_id");
             entity.Property(experience => experience.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(experience => experience.UpdatedAt).HasColumnName("updated_at").IsRequired();
+            entity.HasIndex(experience => experience.HostId);
+            entity.HasIndex(experience => experience.ApprovalStatus);
         });
 
         modelBuilder.Entity<Reservation>(entity =>
@@ -87,6 +115,38 @@ public class GoIslandDbContext : DbContext
             entity.Property(token => token.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.HasIndex(token => token.TokenHash).IsUnique();
             entity.HasIndex(token => token.UserId);
+        });
+
+        modelBuilder.Entity<HostProfile>(entity =>
+        {
+            entity.ToTable("host_profiles");
+            entity.HasKey(profile => profile.Id);
+            entity.Property(profile => profile.Id).HasColumnName("id");
+            entity.Property(profile => profile.UserId).HasColumnName("user_id").IsRequired();
+            entity.Property(profile => profile.DisplayName).HasColumnName("display_name").HasMaxLength(120).IsRequired();
+            entity.Property(profile => profile.Description).HasColumnName("description").HasMaxLength(1000).IsRequired();
+            entity.Property(profile => profile.PhoneNumber).HasColumnName("phone_number").HasMaxLength(30).IsRequired();
+            entity.Property(profile => profile.VerificationStatus).HasColumnName("verification_status").HasMaxLength(40).IsRequired();
+            entity.Property(profile => profile.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
+            entity.Property(profile => profile.SubmittedAt).HasColumnName("submitted_at").IsRequired();
+            entity.Property(profile => profile.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(profile => profile.ReviewedByAdminId).HasColumnName("reviewed_by_admin_id");
+            entity.HasIndex(profile => profile.UserId).IsUnique();
+            entity.HasIndex(profile => profile.VerificationStatus);
+        });
+
+        modelBuilder.Entity<AdminAuditLog>(entity =>
+        {
+            entity.ToTable("admin_audit_logs");
+            entity.HasKey(log => log.Id);
+            entity.Property(log => log.Id).HasColumnName("id");
+            entity.Property(log => log.AdminUserId).HasColumnName("admin_user_id").IsRequired();
+            entity.Property(log => log.EntityType).HasColumnName("entity_type").HasMaxLength(80).IsRequired();
+            entity.Property(log => log.EntityId).HasColumnName("entity_id").IsRequired();
+            entity.Property(log => log.Action).HasColumnName("action").HasMaxLength(80).IsRequired();
+            entity.Property(log => log.Reason).HasColumnName("reason").HasMaxLength(500);
+            entity.Property(log => log.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.HasIndex(log => new { log.EntityType, log.EntityId });
         });
     }
 }

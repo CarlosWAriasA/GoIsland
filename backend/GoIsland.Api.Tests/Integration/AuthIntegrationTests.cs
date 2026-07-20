@@ -80,4 +80,81 @@ public class AuthIntegrationTests : PostgresIntegrationTestBase
 
         Assert.Null(result);
     }
+
+    [Fact]
+    public async Task PublicRegistration_CannotGrantHostOrAdminRole()
+    {
+        var authService = GetRequiredService<IAuthService>();
+
+        var result = await authService.RegisterAsync(new RegisterRequest
+        {
+            FullName = "Intento Anfitrion",
+            Email = $"role-{Guid.NewGuid():N}@goisland.test",
+            Password = "Password123",
+            Role = UserRoles.Host
+        });
+
+        Assert.NotNull(result);
+        Assert.Equal(UserRoles.Tourist, result.User.Role);
+    }
+
+    [Fact]
+    public async Task GoogleAuth_CreatesAndReusesAccountByProviderSubject()
+    {
+        var authService = GetRequiredService<IAuthService>();
+        var email = $"google-{Guid.NewGuid():N}@goisland.test";
+        var subject = Guid.NewGuid().ToString("N");
+        var request = new GoogleAuthRequest
+        {
+            Credential = $"valid|{subject}|{email}|Usuario Google"
+        };
+
+        var first = await authService.AuthenticateWithGoogleAsync(request);
+        var second = await authService.AuthenticateWithGoogleAsync(request);
+
+        Assert.Equal(GoogleAuthStatus.Success, first.Status);
+        Assert.Equal(GoogleAuthStatus.Success, second.Status);
+        Assert.NotNull(first.Response);
+        Assert.Equal(first.Response.User.Id, second.Response!.User.Id);
+        Assert.Equal(1, await Context.Users.CountAsync(user => user.Email == email));
+        Assert.Equal(1, await Context.UserExternalLogins.CountAsync(login =>
+            login.Provider == "Google" && login.ProviderSubject == subject));
+    }
+
+    [Fact]
+    public async Task GoogleAuth_LinksExistingAccountWithVerifiedEmail()
+    {
+        var authService = GetRequiredService<IAuthService>();
+        var email = $"google-link-{Guid.NewGuid():N}@goisland.test";
+        var registration = await authService.RegisterAsync(new RegisterRequest
+        {
+            FullName = "Usuario Existente",
+            Email = email,
+            Password = "Password123"
+        });
+
+        var result = await authService.AuthenticateWithGoogleAsync(new GoogleAuthRequest
+        {
+            Credential = $"valid|{Guid.NewGuid():N}|{email}|Nombre Google"
+        });
+
+        Assert.NotNull(registration);
+        Assert.Equal(GoogleAuthStatus.Success, result.Status);
+        Assert.Equal(registration.User.Id, result.Response!.User.Id);
+        Assert.Equal(1, await Context.Users.CountAsync(user => user.Email == email));
+    }
+
+    [Fact]
+    public async Task GoogleAuth_WithInvalidCredential_IsRejected()
+    {
+        var authService = GetRequiredService<IAuthService>();
+
+        var result = await authService.AuthenticateWithGoogleAsync(new GoogleAuthRequest
+        {
+            Credential = "invalid"
+        });
+
+        Assert.Equal(GoogleAuthStatus.InvalidCredential, result.Status);
+        Assert.Null(result.Response);
+    }
 }

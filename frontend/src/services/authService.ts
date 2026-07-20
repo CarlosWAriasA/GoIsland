@@ -3,6 +3,7 @@ import type {
   AuthResponse,
   ChangePasswordRequest,
   ForgotPasswordRequest,
+  GoogleAuthRequest,
   LoginRequest,
   MessageResponse,
   RegisterRequest,
@@ -28,6 +29,11 @@ export const authService = {
 
   updateProfile: async (fullName: string): Promise<UserResponse> => {
     const response = await api.put<UserResponse>('/users/profile', { fullName });
+    return response.data;
+  },
+
+  google: async (data: GoogleAuthRequest): Promise<AuthResponse> => {
+    const response = await api.post<AuthResponse>('/auth/google', data);
     return response.data;
   },
 

@@ -3,6 +3,7 @@ using GoIsland.Api.Repositories;
 using GoIsland.Api.Services.Auth;
 using GoIsland.Api.Services.Email;
 using GoIsland.Api.Services.Experiences;
+using GoIsland.Api.Services.Hosts;
 using GoIsland.Api.Services.Reservations;
 using GoIsland.Api.Services.Reservations.Observers;
 using GoIsland.Api.Services.Security;
@@ -46,13 +47,17 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
         services.AddScoped<IReservationRepository, EfReservationRepository>();
         services.AddScoped<IPaymentRepository, EfPaymentRepository>();
         services.AddScoped<IPasswordResetTokenRepository, EfPasswordResetTokenRepository>();
+        services.AddScoped<IUserExternalLoginRepository, EfUserExternalLoginRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IPasswordResetTokenGenerator, PasswordResetTokenGenerator>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddSingleton<IGoogleIdentityVerifier, FakeGoogleIdentityVerifier>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IExperienceService, ExperienceService>();
+        services.AddScoped<IExperienceManagementService, ExperienceManagementService>();
+        services.AddScoped<IHostService, HostService>();
         services.AddScoped<IReservationObserver, EmailNotificationObserver>();
         services.AddScoped<IReservationObserver, PushNotificationObserver>();
         services.AddScoped<IReservationObserver, CapacityManagerObserver>();
@@ -75,6 +80,20 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             "Scripts",
             "002_create_password_reset_tokens.sql"));
         await Context.Database.ExecuteSqlRawAsync(passwordResetScript);
+
+        var hostModerationScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "003_create_host_moderation.sql"));
+        await Context.Database.ExecuteSqlRawAsync(hostModerationScript);
+
+        var externalLoginsScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "004_create_external_logins.sql"));
+        await Context.Database.ExecuteSqlRawAsync(externalLoginsScript);
 
         // Fuerza una consulta real y falla temprano si el esquema no esta aplicado.
         await Context.Users.AsNoTracking().AnyAsync();

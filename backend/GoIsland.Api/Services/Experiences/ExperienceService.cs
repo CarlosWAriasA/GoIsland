@@ -31,25 +31,6 @@ public class ExperienceService : IExperienceService
         return experiences.Select(ToResponse).ToArray();
     }
 
-    public async Task<ExperienceResponse> CreateAsync(CreateExperienceRequest request, bool approveImmediately)
-    {
-        var experience = new Experience
-        {
-            Title = request.Title.Trim(),
-            Description = request.Description.Trim(),
-            Location = request.Location.Trim(),
-            Category = request.Category.Trim(),
-            Price = request.Price,
-            Capacity = request.Capacity,
-            AvailableSpots = request.Capacity,
-            IsApproved = approveImmediately
-        };
-
-        await _unitOfWork.Experiences.AddAsync(experience);
-        await _unitOfWork.CommitAsync();
-        return ToResponse(experience);
-    }
-
     private static ExperienceResponse ToResponse(Experience experience)
     {
         return new ExperienceResponse

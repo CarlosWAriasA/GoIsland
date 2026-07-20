@@ -17,7 +17,7 @@ public class EfExperienceRepository : IExperienceRepository
     {
         return await _context.Experiences
             .AsNoTracking()
-            .Where(experience => experience.IsApproved)
+            .Where(experience => experience.ApprovalStatus == ExperienceApprovalStatuses.Approved)
             .OrderByDescending(experience => experience.CreatedAt)
             .ToListAsync();
     }
@@ -26,20 +26,24 @@ public class EfExperienceRepository : IExperienceRepository
     {
         return _context.Experiences
             .AsNoTracking()
-            .FirstOrDefaultAsync(experience => experience.Id == id && experience.IsApproved);
+            .FirstOrDefaultAsync(experience =>
+                experience.Id == id
+                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
     }
 
     public Task<Experience?> GetForReservationAsync(int id)
     {
         return _context.Experiences
-            .FirstOrDefaultAsync(experience => experience.Id == id && experience.IsApproved);
+            .FirstOrDefaultAsync(experience =>
+                experience.Id == id
+                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
     }
 
     public async Task<IEnumerable<Experience>> SearchAsync(string? location, string? category, decimal? maxPrice)
     {
         var query = _context.Experiences
             .AsNoTracking()
-            .Where(experience => experience.IsApproved);
+            .Where(experience => experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
 
         if (!string.IsNullOrWhiteSpace(location))
         {

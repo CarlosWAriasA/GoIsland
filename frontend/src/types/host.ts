@@ -1,0 +1,51 @@
+export type HostVerificationStatus = 'Pending' | 'Approved' | 'Rejected' | 'Suspended';
+
+export interface HostProfileRequest {
+  displayName: string;
+  description: string;
+  phoneNumber: string;
+}
+
+export interface HostProfile {
+  id: number;
+  userId: number;
+  userFullName: string;
+  userEmail: string;
+  displayName: string;
+  description: string;
+  phoneNumber: string;
+  verificationStatus: HostVerificationStatus;
+  rejectionReason: string | null;
+  submittedAt: string;
+  reviewedAt: string | null;
+  reviewedByAdminId: number | null;
+}
+
+export type ExperienceApprovalStatus =
+  | 'Draft'
+  | 'PendingReview'
+  | 'Approved'
+  | 'Rejected'
+  | 'Suspended';
+
+export interface ManagedExperienceRequest {
+  title: string;
+  description: string;
+  location: string;
+  category: string;
+  price: number;
+  capacity: number;
+}
+
+export interface ManagedExperience extends ManagedExperienceRequest {
+  id: number;
+  hostId: number;
+  hostName: string;
+  availableSpots: number;
+  approvalStatus: ExperienceApprovalStatus;
+  rejectionReason: string | null;
+  reviewedAt: string | null;
+  reviewedByAdminId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}

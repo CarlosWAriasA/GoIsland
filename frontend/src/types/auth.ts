@@ -23,6 +23,10 @@ export interface RegisterRequest {
   password: string;
 }
 
+export interface GoogleAuthRequest {
+  credential: string;
+}
+
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;

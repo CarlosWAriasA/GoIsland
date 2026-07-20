@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using GoIsland.Api.DTOs.Experiences;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Experiences;
@@ -11,10 +12,14 @@ namespace GoIsland.Api.Controllers;
 public class ExperiencesController : ControllerBase
 {
     private readonly IExperienceService _experienceService;
+    private readonly IExperienceManagementService _managementService;
 
-    public ExperiencesController(IExperienceService experienceService)
+    public ExperiencesController(
+        IExperienceService experienceService,
+        IExperienceManagementService managementService)
     {
         _experienceService = experienceService;
+        _managementService = managementService;
     }
 
     [HttpGet]
@@ -46,10 +51,27 @@ public class ExperiencesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = UserRoles.Host + "," + UserRoles.Admin)]
-    public async Task<ActionResult<ExperienceResponse>> Create(CreateExperienceRequest request)
+    [Authorize]
+    public async Task<IActionResult> Create(CreateExperienceRequest request)
     {
-        var created = await _experienceService.CreateAsync(request, User.IsInRole(UserRoles.Admin));
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            return Unauthorized(new { message = "El token no es valido." });
+        }
+
+        var result = await _managementService.CreateAsync(userId, request);
+        if (result.Status != ExperienceManagementStatus.Success)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Tu perfil de anfitrion no esta aprobado o fue suspendido."
+            });
+        }
+
+        return CreatedAtAction(
+            nameof(HostExperiencesController.GetById),
+            "HostExperiences",
+            new { id = result.Experience!.Id },
+            result.Experience);
     }
 }

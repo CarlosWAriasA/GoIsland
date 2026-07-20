@@ -11,6 +11,10 @@ import ResetPassword from '../pages/ResetPassword';
 import ExperienceDetail from '../pages/ExperienceDetail';
 import Reservations from '../pages/Reservations';
 import ReservationDetail from '../pages/ReservationDetail';
+import HostProfile from '../pages/HostProfile';
+import HostExperiences from '../pages/HostExperiences';
+import AdminModeration from '../pages/AdminModeration';
+import RoleRoute from './RoleRoute';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -27,6 +31,15 @@ export const AppRoutes: React.FC = () => {
         <Route path="/account/password" element={<ChangePassword />} />
         <Route path="/reservations" element={<Reservations />} />
         <Route path="/reservations/:id" element={<ReservationDetail />} />
+        <Route path="/host-profile" element={<HostProfile />} />
+
+        <Route element={<RoleRoute allowedRoles={['Host']} />}>
+          <Route path="/host/experiences" element={<HostExperiences />} />
+        </Route>
+
+        <Route element={<RoleRoute allowedRoles={['Admin']} />}>
+          <Route path="/admin/moderation" element={<AdminModeration />} />
+        </Route>
       </Route>
 
       <Route path="/" element={<Navigate to="/experiences" replace />} />

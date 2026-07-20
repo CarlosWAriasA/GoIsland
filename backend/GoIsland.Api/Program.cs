@@ -4,6 +4,7 @@ using GoIsland.Api.Repositories;
 using GoIsland.Api.Services.Auth;
 using GoIsland.Api.Services.Email;
 using GoIsland.Api.Services.Experiences;
+using GoIsland.Api.Services.Hosts;
 using GoIsland.Api.Services.Reservations;
 using GoIsland.Api.Services.Reservations.Observers;
 using GoIsland.Api.Services.Security;
@@ -67,13 +68,30 @@ builder.Services.AddScoped<IExperienceRepository, EfExperienceRepository>();
 builder.Services.AddScoped<IReservationRepository, EfReservationRepository>();
 builder.Services.AddScoped<IPaymentRepository, EfPaymentRepository>();
 builder.Services.AddScoped<IPasswordResetTokenRepository, EfPasswordResetTokenRepository>();
+builder.Services.AddScoped<IUserExternalLoginRepository, EfUserExternalLoginRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IPasswordResetTokenGenerator, PasswordResetTokenGenerator>();
-builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddSingleton<IGoogleIdentityVerifier, GoogleIdentityVerifier>();
+var emailProvider = builder.Configuration["Email:Provider"] ?? "Smtp";
+if (emailProvider.Equals("Smtp", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+}
+else if (emailProvider.Equals("Resend", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHttpClient<IEmailSender, ResendEmailSender>(client =>
+        client.BaseAddress = new Uri("https://api.resend.com/"));
+}
+else
+{
+    throw new InvalidOperationException("Email:Provider debe ser Smtp o Resend.");
+}
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExperienceService, ExperienceService>();
+builder.Services.AddScoped<IExperienceManagementService, ExperienceManagementService>();
+builder.Services.AddScoped<IHostService, HostService>();
 builder.Services.AddScoped<IReservationObserver, EmailNotificationObserver>();
 builder.Services.AddScoped<IReservationObserver, PushNotificationObserver>();
 builder.Services.AddScoped<IReservationObserver, CapacityManagerObserver>();

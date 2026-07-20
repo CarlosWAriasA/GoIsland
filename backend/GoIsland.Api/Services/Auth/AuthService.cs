@@ -8,11 +8,14 @@ namespace GoIsland.Api.Services.Auth;
 
 public class AuthService : IAuthService
 {
+    private const string GoogleProvider = "Google";
+    private const string ExternalLoginOnlyPasswordHash = "EXTERNAL_LOGIN_ONLY";
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IPasswordResetTokenGenerator _resetTokenGenerator;
     private readonly IEmailSender _emailSender;
+    private readonly IGoogleIdentityVerifier _googleIdentityVerifier;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthService> _logger;
 
@@ -22,6 +25,7 @@ public class AuthService : IAuthService
         IJwtTokenService jwtTokenService,
         IPasswordResetTokenGenerator resetTokenGenerator,
         IEmailSender emailSender,
+        IGoogleIdentityVerifier googleIdentityVerifier,
         IConfiguration configuration,
         ILogger<AuthService> logger)
     {
@@ -30,6 +34,7 @@ public class AuthService : IAuthService
         _jwtTokenService = jwtTokenService;
         _resetTokenGenerator = resetTokenGenerator;
         _emailSender = emailSender;
+        _googleIdentityVerifier = googleIdentityVerifier;
         _configuration = configuration;
         _logger = logger;
     }
@@ -70,6 +75,73 @@ public class AuthService : IAuthService
         }
 
         return CreateAuthResponse(user);
+    }
+
+    public async Task<GoogleAuthResult> AuthenticateWithGoogleAsync(GoogleAuthRequest request)
+    {
+        if (!_googleIdentityVerifier.IsConfigured)
+        {
+            return new GoogleAuthResult(GoogleAuthStatus.NotConfigured);
+        }
+
+        var identity = await _googleIdentityVerifier.VerifyAsync(request.Credential);
+        if (identity is null)
+        {
+            return new GoogleAuthResult(GoogleAuthStatus.InvalidCredential);
+        }
+
+        var externalLogin = await _unitOfWork.UserExternalLogins.GetByProviderSubjectAsync(
+            GoogleProvider,
+            identity.Subject);
+
+        if (externalLogin is not null)
+        {
+            var linkedUser = await _unitOfWork.Users.GetByIdAsync(externalLogin.UserId);
+            return linkedUser is null
+                ? new GoogleAuthResult(GoogleAuthStatus.AccountConflict)
+                : new GoogleAuthResult(GoogleAuthStatus.Success, CreateAuthResponse(linkedUser));
+        }
+
+        var user = await _unitOfWork.Users.GetByEmailAsync(identity.Email);
+        var isNewUser = user is null;
+        if (user is not null && !identity.CanLinkExistingAccountByEmail)
+        {
+            return new GoogleAuthResult(GoogleAuthStatus.AccountConflict);
+        }
+
+        if (user is null)
+        {
+            user = new User
+            {
+                FullName = identity.FullName,
+                Email = identity.Email,
+                PasswordHash = ExternalLoginOnlyPasswordHash,
+                Role = UserRoles.Tourist
+            };
+            await _unitOfWork.Users.AddAsync(user);
+        }
+
+        if (!isNewUser)
+        {
+            var existingProviderLogin = await _unitOfWork.UserExternalLogins.GetByUserAndProviderAsync(
+                user.Id,
+                GoogleProvider);
+            if (existingProviderLogin is not null)
+            {
+                return new GoogleAuthResult(GoogleAuthStatus.AccountConflict);
+            }
+        }
+
+        await _unitOfWork.UserExternalLogins.AddAsync(new UserExternalLogin
+        {
+            UserId = user.Id,
+            User = user,
+            Provider = GoogleProvider,
+            ProviderSubject = identity.Subject
+        });
+        await _unitOfWork.CommitAsync();
+
+        return new GoogleAuthResult(GoogleAuthStatus.Success, CreateAuthResponse(user));
     }
 
     public async Task<ChangePasswordStatus> ChangePasswordAsync(int userId, ChangePasswordRequest request)

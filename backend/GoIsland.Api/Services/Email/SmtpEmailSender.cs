@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Mail;
-using System.Text.Encodings.Web;
 
 namespace GoIsland.Api.Services.Email;
 
@@ -15,15 +14,15 @@ public class SmtpEmailSender : IEmailSender
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(_configuration["Smtp:Host"])
-        && !string.IsNullOrWhiteSpace(_configuration["Smtp:FromEmail"])
-        && !string.IsNullOrWhiteSpace(_configuration["Smtp:ResetPasswordUrl"]);
+        && !string.IsNullOrWhiteSpace(_configuration["Email:FromEmail"])
+        && !string.IsNullOrWhiteSpace(_configuration["Email:ResetPasswordUrl"]);
 
     public async Task SendPasswordResetAsync(string email, string fullName, string resetToken)
     {
         var host = GetRequiredSetting("Smtp:Host");
-        var fromEmail = GetRequiredSetting("Smtp:FromEmail");
-        var resetPasswordUrl = GetRequiredSetting("Smtp:ResetPasswordUrl");
-        var fromName = _configuration["Smtp:FromName"] ?? "GoIsland";
+        var fromEmail = GetRequiredSetting("Email:FromEmail");
+        var resetPasswordUrl = GetRequiredSetting("Email:ResetPasswordUrl");
+        var fromName = _configuration["Email:FromName"] ?? "GoIsland";
         var port = _configuration.GetValue<int?>("Smtp:Port") ?? 587;
         var enableSsl = _configuration.GetValue<bool?>("Smtp:EnableSsl") ?? true;
         var username = _configuration["Smtp:Username"];
@@ -34,16 +33,13 @@ public class SmtpEmailSender : IEmailSender
             throw new InvalidOperationException("Smtp:Username y Smtp:Password deben configurarse juntos.");
         }
 
-        var separator = resetPasswordUrl.Contains('?') ? '&' : '?';
-        var resetLink = $"{resetPasswordUrl}{separator}token={Uri.EscapeDataString(resetToken)}";
-        var safeName = HtmlEncoder.Default.Encode(fullName);
-        var safeLink = HtmlEncoder.Default.Encode(resetLink);
+        var content = PasswordResetEmailContentBuilder.Build(resetPasswordUrl, fullName, resetToken);
 
         using var message = new MailMessage
         {
             From = new MailAddress(fromEmail, fromName),
-            Subject = "Restablece tu contrasena de GoIsland",
-            Body = $"<p>Hola {safeName},</p><p>Usa el siguiente enlace para restablecer tu contrasena:</p><p><a href=\"{safeLink}\">Restablecer contrasena</a></p><p>El enlace es de un solo uso y expirara pronto.</p>",
+            Subject = content.Subject,
+            Body = content.HtmlBody,
             IsBodyHtml = true
         };
         message.To.Add(new MailAddress(email));

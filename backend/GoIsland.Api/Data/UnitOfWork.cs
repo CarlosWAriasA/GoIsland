@@ -12,7 +12,8 @@ public class UnitOfWork : IUnitOfWork
         IExperienceRepository experiences,
         IReservationRepository reservations,
         IPaymentRepository payments,
-        IPasswordResetTokenRepository passwordResetTokens)
+        IPasswordResetTokenRepository passwordResetTokens,
+        IUserExternalLoginRepository userExternalLogins)
     {
         _context = context;
         Users = users;
@@ -20,6 +21,7 @@ public class UnitOfWork : IUnitOfWork
         Reservations = reservations;
         Payments = payments;
         PasswordResetTokens = passwordResetTokens;
+        UserExternalLogins = userExternalLogins;
     }
 
     public IUserRepository Users { get; }
@@ -27,6 +29,7 @@ public class UnitOfWork : IUnitOfWork
     public IReservationRepository Reservations { get; }
     public IPaymentRepository Payments { get; }
     public IPasswordResetTokenRepository PasswordResetTokens { get; }
+    public IUserExternalLoginRepository UserExternalLogins { get; }
 
     public Task<int> CommitAsync()
     {

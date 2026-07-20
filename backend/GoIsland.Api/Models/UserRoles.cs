@@ -15,7 +15,6 @@ public static class UserRoles
 
     public static readonly IReadOnlySet<string> PublicRegistration = new HashSet<string>
     {
-        Tourist,
-        Host
+        Tourist
     };
 }

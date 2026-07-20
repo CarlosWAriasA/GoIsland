@@ -175,6 +175,16 @@ POST /api/admin/hosts/{id}/suspend
 - Solamente un anfitrion aprobado obtiene permisos de publicacion.
 - Existen pruebas reales de autorizacion y transicion de estados.
 
+### Resultado implementado - 20 de julio de 2026
+
+- `HostProfile` persiste datos publicos, contacto, estado, motivo y revision administrativa.
+- El registro publico siempre crea turistas y los `Host` legados sin aprobacion se degradan.
+- Solicitud, consulta, edicion, listado administrativo, aprobacion, rechazo y suspension estan
+  disponibles mediante los endpoints definidos.
+- Aprobacion y cambio de rol se guardan atomicamente; rechazo y suspension exigen motivo.
+- `AdminAuditLog` conserva cada decision y el servicio valida el estado persistido para bloquear
+  tokens antiguos de perfiles suspendidos.
+
 ---
 
 ## Bloque 9 - Propiedad y moderacion de experiencias
@@ -222,6 +232,16 @@ Los endpoints publicos existentes deben seguir mostrando unicamente experiencias
 - Un anfitrion puede consultar tambien sus experiencias pendientes o rechazadas.
 - Existe un flujo administrativo real de aprobacion y rechazo.
 - El catalogo publico nunca expone borradores o elementos pendientes.
+
+### Resultado implementado - 20 de julio de 2026
+
+- `Experience.HostId` es obligatorio y los datos legados fueron asignados durante la migracion.
+- El ciclo de moderacion usa `Draft`, `PendingReview`, `Approved`, `Rejected` y `Suspended`.
+- Los anfitriones crean borradores, consultan solo los propios, editan, eliminan si no existen
+  reservas y envian a revision.
+- Los administradores aprueban, rechazan con motivo y suspenden; cada cambio queda auditado.
+- El catalogo, detalle, busqueda y reservas filtran exclusivamente `Approved`.
+- Las pruebas PostgreSQL cubren propiedad, visibilidad publica, transiciones y auditoria.
 
 ---
 

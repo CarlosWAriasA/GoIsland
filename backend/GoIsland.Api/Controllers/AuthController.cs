@@ -46,6 +46,25 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("google")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Google(GoogleAuthRequest request)
+    {
+        var result = await _authService.AuthenticateWithGoogleAsync(request);
+        return result.Status switch
+        {
+            GoogleAuthStatus.Success => Ok(result.Response),
+            GoogleAuthStatus.NotConfigured => StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new { message = "El inicio de sesion con Google no esta configurado." }),
+            GoogleAuthStatus.AccountConflict => Conflict(new
+            {
+                message = "Esta cuenta local ya esta vinculada a otra cuenta de Google."
+            }),
+            _ => Unauthorized(new { message = "La credencial de Google no es valida." })
+        };
+    }
+
     [HttpPut("change-password")]
     [Authorize]
     public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)

@@ -115,6 +115,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearAuthentication(false);
   };
 
+  const loginWithGoogle = async (credential: string) => {
+    setIsLoading(true);
+    try {
+      const response = await authService.google({ credential });
+      applyAuthResponse(response);
+    } catch (error) {
+      clearAuthentication(false);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const updateUser = async (fullName: string) => {
     setIsLoading(true);
     try {
@@ -128,6 +141,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshUser = useCallback(async () => {
+    const currentUser = await authService.getMe();
+    setUser(currentUser);
+    if (token && expiresAt) {
+      saveAuthSession({ token, expiresAt, user: currentUser });
+    }
+    return currentUser;
+  }, [expiresAt, token]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -138,8 +160,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessionExpired,
         login,
         register,
+        loginWithGoogle,
         logout,
         updateUser,
+        refreshUser,
       }}
     >
       {children}

@@ -7,8 +7,10 @@ import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Logo from '../components/Logo';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 import { useAuth } from '../hooks/useAuth';
 import { getFieldError, toApiError } from '../services/apiError';
+import { isGoogleAuthConfigured } from '../services/googleAuthConfig';
 
 interface RegisterErrors {
   fullName?: string;
@@ -18,7 +20,7 @@ interface RegisterErrors {
 }
 
 export const Register = () => {
-  const { register, isAuthenticated, isLoading } = useAuth();
+  const { register, loginWithGoogle, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -74,6 +76,17 @@ export const Register = () => {
     }
   };
 
+  const handleGoogleCredential = async (credential: string) => {
+    setFormError(null);
+    try {
+      await loginWithGoogle(credential);
+      toast.success('Cuenta de Google vinculada. Bienvenido a GoIsland.');
+      navigate('/experiences');
+    } catch (error: unknown) {
+      setFormError(toApiError(error, 'No fue posible continuar con Google.').message);
+    }
+  };
+
   return (
     <div className="auth-page animate-fade-in">
       <section className="auth-card surface-panel" aria-labelledby="register-title">
@@ -84,6 +97,17 @@ export const Register = () => {
         </header>
 
         {formError && <Alert tone="error">{formError}</Alert>}
+
+        {isGoogleAuthConfigured && (
+          <>
+            <GoogleSignInButton
+              disabled={isLoading}
+              onCredential={(credential) => void handleGoogleCredential(credential)}
+              onError={setFormError}
+            />
+            <div className="auth-divider"><span>o regístrate con correo</span></div>
+          </>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <Input

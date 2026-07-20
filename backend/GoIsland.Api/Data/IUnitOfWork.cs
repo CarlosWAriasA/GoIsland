@@ -9,5 +9,6 @@ public interface IUnitOfWork
     IReservationRepository Reservations { get; }
     IPaymentRepository Payments { get; }
     IPasswordResetTokenRepository PasswordResetTokens { get; }
+    IUserExternalLoginRepository UserExternalLogins { get; }
     Task<int> CommitAsync();
 }

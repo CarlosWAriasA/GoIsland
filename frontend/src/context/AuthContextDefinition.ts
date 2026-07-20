@@ -9,8 +9,10 @@ export interface AuthContextValue {
   sessionExpired: boolean;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => void;
   updateUser: (fullName: string) => Promise<void>;
+  refreshUser: () => Promise<UserResponse>;
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);

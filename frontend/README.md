@@ -9,7 +9,8 @@ Cliente React + TypeScript para la API de GoIsland.
 
 ## Configuracion local
 
-1. Copia `.env.example` como `.env` si necesitas cambiar la URL de la API.
+1. Copia `.env.example` como `.env` y configura `VITE_GOOGLE_CLIENT_ID` con el mismo cliente web
+   usado por el backend.
 2. Instala dependencias con `npm install`.
 3. Inicia el cliente con `npm run dev`.
 
@@ -25,9 +26,14 @@ npm run build
 
 ## Integracion disponible
 
-- Autenticacion: registro, inicio de sesion, identidad y actualizacion de perfil.
+- Autenticacion: registro e inicio de sesion por correo o Google, identidad y actualizacion de
+  perfil.
 - Catalogo real: listado y busqueda por ubicacion, una categoria y precio maximo.
+- Reservas reales: creacion, listado privado y detalle propio.
+- Anfitriones: solicitud, estado y edicion en `/host-profile`.
+- Experiencias propias: borradores, edicion y envio a revision en `/host/experiences`.
+- Administracion: aprobacion, rechazo y suspension en `/admin/moderation`.
 - Manejo comun de errores API con `message` y errores de validacion por campo.
 
-Favoritos, calificaciones, imagenes especificas y reservas no se simulan mientras sus flujos
-persistentes no esten integrados.
+Favoritos, calificaciones e imagenes especificas no se simulan mientras sus flujos persistentes no
+esten integrados.

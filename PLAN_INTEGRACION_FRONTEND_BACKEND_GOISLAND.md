@@ -4,6 +4,18 @@
 
 Inicio: 19 de julio de 2026.
 
+### Extension completada - Google Identity y correo configurable
+
+- Login y registro aceptan la credencial de Google Identity Services mediante `POST /api/auth/google`.
+- El backend valida audiencia, firma, emisor, expiracion y correo verificado; persiste el `sub` de
+  Google como identidad estable separada del correo.
+- Las cuentas nuevas se crean como turista y las cuentas locales solo se vinculan automaticamente
+  cuando Google conserva autoridad sobre el correo (Gmail o Google Workspace).
+- `Email:Provider` selecciona `Smtp` o `Resend`; ambos reutilizan remitente, URL y plantilla de
+  recuperacion, sin credenciales dentro del repositorio.
+- El script `004_create_external_logins.sql` fue aplicado al PostgreSQL compartido.
+- Verificacion aprobada: 27 pruebas .NET/PostgreSQL, `npm run lint` y `npm run build`.
+
 ### Primera entrega completada - base del Bloque 0
 
 - El catalogo consume `GET /api/experiences` y `GET /api/experiences/search`.
@@ -152,6 +164,28 @@ Checklist final de la guia UX/UI:
 - Honestidad funcional: no se muestran imagenes, reputacion, pago, correo o confirmacion que el
   backend no haya entregado.
 - Adaptacion: los cinco viewports definidos y el reflujo ampliado finalizan sin desbordamiento.
+
+### Entrega A completada - Anfitriones y moderacion
+
+- El registro publico concede exclusivamente `Tourist`; los roles `Host` legados sin perfil aprobado
+  se degradan de forma segura y un administrador no puede solicitar convertirse en anfitrion.
+- PostgreSQL incorpora `host_profiles`, estados `Pending`, `Approved`, `Rejected` y `Suspended`, y
+  auditoria persistente para cada decision administrativa.
+- Aprobar una solicitud promueve al usuario a `Host` en el mismo `SaveChanges`; rechazar exige un
+  motivo y permite reenviar la solicitud; suspender retira el rol efectivo.
+- Cada experiencia tiene `HostId` obligatorio y ciclo `Draft`, `PendingReview`, `Approved`,
+  `Rejected` y `Suspended`, conservando `IsApproved` solamente como compatibilidad temporal.
+- Los endpoints publicos siguen mostrando unicamente experiencias aprobadas; los anfitriones solo
+  consultan y modifican las propias, y un perfil suspendido queda bloqueado aunque conserve un JWT
+  emitido antes de la suspension.
+- El frontend agrega `/host-profile`, `/host/experiences` y `/admin/moderation`, con navegacion por
+  rol, solicitud/reenvio, CRUD de borradores, envio a revision y decisiones administrativas.
+- El script idempotente `003_create_host_moderation.sql` fue aplicado al PostgreSQL compartido.
+- Swagger expone 28 rutas, incluidas 14 rutas nuevas de Entrega A; salud y CORS local quedaron
+  verificados despues de restaurar la configuracion normal.
+- Verificacion aprobada: compilacion Release sin advertencias, 22 pruebas PostgreSQL, `npm run lint`,
+  `npm run build`, flujo visual turista-administrador-anfitrion y vista `390x844` sin desbordamiento
+  ni controles visibles menores de 44 px.
 
 ## Fuente de diseno analizada
 
@@ -682,14 +716,9 @@ planificarse como una version coordinada y no introducirse silenciosamente.
 
 ## Orden inmediato recomendado
 
-1. Terminar Resend y reiniciar la API actual.
-2. Ejecutar Bloque 0 para congelar contrato y eliminar datos/acciones falsas.
-3. Implementar Bloque 1 para corregir shell responsive, accesibilidad base e identidad visual.
-4. Integrar autenticacion y cuenta del Bloque 2.
-5. Integrar catalogo, busqueda y detalle del Bloque 3.
-6. Integrar reservas reales del Bloque 4.
-7. Completar la validacion del Bloque 5.
-8. Continuar bloques backend 8 y 9 e integrar cada entrega vertical antes de acumular la siguiente.
+1. Configurar las credenciales de Google y del proveedor de correo en cada ambiente.
+2. Continuar con calendario y reservas completas de la Entrega B.
+3. Mantener cada entrega vertical verificada antes de acumular la siguiente.
 
 Este enfoque evita tanto el extremo de detener el backend por completo como el de terminar todos
 los modulos sin haber comprobado que el frontend puede consumir correctamente sus contratos.

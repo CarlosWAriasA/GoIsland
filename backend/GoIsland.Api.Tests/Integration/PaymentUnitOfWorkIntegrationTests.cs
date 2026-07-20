@@ -78,8 +78,22 @@ public class PaymentUnitOfWorkIntegrationTests : PostgresIntegrationTestBase
             PasswordHash = "hash-integracion",
             Role = UserRoles.Tourist
         };
+        var host = new User
+        {
+            FullName = "Anfitrion Pago",
+            Email = $"payment-host-{marker}@goisland.test",
+            PasswordHash = "hash-integracion",
+            Role = UserRoles.Host
+        };
+
+        var unitOfWork = GetRequiredService<IUnitOfWork>();
+        await unitOfWork.Users.AddAsync(user);
+        await unitOfWork.Users.AddAsync(host);
+        await unitOfWork.CommitAsync();
+
         var experience = new Experience
         {
+            HostId = host.Id,
             Title = $"Pago {marker}",
             Description = "Experiencia para validar pagos y Unit of Work.",
             Location = $"Lugar-{marker}",
@@ -87,11 +101,10 @@ public class PaymentUnitOfWorkIntegrationTests : PostgresIntegrationTestBase
             Price = 55m,
             Capacity = 5,
             AvailableSpots = 5,
-            IsApproved = true
+            IsApproved = true,
+            ApprovalStatus = ExperienceApprovalStatuses.Approved
         };
 
-        var unitOfWork = GetRequiredService<IUnitOfWork>();
-        await unitOfWork.Users.AddAsync(user);
         await unitOfWork.Experiences.AddAsync(experience);
         await unitOfWork.CommitAsync();
 

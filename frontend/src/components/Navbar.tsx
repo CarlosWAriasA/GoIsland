@@ -54,6 +54,20 @@ export const Navbar = () => {
               <NavLink to="/reservations" className={getNavLinkClass} onClick={closeMenu}>
                 Mis reservas
               </NavLink>
+              {user?.role === 'Host' ? (
+                <NavLink to="/host/experiences" className={getNavLinkClass} onClick={closeMenu}>
+                  Mis experiencias
+                </NavLink>
+              ) : user?.role !== 'Admin' ? (
+                <NavLink to="/host-profile" className={getNavLinkClass} onClick={closeMenu}>
+                  Ser anfitrión
+                </NavLink>
+              ) : null}
+              {user?.role === 'Admin' && (
+                <NavLink to="/admin/moderation" className={getNavLinkClass} onClick={closeMenu}>
+                  Moderación
+                </NavLink>
+              )}
               <NavLink to="/profile" className={getNavLinkClass} onClick={closeMenu}>
                 Mi perfil
               </NavLink>

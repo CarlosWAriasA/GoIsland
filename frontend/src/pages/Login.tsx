@@ -7,11 +7,13 @@ import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Logo from '../components/Logo';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 import { useAuth } from '../hooks/useAuth';
 import { getFieldError, toApiError } from '../services/apiError';
+import { isGoogleAuthConfigured } from '../services/googleAuthConfig';
 
 export const Login = () => {
-  const { login, isAuthenticated, isLoading, sessionExpired } = useAuth();
+  const { login, loginWithGoogle, isAuthenticated, isLoading, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -61,6 +63,17 @@ export const Login = () => {
     }
   };
 
+  const handleGoogleCredential = async (credential: string) => {
+    setFormError(null);
+    try {
+      await loginWithGoogle(credential);
+      toast.success('Sesión iniciada con Google.');
+      navigate(requestedPath, { replace: true });
+    } catch (error: unknown) {
+      setFormError(toApiError(error, 'No fue posible iniciar sesión con Google.').message);
+    }
+  };
+
   return (
     <div className="auth-page animate-fade-in">
       <section className="auth-card surface-panel" aria-labelledby="login-title">
@@ -75,6 +88,17 @@ export const Login = () => {
           <Alert tone="warning">Tu sesión expiró. Inicia sesión nuevamente para continuar.</Alert>
         )}
         {formError && <Alert tone="error">{formError}</Alert>}
+
+        {isGoogleAuthConfigured && (
+          <>
+            <GoogleSignInButton
+              disabled={isLoading}
+              onCredential={(credential) => void handleGoogleCredential(credential)}
+              onError={setFormError}
+            />
+            <div className="auth-divider"><span>o continúa con correo</span></div>
+          </>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <Input
