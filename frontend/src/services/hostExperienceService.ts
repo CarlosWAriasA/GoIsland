@@ -1,4 +1,10 @@
-import type { ManagedExperience, ManagedExperienceRequest } from '../types';
+import type {
+  CreateScheduleRequest,
+  ExperienceSchedule,
+  ManagedExperience,
+  ManagedExperienceRequest,
+  UpdateScheduleRequest,
+} from '../types';
 import { api } from './api';
 
 export const hostExperienceService = {
@@ -24,5 +30,36 @@ export const hostExperienceService = {
 
   remove: async (id: number): Promise<void> => {
     await api.delete(`/host/experiences/${id}`);
+  },
+
+  getSchedules: async (experienceId: number, signal?: AbortSignal): Promise<ExperienceSchedule[]> => {
+    const response = await api.get<ExperienceSchedule[]>(
+      `/host/experiences/${experienceId}/schedules`,
+      { signal },
+    );
+    return response.data;
+  },
+
+  createSchedule: async (
+    experienceId: number,
+    data: CreateScheduleRequest,
+  ): Promise<ExperienceSchedule> => {
+    const response = await api.post<ExperienceSchedule>(
+      `/host/experiences/${experienceId}/schedules`,
+      data,
+    );
+    return response.data;
+  },
+
+  updateSchedule: async (
+    id: number,
+    data: UpdateScheduleRequest,
+  ): Promise<ExperienceSchedule> => {
+    const response = await api.put<ExperienceSchedule>(`/host/schedules/${id}`, data);
+    return response.data;
+  },
+
+  removeSchedule: async (id: number): Promise<void> => {
+    await api.delete(`/host/schedules/${id}`);
   },
 };

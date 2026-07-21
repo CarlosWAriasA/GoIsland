@@ -82,7 +82,9 @@ public class ExperienceManagementService : IExperienceManagementService
         }
 
         var reservedSpots = await _context.Reservations
-            .Where(reservation => reservation.ExperienceId == id && reservation.Status != "Cancelled")
+            .Where(reservation => reservation.ExperienceId == id
+                && (reservation.Status == ReservationStatuses.PendingPayment
+                    || reservation.Status == ReservationStatuses.Confirmed))
             .SumAsync(reservation => (int?)reservation.Quantity) ?? 0;
         if (request.Capacity < reservedSpots)
         {

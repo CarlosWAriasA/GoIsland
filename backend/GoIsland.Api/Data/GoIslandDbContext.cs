@@ -13,6 +13,9 @@ public class GoIslandDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Experience> Experiences => Set<Experience>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
+    public DbSet<ExperienceSchedule> ExperienceSchedules => Set<ExperienceSchedule>();
+    public DbSet<ReservationStatusHistory> ReservationStatusHistories => Set<ReservationStatusHistory>();
+    public DbSet<ReservationIdempotencyKey> ReservationIdempotencyKeys => Set<ReservationIdempotencyKey>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<HostProfile> HostProfiles => Set<HostProfile>();
@@ -86,10 +89,69 @@ public class GoIslandDbContext : DbContext
             entity.Property(reservation => reservation.Id).HasColumnName("id");
             entity.Property(reservation => reservation.UserId).HasColumnName("user_id").IsRequired();
             entity.Property(reservation => reservation.ExperienceId).HasColumnName("experience_id").IsRequired();
+            entity.Property(reservation => reservation.ScheduleId).HasColumnName("schedule_id").IsRequired();
             entity.Property(reservation => reservation.Quantity).HasColumnName("quantity").IsRequired();
             entity.Property(reservation => reservation.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
             entity.Property(reservation => reservation.TotalAmount).HasColumnName("total_amount").HasPrecision(10, 2);
             entity.Property(reservation => reservation.ReservationDate).HasColumnName("reservation_date").IsRequired();
+            entity.Property(reservation => reservation.UpdatedAt).HasColumnName("updated_at").IsRequired();
+            entity.Property(reservation => reservation.CancelledAt).HasColumnName("cancelled_at");
+            entity.HasIndex(reservation => reservation.ScheduleId);
+        });
+
+        modelBuilder.Entity<ExperienceSchedule>(entity =>
+        {
+            entity.ToTable("experience_schedules");
+            entity.HasKey(schedule => schedule.Id);
+            entity.Property(schedule => schedule.Id).HasColumnName("id");
+            entity.Property(schedule => schedule.ExperienceId).HasColumnName("experience_id").IsRequired();
+            entity.Property(schedule => schedule.StartsAt).HasColumnName("starts_at").IsRequired();
+            entity.Property(schedule => schedule.EndsAt).HasColumnName("ends_at").IsRequired();
+            entity.Property(schedule => schedule.Capacity).HasColumnName("capacity").IsRequired();
+            entity.Property(schedule => schedule.AvailableSpots)
+                .HasColumnName("available_spots")
+                .IsRequired()
+                .IsConcurrencyToken();
+            entity.Property(schedule => schedule.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
+            entity.Property(schedule => schedule.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(schedule => schedule.UpdatedAt).HasColumnName("updated_at").IsRequired();
+            entity.HasIndex(schedule => new { schedule.ExperienceId, schedule.StartsAt });
+        });
+
+        modelBuilder.Entity<ReservationStatusHistory>(entity =>
+        {
+            entity.ToTable("reservation_status_history");
+            entity.HasKey(history => history.Id);
+            entity.Property(history => history.Id).HasColumnName("id");
+            entity.Property(history => history.ReservationId).HasColumnName("reservation_id").IsRequired();
+            entity.Property(history => history.FromStatus).HasColumnName("from_status").HasMaxLength(40);
+            entity.Property(history => history.ToStatus).HasColumnName("to_status").HasMaxLength(40).IsRequired();
+            entity.Property(history => history.ChangedByUserId).HasColumnName("changed_by_user_id").IsRequired();
+            entity.Property(history => history.Reason).HasColumnName("reason").HasMaxLength(500);
+            entity.Property(history => history.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.HasIndex(history => new { history.ReservationId, history.CreatedAt });
+            entity.HasOne(history => history.Reservation)
+                .WithMany()
+                .HasForeignKey(history => history.ReservationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReservationIdempotencyKey>(entity =>
+        {
+            entity.ToTable("reservation_idempotency_keys");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.UserId).HasColumnName("user_id").IsRequired();
+            entity.Property(item => item.Operation).HasColumnName("operation").HasMaxLength(80).IsRequired();
+            entity.Property(item => item.Key).HasColumnName("idempotency_key").HasMaxLength(100).IsRequired();
+            entity.Property(item => item.RequestHash).HasColumnName("request_hash").HasMaxLength(64).IsRequired();
+            entity.Property(item => item.ReservationId).HasColumnName("reservation_id").IsRequired();
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.HasIndex(item => new { item.UserId, item.Operation, item.Key }).IsUnique();
+            entity.HasOne(item => item.Reservation)
+                .WithMany()
+                .HasForeignKey(item => item.ReservationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Payment>(entity =>

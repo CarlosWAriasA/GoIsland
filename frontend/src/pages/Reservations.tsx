@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { CalendarDays, MapPin, ReceiptText, TicketCheck, UsersRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -7,9 +6,8 @@ import ErrorState from '../components/ErrorState';
 import Skeleton from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
 import { toApiError } from '../services/apiError';
-import { experienceService } from '../services/experienceService';
 import { reservationService } from '../services/reservationService';
-import type { Experience, Reservation } from '../types';
+import type { Reservation } from '../types';
 
 const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
   style: 'currency',
@@ -26,8 +24,8 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('es-DO', {
 
 const getStatusTone = (status: string): 'warning' | 'success' | 'error' | 'info' => {
   if (status === 'Confirmed' || status === 'Paid') return 'success';
-  if (status === 'Cancelled' || status === 'Rejected') return 'error';
-  return status === 'Pending' ? 'warning' : 'info';
+  if (status.startsWith('Cancelled')) return 'error';
+  return status === 'PendingPayment' ? 'warning' : 'info';
 };
 
 const ReservationsSkeleton = () => (
@@ -45,7 +43,6 @@ const ReservationsSkeleton = () => (
 interface ReservationsResult {
   requestKey: number;
   reservations: Reservation[];
-  experiences: Record<number, Experience | null>;
   error: string | null;
 }
 
@@ -54,40 +51,26 @@ export const Reservations = () => {
   const [result, setResult] = useState<ReservationsResult | null>(null);
   const loading = result?.requestKey !== retryCount;
   const reservations = result?.requestKey === retryCount ? result.reservations : [];
-  const experiences = result?.requestKey === retryCount ? result.experiences : {};
   const error = result?.requestKey === retryCount ? result.error : null;
 
   useEffect(() => {
     const controller = new AbortController();
 
     reservationService.getMy(controller.signal)
-      .then(async (data) => {
-        const experienceIds = [...new Set(data.map((reservation) => reservation.experienceId))];
-        const entries = await Promise.all(experienceIds.map(async (experienceId) => {
-          try {
-            const experience = await experienceService.getExperience(experienceId, controller.signal);
-            return [experienceId, experience] as const;
-          } catch (requestError: unknown) {
-            if (axios.isCancel(requestError)) throw requestError;
-            return [experienceId, null] as const;
-          }
-        }));
-
+      .then((data) => {
         if (!controller.signal.aborted) {
           setResult({
             requestKey: retryCount,
             reservations: data,
-            experiences: Object.fromEntries(entries),
             error: null,
           });
         }
       })
       .catch((requestError: unknown) => {
-        if (axios.isCancel(requestError)) return;
+        if (controller.signal.aborted) return;
         setResult({
           requestKey: retryCount,
           reservations: [],
-          experiences: {},
           error: toApiError(requestError, 'No fue posible cargar tus reservas.').message,
         });
       });
@@ -130,22 +113,19 @@ export const Reservations = () => {
         ) : (
           <div className="reservation-list">
             {reservations.map((reservation) => {
-              const experience = experiences[reservation.experienceId];
               return (
                 <article className="surface-panel reservation-card" key={reservation.id}>
                   <div className="reservation-card__header">
                     <div>
                       <span className="reservation-card__reference">Reserva #{reservation.id}</span>
-                      <h2>{experience?.title || `Experiencia #${reservation.experienceId}`}</h2>
+                      <h2>{reservation.experienceTitle}</h2>
                     </div>
                     <StatusBadge tone={getStatusTone(reservation.status)}>{reservation.status}</StatusBadge>
                   </div>
 
-                  {experience && (
-                    <p className="reservation-card__location">
-                      <MapPin size={16} aria-hidden="true" /> {experience.location}
-                    </p>
-                  )}
+                  <p className="reservation-card__location">
+                    <MapPin size={16} aria-hidden="true" /> {reservation.experienceLocation}
+                  </p>
 
                   <dl className="reservation-card__facts">
                     <div>
@@ -157,8 +137,8 @@ export const Reservations = () => {
                       <dd>{formatPrice(reservation.totalAmount)}</dd>
                     </div>
                     <div>
-                      <dt><CalendarDays size={17} aria-hidden="true" /> Creada</dt>
-                      <dd>{formatDate(reservation.reservationDate)}</dd>
+                      <dt><CalendarDays size={17} aria-hidden="true" /> Horario</dt>
+                      <dd>{formatDate(reservation.startsAt)}</dd>
                     </div>
                   </dl>
 

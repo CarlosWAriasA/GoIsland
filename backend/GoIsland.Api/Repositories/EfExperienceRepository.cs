@@ -39,7 +39,14 @@ public class EfExperienceRepository : IExperienceRepository
                 && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
     }
 
-    public async Task<IEnumerable<Experience>> SearchAsync(string? location, string? category, decimal? maxPrice)
+    public async Task<IEnumerable<Experience>> SearchAsync(
+        string? location,
+        string? category,
+        decimal? minPrice,
+        decimal? maxPrice,
+        DateTime? from,
+        DateTime? to,
+        int? quantity)
     {
         var query = _context.Experiences
             .AsNoTracking()
@@ -60,6 +67,24 @@ public class EfExperienceRepository : IExperienceRepository
         if (maxPrice.HasValue)
         {
             query = query.Where(experience => experience.Price <= maxPrice.Value);
+        }
+
+        if (minPrice.HasValue)
+        {
+            query = query.Where(experience => experience.Price >= minPrice.Value);
+        }
+
+        if (from.HasValue || to.HasValue || quantity.HasValue)
+        {
+            var fromUtc = from?.ToUniversalTime() ?? DateTime.UtcNow;
+            var toUtc = to?.ToUniversalTime();
+            var requiredSpots = quantity ?? 1;
+            query = query.Where(experience => _context.ExperienceSchedules.Any(schedule =>
+                schedule.ExperienceId == experience.Id
+                && schedule.Status == ScheduleStatuses.Scheduled
+                && schedule.StartsAt >= fromUtc
+                && (!toUtc.HasValue || schedule.StartsAt <= toUtc.Value)
+                && schedule.AvailableSpots >= requiredSpots));
         }
 
         return await query

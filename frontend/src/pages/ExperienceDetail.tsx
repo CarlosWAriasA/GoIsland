@@ -22,7 +22,7 @@ import Skeleton from '../components/Skeleton';
 import { useAuth } from '../hooks/useAuth';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
-import type { Experience } from '../types';
+import type { Experience, ExperienceSchedule } from '../types';
 
 const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
   style: 'currency',
@@ -83,11 +83,13 @@ export const ExperienceDetail = () => {
   const [result, setResult] = useState<{
     requestKey: string;
     experience: Experience | null;
+    schedules: ExperienceSchedule[];
     error: string | null;
     notFound: boolean;
   } | null>(null);
   const loading = isValidId && result?.requestKey !== requestKey;
   const experience = result?.requestKey === requestKey ? result.experience : null;
+  const schedules = result?.requestKey === requestKey ? result.schedules : [];
   const error = result?.requestKey === requestKey ? result.error : null;
   const notFound = !isValidId || (result?.requestKey === requestKey && result.notFound);
 
@@ -96,14 +98,24 @@ export const ExperienceDetail = () => {
 
     const controller = new AbortController();
 
-    experienceService.getExperience(parsedId, controller.signal)
-      .then((data) => setResult({ requestKey, experience: data, error: null, notFound: false }))
+    Promise.all([
+      experienceService.getExperience(parsedId, controller.signal),
+      experienceService.getAvailability(parsedId, undefined, controller.signal),
+    ])
+      .then(([data, availability]) => setResult({
+        requestKey,
+        experience: data,
+        schedules: availability,
+        error: null,
+        notFound: false,
+      }))
       .catch((requestError: unknown) => {
         if (axios.isCancel(requestError)) return;
         const apiError = toApiError(requestError, 'No fue posible cargar esta experiencia.');
         setResult({
           requestKey,
           experience: null,
+          schedules: [],
           error: apiError.status === 404 ? null : apiError.message,
           notFound: apiError.status === 404,
         });
@@ -139,7 +151,8 @@ export const ExperienceDetail = () => {
     );
   }
 
-  const availabilityTone = experience.availableSpots === 0 ? 'warning' : 'info';
+  const nextSchedule = schedules[0];
+  const availabilityTone = nextSchedule ? 'info' : 'warning';
   const handleReserve = () => {
     if (!isAuthenticated) {
       navigate('/login', {
@@ -153,9 +166,9 @@ export const ExperienceDetail = () => {
     setReservationOpen(true);
   };
 
-  const handleExperienceUpdate = (updatedExperience: Experience) => {
+  const handleSchedulesUpdate = (updatedSchedules: ExperienceSchedule[]) => {
     setResult((current) => current?.requestKey === requestKey
-      ? { ...current, experience: updatedExperience }
+      ? { ...current, schedules: updatedSchedules }
       : current);
   };
 
@@ -196,43 +209,44 @@ export const ExperienceDetail = () => {
           </div>
           <dl className="experience-detail__facts">
             <div>
-              <dt><TicketCheck size={18} aria-hidden="true" /> Cupos disponibles</dt>
-              <dd>{experience.availableSpots}</dd>
+              <dt><TicketCheck size={18} aria-hidden="true" /> Próximo horario</dt>
+              <dd>{nextSchedule ? formatDate(nextSchedule.startsAt) : 'Sin fecha'}</dd>
             </div>
             <div>
-              <dt><UsersRound size={18} aria-hidden="true" /> Capacidad total</dt>
-              <dd>{experience.capacity}</dd>
+              <dt><UsersRound size={18} aria-hidden="true" /> Cupos próximos</dt>
+              <dd>{nextSchedule?.availableSpots ?? 0}</dd>
             </div>
             <div>
-              <dt><CalendarDays size={18} aria-hidden="true" /> Publicada</dt>
-              <dd>{formatDate(experience.createdAt)}</dd>
+              <dt><CalendarDays size={18} aria-hidden="true" /> Fechas disponibles</dt>
+              <dd>{schedules.length}</dd>
             </div>
           </dl>
           <Alert tone={availabilityTone}>
-            {experience.availableSpots === 0 ? (
-              <>Actualmente no quedan cupos.</>
+            {!nextSchedule ? (
+              <>Actualmente no hay horarios futuros disponibles.</>
             ) : (
-              `${experience.availableSpots} de ${experience.capacity} cupos disponibles.`
+              `${nextSchedule.availableSpots} cupos en la próxima fecha; puedes elegir entre ${schedules.length}.`
             )}
           </Alert>
           <Button
             className="experience-detail__reserve"
             fullWidth
             onClick={handleReserve}
-            disabled={experience.availableSpots === 0}
+            disabled={!nextSchedule}
           >
             <TicketCheck size={18} aria-hidden="true" /> Reservar
           </Button>
           <p className="experience-detail__reservation-note">
-            La reserva se crea como <strong>Pending</strong>; el pago no está confirmado.
+            La reserva se crea como <strong>PendingPayment</strong>; el pago no está confirmado.
           </p>
         </aside>
       </div>
       {reservationOpen && (
         <ReservationDialog
           experience={experience}
+          schedules={schedules}
           onClose={() => setReservationOpen(false)}
-          onExperienceUpdate={handleExperienceUpdate}
+          onSchedulesUpdate={handleSchedulesUpdate}
         />
       )}
     </article>

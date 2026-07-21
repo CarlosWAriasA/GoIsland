@@ -6,9 +6,15 @@ public enum ReservationCreationStatus
 {
     Success,
     ExperienceNotFound,
+    ScheduleNotFound,
+    ScheduleUnavailable,
     InsufficientSpots,
     AmountOutOfRange,
-    ConcurrencyConflict
+    ConcurrencyConflict,
+    InvalidTransition,
+    DifferentExperience,
+    IdempotencyConflict,
+    Forbidden
 }
 
 public record ReservationCreationResult(

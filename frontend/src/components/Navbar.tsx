@@ -55,9 +55,14 @@ export const Navbar = () => {
                 Mis reservas
               </NavLink>
               {user?.role === 'Host' ? (
-                <NavLink to="/host/experiences" className={getNavLinkClass} onClick={closeMenu}>
-                  Mis experiencias
-                </NavLink>
+                <>
+                  <NavLink to="/host/experiences" className={getNavLinkClass} onClick={closeMenu}>
+                    Mis experiencias
+                  </NavLink>
+                  <NavLink to="/host/reservations" className={getNavLinkClass} onClick={closeMenu}>
+                    Reservas recibidas
+                  </NavLink>
+                </>
               ) : user?.role !== 'Admin' ? (
                 <NavLink to="/host-profile" className={getNavLinkClass} onClick={closeMenu}>
                   Ser anfitrión

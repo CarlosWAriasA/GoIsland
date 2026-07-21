@@ -63,7 +63,7 @@ public class PaymentUnitOfWorkIntegrationTests : PostgresIntegrationTestBase
         var storedReservation = await Context.Reservations.AsNoTracking()
             .SingleAsync(item => item.Id == reservation.Id);
 
-        Assert.Equal("Pending", storedReservation.Status);
+        Assert.Equal(ReservationStatuses.PendingPayment, storedReservation.Status);
         Assert.False(await Context.Payments.AsNoTracking().AnyAsync(
             payment => payment.ReservationId == -1));
     }
@@ -108,10 +108,23 @@ public class PaymentUnitOfWorkIntegrationTests : PostgresIntegrationTestBase
         await unitOfWork.Experiences.AddAsync(experience);
         await unitOfWork.CommitAsync();
 
+        var startsAt = DateTime.UtcNow.AddDays(2);
+        var schedule = new ExperienceSchedule
+        {
+            ExperienceId = experience.Id,
+            StartsAt = startsAt,
+            EndsAt = startsAt.AddHours(2),
+            Capacity = 5,
+            AvailableSpots = 5,
+            Status = ScheduleStatuses.Scheduled
+        };
+        Context.ExperienceSchedules.Add(schedule);
+        await Context.SaveChangesAsync();
+
         var reservationService = GetRequiredService<IReservationService>();
         var creation = await reservationService.CreateAsync(user.Id, new CreateReservationRequest
         {
-            ExperienceId = experience.Id,
+            ScheduleId = schedule.Id,
             Quantity = 1
         });
 

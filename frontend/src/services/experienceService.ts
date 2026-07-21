@@ -1,4 +1,4 @@
-import type { Experience, ExperienceSearchParams } from '../types';
+import type { Experience, ExperienceSchedule, ExperienceSearchParams } from '../types';
 import { api } from './api';
 
 export const experienceService = {
@@ -17,6 +17,18 @@ export const experienceService = {
 
   getExperience: async (id: number, signal?: AbortSignal): Promise<Experience> => {
     const response = await api.get<Experience>(`/experiences/${id}`, { signal });
+    return response.data;
+  },
+
+  getAvailability: async (
+    id: number,
+    params?: { from?: string; to?: string; quantity?: number },
+    signal?: AbortSignal,
+  ): Promise<ExperienceSchedule[]> => {
+    const response = await api.get<ExperienceSchedule[]>(`/experiences/${id}/availability`, {
+      params,
+      signal,
+    });
     return response.data;
   },
 };

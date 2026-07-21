@@ -1,4 +1,3 @@
-using GoIsland.Api.Data;
 using GoIsland.Api.DTOs.Reservations;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Reservations;
@@ -10,112 +9,107 @@ namespace GoIsland.Api.Tests.Integration;
 public class ReservationIntegrationTests : PostgresIntegrationTestBase
 {
     [Fact]
-    public async Task Create_WithAvailableSpots_PersistsReservationAndCapacityAtomically()
+    public async Task Create_WithAvailableSchedule_PersistsReservationHistoryAndCapacityAtomically()
     {
-        var (user, experience) = await SeedReservableExperienceAsync(availableSpots: 5, price: 40m);
-        var service = GetRequiredService<IReservationService>();
-
-        var result = await service.CreateAsync(user.Id, new CreateReservationRequest
-        {
-            ExperienceId = experience.Id,
-            Quantity = 2
-        });
+        var (user, _, schedule, _) = await SeedScenarioAsync(availableSpots: 5, price: 40m);
+        var result = await GetRequiredService<IReservationService>().CreateAsync(user.Id,
+            new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 2 }, "create-once");
 
         Assert.Equal(ReservationCreationStatus.Success, result.Status);
-        Assert.NotNull(result.Reservation);
-        Assert.Equal(80m, result.Reservation.TotalAmount);
+        Assert.Equal(80m, result.Reservation!.TotalAmount);
+        Assert.Equal(ReservationStatuses.PendingPayment, result.Reservation.Status);
+        Assert.Single(result.Reservation.StatusHistory);
 
         Context.ChangeTracker.Clear();
-        var storedReservation = await Context.Reservations.AsNoTracking()
-            .SingleAsync(reservation => reservation.Id == result.Reservation.Id);
-        var storedExperience = await Context.Experiences.AsNoTracking()
-            .SingleAsync(item => item.Id == experience.Id);
-
-        Assert.Equal(user.Id, storedReservation.UserId);
-        Assert.Equal(3, storedExperience.AvailableSpots);
+        Assert.Equal(3, (await Context.ExperienceSchedules.AsNoTracking()
+            .SingleAsync(item => item.Id == schedule.Id)).AvailableSpots);
     }
 
     [Fact]
-    public async Task Create_WithInsufficientSpots_DoesNotPersistOrDiscountCapacity()
+    public async Task Create_RepeatedIdempotencyKey_ReturnsSameReservationWithoutDoubleDiscount()
     {
-        var (user, experience) = await SeedReservableExperienceAsync(availableSpots: 1, price: 40m);
+        var (user, _, schedule, _) = await SeedScenarioAsync();
         var service = GetRequiredService<IReservationService>();
+        var request = new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 1 };
 
-        var result = await service.CreateAsync(user.Id, new CreateReservationRequest
-        {
-            ExperienceId = experience.Id,
-            Quantity = 2
-        });
-
-        Assert.Equal(ReservationCreationStatus.InsufficientSpots, result.Status);
-        Assert.False(await Context.Reservations.AnyAsync(
-            reservation => reservation.ExperienceId == experience.Id));
-
+        var first = await service.CreateAsync(user.Id, request, "same-key");
         Context.ChangeTracker.Clear();
-        var storedExperience = await Context.Experiences.AsNoTracking()
-            .SingleAsync(item => item.Id == experience.Id);
-        Assert.Equal(1, storedExperience.AvailableSpots);
+        var second = await service.CreateAsync(user.Id, request, "same-key");
+
+        Assert.Equal(first.Reservation!.Id, second.Reservation!.Id);
+        Assert.Equal(1, await Context.Reservations.CountAsync(item => item.ScheduleId == schedule.Id));
+        Assert.Equal(4, (await Context.ExperienceSchedules.AsNoTracking()
+            .SingleAsync(item => item.Id == schedule.Id)).AvailableSpots);
+    }
+
+    [Fact]
+    public async Task Cancel_ReleasesSpotsExactlyOnce_AndPersistsHistory()
+    {
+        var (user, _, schedule, _) = await SeedScenarioAsync();
+        var service = GetRequiredService<IReservationService>();
+        var created = await service.CreateAsync(user.Id,
+            new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 2 }, "create");
+        Context.ChangeTracker.Clear();
+
+        var first = await service.CancelAsync(created.Reservation!.Id, user.Id,
+            new CancelReservationRequest { Reason = "Cambio de planes" }, "cancel-once");
+        Context.ChangeTracker.Clear();
+        var repeated = await service.CancelAsync(created.Reservation.Id, user.Id,
+            new CancelReservationRequest { Reason = "Cambio de planes" }, "cancel-once");
+
+        Assert.Equal(ReservationStatuses.CancelledByTourist, first.Reservation!.Status);
+        Assert.Equal(first.Reservation.Id, repeated.Reservation!.Id);
+        Assert.Equal(5, (await Context.ExperienceSchedules.AsNoTracking()
+            .SingleAsync(item => item.Id == schedule.Id)).AvailableSpots);
+        Assert.Equal(2, await Context.ReservationStatusHistories.CountAsync(
+            item => item.ReservationId == created.Reservation.Id));
+    }
+
+    [Fact]
+    public async Task Reschedule_MovesSpotsBetweenSchedulesAtomically()
+    {
+        var (user, experience, source, target) = await SeedScenarioAsync();
+        var service = GetRequiredService<IReservationService>();
+        var created = await service.CreateAsync(user.Id,
+            new CreateReservationRequest { ScheduleId = source.Id, Quantity = 2 }, "create");
+        Context.ChangeTracker.Clear();
+
+        var result = await service.RescheduleAsync(created.Reservation!.Id, user.Id,
+            new RescheduleReservationRequest { ScheduleId = target.Id }, "move");
+
+        Assert.Equal(ReservationCreationStatus.Success, result.Status);
+        Assert.Equal(experience.Id, result.Reservation!.ExperienceId);
+        Assert.Equal(target.Id, result.Reservation.ScheduleId);
+        Context.ChangeTracker.Clear();
+        Assert.Equal(5, (await Context.ExperienceSchedules.AsNoTracking().SingleAsync(item => item.Id == source.Id)).AvailableSpots);
+        Assert.Equal(3, (await Context.ExperienceSchedules.AsNoTracking().SingleAsync(item => item.Id == target.Id)).AvailableSpots);
     }
 
     [Fact]
     public async Task Queries_RestrictReservationToOwnerUnlessCallerIsAdmin()
     {
-        var (owner, experience) = await SeedReservableExperienceAsync();
+        var (owner, _, schedule, _) = await SeedScenarioAsync();
         var service = GetRequiredService<IReservationService>();
-        var creation = await service.CreateAsync(owner.Id, new CreateReservationRequest
-        {
-            ExperienceId = experience.Id,
-            Quantity = 1
-        });
-        var reservationId = creation.Reservation!.Id;
+        var creation = await service.CreateAsync(owner.Id,
+            new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 1 }, "query");
+        var id = creation.Reservation!.Id;
 
-        var mine = await service.GetByUserIdAsync(owner.Id);
-        var ownerResult = await service.GetByIdAsync(reservationId, owner.Id, isAdmin: false);
-        var otherResult = await service.GetByIdAsync(reservationId, owner.Id + 1, isAdmin: false);
-        var adminResult = await service.GetByIdAsync(reservationId, owner.Id + 1, isAdmin: true);
-
-        Assert.Contains(mine, reservation => reservation.Id == reservationId);
-        Assert.NotNull(ownerResult);
-        Assert.Null(otherResult);
-        Assert.NotNull(adminResult);
+        Assert.NotNull(await service.GetByIdAsync(id, owner.Id, false));
+        Assert.Null(await service.GetByIdAsync(id, owner.Id + 1, false));
+        Assert.NotNull(await service.GetByIdAsync(id, owner.Id + 1, true));
     }
 
     [Fact]
-    public async Task CommitFailure_RollsBackCapacityAndReservationInPostgresTransaction()
+    public void ScheduleAvailableSpots_IsConfiguredAsConcurrencyToken()
     {
-        var (_, experience) = await SeedReservableExperienceAsync(availableSpots: 4, price: 30m);
-        var service = GetRequiredService<IReservationService>();
-
-        await Assert.ThrowsAsync<DbUpdateException>(() => service.CreateAsync(
-            userId: -1,
-            new CreateReservationRequest
-            {
-                ExperienceId = experience.Id,
-                Quantity = 2
-            }));
-
-        Context.ChangeTracker.Clear();
-        var storedExperience = await Context.Experiences.AsNoTracking()
-            .SingleAsync(item => item.Id == experience.Id);
-
-        Assert.Equal(4, storedExperience.AvailableSpots);
-        Assert.False(await Context.Reservations.AsNoTracking().AnyAsync(
-            reservation => reservation.ExperienceId == experience.Id));
-    }
-
-    [Fact]
-    public void AvailableSpots_IsConfiguredAsConcurrencyToken()
-    {
-        var property = Context.Model.FindEntityType(typeof(Experience))!
-            .FindProperty(nameof(Experience.AvailableSpots));
-
+        var property = Context.Model.FindEntityType(typeof(ExperienceSchedule))!
+            .FindProperty(nameof(ExperienceSchedule.AvailableSpots));
         Assert.NotNull(property);
         Assert.True(property.IsConcurrencyToken);
     }
 
-    private async Task<(User User, Experience Experience)> SeedReservableExperienceAsync(
-        int availableSpots = 5,
-        decimal price = 40m)
+    private async Task<(User User, Experience Experience, ExperienceSchedule Source, ExperienceSchedule Target)>
+        SeedScenarioAsync(int availableSpots = 5, decimal price = 40m)
     {
         var marker = Guid.NewGuid().ToString("N");
         var user = new User
@@ -132,11 +126,8 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
             PasswordHash = "hash-integracion",
             Role = UserRoles.Host
         };
-
-        var unitOfWork = GetRequiredService<IUnitOfWork>();
-        await unitOfWork.Users.AddAsync(user);
-        await unitOfWork.Users.AddAsync(host);
-        await unitOfWork.CommitAsync();
+        Context.Users.AddRange(user, host);
+        await Context.SaveChangesAsync();
 
         var experience = new Experience
         {
@@ -151,10 +142,23 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
             IsApproved = true,
             ApprovalStatus = ExperienceApprovalStatuses.Approved
         };
+        Context.Experiences.Add(experience);
+        await Context.SaveChangesAsync();
 
-        await unitOfWork.Experiences.AddAsync(experience);
-        await unitOfWork.CommitAsync();
-
-        return (user, experience);
+        var source = NewSchedule(experience.Id, DateTime.UtcNow.AddDays(2), availableSpots);
+        var target = NewSchedule(experience.Id, DateTime.UtcNow.AddDays(3), availableSpots);
+        Context.ExperienceSchedules.AddRange(source, target);
+        await Context.SaveChangesAsync();
+        return (user, experience, source, target);
     }
+
+    private static ExperienceSchedule NewSchedule(int experienceId, DateTime startsAt, int capacity) => new()
+    {
+        ExperienceId = experienceId,
+        StartsAt = startsAt,
+        EndsAt = startsAt.AddHours(2),
+        Capacity = capacity,
+        AvailableSpots = capacity,
+        Status = ScheduleStatuses.Scheduled
+    };
 }

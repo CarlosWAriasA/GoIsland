@@ -1623,6 +1623,41 @@ textarea {
   border-top: 1px solid var(--color-border);
 }
 
+.reservation-actions,
+.reservation-history {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+}
+
+.reservation-actions h2,
+.reservation-history h2 {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.reservation-actions__reschedule {
+  display: grid;
+  margin-bottom: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1rem;
+}
+
+.reservation-actions__reschedule .field-group {
+  margin-bottom: 0;
+}
+
+.reservation-history ol {
+  display: grid;
+  gap: 0.75rem;
+  padding-left: 1.25rem;
+}
+
+.reservation-history li span {
+  display: block;
+  color: var(--color-text-muted);
+}
+
 .reservation-detail-state {
   min-height: 65vh;
   padding-top: 4rem;
@@ -1927,6 +1962,10 @@ textarea {
   }
 
   .reservation-detail__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-actions__reschedule {
     grid-template-columns: 1fr;
   }
 

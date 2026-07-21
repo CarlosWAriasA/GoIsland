@@ -7,6 +7,7 @@ using GoIsland.Api.Services.Hosts;
 using GoIsland.Api.Services.Reservations;
 using GoIsland.Api.Services.Reservations.Observers;
 using GoIsland.Api.Services.Security;
+using GoIsland.Api.Services.Schedules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
@@ -63,6 +64,7 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
         services.AddScoped<IReservationObserver, CapacityManagerObserver>();
         services.AddScoped<IReservationObserver, DashboardObserver>();
         services.AddScoped<IReservationService, ReservationService>();
+        services.AddScoped<IScheduleService, ScheduleService>();
 
         _serviceProvider = services.BuildServiceProvider(validateScopes: true);
         _scope = _serviceProvider.CreateScope();
@@ -94,6 +96,13 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             "Scripts",
             "004_create_external_logins.sql"));
         await Context.Database.ExecuteSqlRawAsync(externalLoginsScript);
+
+        var schedulesScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "005_create_schedules_and_reservation_lifecycle.sql"));
+        await Context.Database.ExecuteSqlRawAsync(schedulesScript);
 
         // Fuerza una consulta real y falla temprano si el esquema no esta aplicado.
         await Context.Users.AsNoTracking().AnyAsync();

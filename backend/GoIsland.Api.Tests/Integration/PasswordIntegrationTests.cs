@@ -119,7 +119,7 @@ public class PasswordIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
-    public async Task ForgotPassword_WithoutRealSmtpConfiguration_ReturnsServiceUnavailableStatus()
+    public async Task ForgotPassword_ForUnknownEmail_ReturnsUniformAcceptedStatus()
     {
         var authService = GetRequiredService<IAuthService>();
 
@@ -128,7 +128,7 @@ public class PasswordIntegrationTests : PostgresIntegrationTestBase
             Email = $"smtp-{Guid.NewGuid():N}@goisland.test"
         });
 
-        Assert.Equal(RequestPasswordResetStatus.EmailDeliveryNotConfigured, result);
+        Assert.Equal(RequestPasswordResetStatus.Accepted, result);
     }
 
     private static async Task<AuthResponse> RegisterAsync(

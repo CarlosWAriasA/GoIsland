@@ -13,6 +13,8 @@ import Reservations from '../pages/Reservations';
 import ReservationDetail from '../pages/ReservationDetail';
 import HostProfile from '../pages/HostProfile';
 import HostExperiences from '../pages/HostExperiences';
+import HostSchedules from '../pages/HostSchedules';
+import HostReservations from '../pages/HostReservations';
 import AdminModeration from '../pages/AdminModeration';
 import RoleRoute from './RoleRoute';
 
@@ -35,6 +37,8 @@ export const AppRoutes: React.FC = () => {
 
         <Route element={<RoleRoute allowedRoles={['Host']} />}>
           <Route path="/host/experiences" element={<HostExperiences />} />
+          <Route path="/host/experiences/:id/schedules" element={<HostSchedules />} />
+          <Route path="/host/reservations" element={<HostReservations />} />
         </Route>
 
         <Route element={<RoleRoute allowedRoles={['Admin']} />}>

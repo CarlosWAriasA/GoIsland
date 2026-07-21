@@ -14,5 +14,9 @@ export interface Experience {
 export interface ExperienceSearchParams {
   location?: string;
   category?: string;
+  minPrice?: number;
   maxPrice?: number;
+  from?: string;
+  to?: string;
+  quantity?: number;
 }

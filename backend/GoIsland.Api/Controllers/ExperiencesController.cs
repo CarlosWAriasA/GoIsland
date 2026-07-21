@@ -2,6 +2,7 @@ using System.Security.Claims;
 using GoIsland.Api.DTOs.Experiences;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Experiences;
+using GoIsland.Api.Services.Schedules;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,13 +14,40 @@ public class ExperiencesController : ControllerBase
 {
     private readonly IExperienceService _experienceService;
     private readonly IExperienceManagementService _managementService;
+    private readonly IScheduleService _scheduleService;
 
     public ExperiencesController(
         IExperienceService experienceService,
-        IExperienceManagementService managementService)
+        IExperienceManagementService managementService,
+        IScheduleService scheduleService)
     {
         _experienceService = experienceService;
         _managementService = managementService;
+        _scheduleService = scheduleService;
+    }
+
+    [HttpGet("{id:int}/availability")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAvailability(
+        int id,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int quantity = 1)
+    {
+        if (quantity < 1)
+        {
+            return BadRequest(new { message = "La cantidad debe ser mayor que cero." });
+        }
+
+        if (from.HasValue && to.HasValue && to <= from)
+        {
+            return BadRequest(new { message = "La fecha final debe ser posterior a la inicial." });
+        }
+
+        var schedules = await _scheduleService.GetAvailabilityAsync(id, from, to, quantity);
+        return schedules is null
+            ? NotFound(new { message = "No se encontro la experiencia." })
+            : Ok(schedules);
     }
 
     [HttpGet]

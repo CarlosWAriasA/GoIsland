@@ -150,10 +150,11 @@ Content-Type: application/json
 
 POST {{GoIsland.Api_HostAddress}}/api/reservations
 Authorization: Bearer {{GoIsland.Api_Token}}
+Idempotency-Key: reservation-create-example-1
 Content-Type: application/json
 
 {
-  "experienceId": 1,
+  "scheduleId": 1,
   "quantity": 2
 }
 
@@ -161,10 +162,11 @@ Content-Type: application/json
 
 # 401 - reserva sin autenticacion
 POST {{GoIsland.Api_HostAddress}}/api/reservations
+Idempotency-Key: reservation-anonymous-example-1
 Content-Type: application/json
 
 {
-  "experienceId": 1,
+  "scheduleId": 1,
   "quantity": 2
 }
 
@@ -173,10 +175,11 @@ Content-Type: application/json
 # 400 - cantidad invalida con sesion autenticada
 POST {{GoIsland.Api_HostAddress}}/api/reservations
 Authorization: Bearer {{GoIsland.Api_Token}}
+Idempotency-Key: reservation-invalid-example-1
 Content-Type: application/json
 
 {
-  "experienceId": 1,
+  "scheduleId": 1,
   "quantity": 0
 }
 
@@ -267,6 +270,68 @@ Content-Type: application/json
 
 {
   "reason": "Completa las instrucciones del punto de encuentro."
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/host/experiences/1/schedules
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Content-Type: application/json
+
+{
+  "startsAt": "2026-08-15T13:00:00Z",
+  "endsAt": "2026-08-15T16:00:00Z",
+  "capacity": 12
+}
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/host/experiences/1/schedules
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Accept: application/json
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/experiences/1/availability?from=2026-08-01T00:00:00Z&to=2026-08-31T23:59:59Z&quantity=2
+Accept: application/json
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/reservations/1/reschedule
+Authorization: Bearer {{GoIsland.Api_Token}}
+Idempotency-Key: reservation-reschedule-example-1
+Content-Type: application/json
+
+{
+  "scheduleId": 2
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/reservations/1/cancel
+Authorization: Bearer {{GoIsland.Api_Token}}
+Idempotency-Key: reservation-cancel-example-1
+Content-Type: application/json
+
+{
+  "reason": "Cambio de itinerario"
+}
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/host/reservations
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Accept: application/json
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/host/reservations/1/cancel
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Idempotency-Key: host-cancel-example-1
+Content-Type: application/json
+
+{
+  "reason": "Condiciones meteorologicas adversas"
 }
 
 ###

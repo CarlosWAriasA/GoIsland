@@ -293,6 +293,15 @@ GET    /api/experiences/search?location=&category=&minPrice=&maxPrice=&from=&to=
 - Dos solicitudes concurrentes no pueden producir sobreventa.
 - La base rechaza capacidades o fechas invalidas.
 
+### Resultado implementado - 20 de julio de 2026
+
+- `ExperienceSchedule` persiste fechas UTC, capacidad y disponibilidad por horario con restricciones
+  de base, indice compuesto y token de concurrencia.
+- Los anfitriones aprobados administran horarios propios y la disponibilidad publica acepta rango y
+  cantidad; la busqueda tambien admite filtros de fecha, cantidad y precio minimo.
+- Las reservas nuevas apuntan obligatoriamente a `ScheduleId`; las reservas legadas se vincularon a
+  horarios historicos `Completed` mediante el script idempotente `005`.
+
 ---
 
 ## Bloque 11 - Ciclo completo de reservas y cancelaciones
@@ -346,6 +355,16 @@ POST /api/host/reservations/{id}/complete
 - Cancelacion y liberacion de cupos son atomicas.
 - Reintentar una solicitud no duplica reservas ni cupos.
 - Turista, anfitrion y administrador tienen acceso solamente a lo autorizado.
+
+### Resultado implementado - 20 de julio de 2026
+
+- El ciclo usa `PendingPayment`, `Confirmed`, cancelaciones por actor, `Completed` y estados de
+  reembolso preparados para pagos, sin afirmar confirmaciones financieras inexistentes.
+- Cancelacion y reprogramacion actualizan reserva, historial, idempotencia y cupos en una misma
+  transaccion; la concurrencia impide sobreventa o liberacion duplicada.
+- Turistas gestionan reservas propias y anfitriones aprobados solo consultan y cancelan reservas de
+  sus experiencias; las respuestas incluyen experiencia, horario e historial persistente.
+- Las 31 pruebas PostgreSQL y ambos builds validan el contrato coordinado con el frontend.
 
 ---
 

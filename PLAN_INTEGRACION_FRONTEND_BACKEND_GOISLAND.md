@@ -187,6 +187,30 @@ Checklist final de la guia UX/UI:
   `npm run build`, flujo visual turista-administrador-anfitrion y vista `390x844` sin desbordamiento
   ni controles visibles menores de 44 px.
 
+### Entrega B completada - Calendario y reservas completas
+
+- PostgreSQL incorpora horarios por experiencia con inicio y final UTC, capacidad, cupos disponibles,
+  estados `Scheduled`, `Closed`, `Cancelled` y `Completed`, indice por experiencia/fecha y control de
+  concurrencia sobre la disponibilidad.
+- Los anfitriones aprobados publican, consultan, editan y eliminan horarios propios; no pueden reducir
+  capacidad por debajo de los cupos reservados ni eliminar un horario con reservas.
+- La disponibilidad publica filtra horarios futuros abiertos por rango y cantidad, y la busqueda admite
+  `minPrice`, `maxPrice`, `from`, `to` y `quantity` sin exponer experiencias no aprobadas.
+- Las reservas nuevas requieren `ScheduleId`, nacen como `PendingPayment` y mantienen `ExperienceId`
+  como dato compatible; precio y experiencia se calculan en el servidor.
+- Cancelar libera cupos exactamente una vez y reprogramar mueve cupos entre horarios de la misma
+  experiencia dentro de una transaccion; cada cambio queda en `reservation_status_history`.
+- Las escrituras de reservas exigen `Idempotency-Key`, se persisten por usuario y operacion, y rechazan
+  reutilizar una clave con un cuerpo diferente.
+- El anfitrion consulta solamente reservas de sus experiencias, puede cancelarlas con motivo y solo
+  puede completar reservas confirmadas cuyo horario ya termino.
+- El frontend agrega selector de fecha/hora en la reserva, cancelacion, reprogramacion, historial,
+  calendario del anfitrion y bandeja de reservas recibidas.
+- El script idempotente `005_create_schedules_and_reservation_lifecycle.sql` fue aplicado al PostgreSQL
+  compartido y migro las reservas legadas a horarios historicos cerrados.
+- Verificacion aprobada: compilacion Release sin advertencias, 31 pruebas PostgreSQL, `npm run lint`,
+  `npm run build` y `git diff --check`.
+
 ## Fuente de diseno analizada
 
 Este plan aplica la guia `Guia_Diseno_UX_UI_Prototipos_IA_Julissa_Mateo_Abad.pdf`, revisada en

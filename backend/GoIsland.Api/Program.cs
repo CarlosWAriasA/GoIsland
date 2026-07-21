@@ -7,6 +7,7 @@ using GoIsland.Api.Services.Experiences;
 using GoIsland.Api.Services.Hosts;
 using GoIsland.Api.Services.Reservations;
 using GoIsland.Api.Services.Reservations.Observers;
+using GoIsland.Api.Services.Schedules;
 using GoIsland.Api.Services.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
@@ -97,6 +98,7 @@ builder.Services.AddScoped<IReservationObserver, PushNotificationObserver>();
 builder.Services.AddScoped<IReservationObserver, CapacityManagerObserver>();
 builder.Services.AddScoped<IReservationObserver, DashboardObserver>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<IScheduleService, ScheduleService>();
 
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key no esta configurado.");
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));

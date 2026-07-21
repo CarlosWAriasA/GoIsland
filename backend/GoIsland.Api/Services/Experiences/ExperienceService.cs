@@ -27,7 +27,14 @@ public class ExperienceService : IExperienceService
 
     public async Task<IReadOnlyCollection<ExperienceResponse>> SearchAsync(SearchExperiencesRequest request)
     {
-        var experiences = await _unitOfWork.Experiences.SearchAsync(request.Location, request.Category, request.MaxPrice);
+        var experiences = await _unitOfWork.Experiences.SearchAsync(
+            request.Location,
+            request.Category,
+            request.MinPrice,
+            request.MaxPrice,
+            request.From,
+            request.To,
+            request.Quantity);
         return experiences.Select(ToResponse).ToArray();
     }
 

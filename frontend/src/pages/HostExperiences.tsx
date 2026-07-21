@@ -1,6 +1,7 @@
-import { MapPin, Pencil, Plus, Send, Trash2, UsersRound } from 'lucide-react';
+import { CalendarDays, MapPin, Pencil, Plus, Send, Trash2, UsersRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
@@ -275,6 +276,11 @@ export const HostExperiences = () => {
                 <div><dt>Cupos</dt><dd>{experience.availableSpots} de {experience.capacity}</dd></div>
               </dl>
               <div className="management-actions">
+                {experience.approvalStatus === 'Approved' && (
+                  <Link className="button-link button-link--outline" to={`/host/experiences/${experience.id}/schedules`}>
+                    <CalendarDays size={17} aria-hidden="true" />Calendario
+                  </Link>
+                )}
                 {experience.approvalStatus !== 'Suspended' && (
                   <Button variant="outline" onClick={() => startEdit(experience)}>
                     <Pencil size={17} aria-hidden="true" />Editar
