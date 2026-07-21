@@ -21,5 +21,28 @@ export interface RegisterRequest {
   fullName: string;
   email: string;
   password: string;
-  role?: 'Tourist' | 'Host';
+}
+
+export interface GoogleAuthRequest {
+  credential: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface MessageResponse {
+  message: string;
 }

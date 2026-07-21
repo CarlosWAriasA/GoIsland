@@ -1,5 +1,7 @@
 @GoIsland.Api_HostAddress = http://localhost:5057
 @GoIsland.Api_Token = paste-token-here
+@GoIsland.Api_HostToken = paste-host-token-here
+@GoIsland.Api_AdminToken = paste-admin-token-here
 
 GET {{GoIsland.Api_HostAddress}}/api/health
 Accept: application/json
@@ -12,8 +14,19 @@ Content-Type: application/json
 {
   "fullName": "Carlos Arias",
   "email": "carlos@example.com",
-  "password": "Password123",
-  "role": "Tourist"
+  "password": "Password123"
+}
+
+###
+
+# 400 - datos de registro invalidos
+POST {{GoIsland.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "",
+  "email": "correo-invalido",
+  "password": "123"
 }
 
 ###
@@ -28,9 +41,58 @@ Content-Type: application/json
 
 ###
 
+# 401 - credenciales incorrectas
+POST {{GoIsland.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "carlos@example.com",
+  "password": "Incorrecta123"
+}
+
+###
+
 GET {{GoIsland.Api_HostAddress}}/api/auth/me
 Authorization: Bearer {{GoIsland.Api_Token}}
 Accept: application/json
+
+###
+
+# 401 - identidad sin Bearer token
+GET {{GoIsland.Api_HostAddress}}/api/auth/me
+Accept: application/json
+
+###
+
+PUT {{GoIsland.Api_HostAddress}}/api/auth/change-password
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "Password123",
+  "newPassword": "NuevaPassword456",
+  "confirmPassword": "NuevaPassword456"
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "carlos@example.com"
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "token-recibido-por-correo",
+  "newPassword": "PasswordRestaurada789",
+  "confirmPassword": "PasswordRestaurada789"
+}
 
 ###
 
@@ -40,6 +102,236 @@ Content-Type: application/json
 
 {
   "fullName": "Carlos Arias Updated"
+}
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/experiences
+Accept: application/json
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/experiences/search?location=Santo Domingo&category=Aventura&maxPrice=150
+Accept: application/json
+
+###
+
+# 400 - precio maximo fuera del contrato
+GET {{GoIsland.Api_HostAddress}}/api/experiences/search?maxPrice=-1
+Accept: application/json
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/experiences/1
+Accept: application/json
+
+###
+
+# 404 - experiencia inexistente
+GET {{GoIsland.Api_HostAddress}}/api/experiences/2147483647
+Accept: application/json
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/experiences
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "title": "Ruta en kayak por Los Haitises",
+  "description": "Recorrido guiado en kayak por manglares y cuevas del parque nacional.",
+  "location": "Samana",
+  "category": "Aventura",
+  "price": 75.00,
+  "capacity": 12
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/reservations
+Authorization: Bearer {{GoIsland.Api_Token}}
+Idempotency-Key: reservation-create-example-1
+Content-Type: application/json
+
+{
+  "scheduleId": 1,
+  "quantity": 2
+}
+
+###
+
+# 401 - reserva sin autenticacion
+POST {{GoIsland.Api_HostAddress}}/api/reservations
+Idempotency-Key: reservation-anonymous-example-1
+Content-Type: application/json
+
+{
+  "scheduleId": 1,
+  "quantity": 2
+}
+
+###
+
+# 400 - cantidad invalida con sesion autenticada
+POST {{GoIsland.Api_HostAddress}}/api/reservations
+Authorization: Bearer {{GoIsland.Api_Token}}
+Idempotency-Key: reservation-invalid-example-1
+Content-Type: application/json
+
+{
+  "scheduleId": 1,
+  "quantity": 0
+}
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/reservations/my
+Authorization: Bearer {{GoIsland.Api_Token}}
+Accept: application/json
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/reservations/1
+Authorization: Bearer {{GoIsland.Api_Token}}
+Accept: application/json
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/hosts/apply
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "displayName": "Rutas con Ana",
+  "description": "Guia local enfocada en experiencias culturales responsables.",
+  "phoneNumber": "+1 809 555 0199"
+}
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/hosts/me
+Authorization: Bearer {{GoIsland.Api_Token}}
+Accept: application/json
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/admin/hosts?status=Pending
+Authorization: Bearer {{GoIsland.Api_AdminToken}}
+Accept: application/json
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/admin/hosts/1/approve
+Authorization: Bearer {{GoIsland.Api_AdminToken}}
+Content-Type: application/json
+
+{}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/host/experiences
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Content-Type: application/json
+
+{
+  "title": "Ruta cultural por Puerto Plata",
+  "description": "Recorrido guiado por patrimonio, arte local y espacios historicos.",
+  "location": "Puerto Plata",
+  "category": "Cultura",
+  "price": 45.00,
+  "capacity": 10
+}
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/host/experiences
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Accept: application/json
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/host/experiences/1/submit
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Content-Type: application/json
+
+{}
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/admin/experiences?status=PendingReview
+Authorization: Bearer {{GoIsland.Api_AdminToken}}
+Accept: application/json
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/admin/experiences/1/reject
+Authorization: Bearer {{GoIsland.Api_AdminToken}}
+Content-Type: application/json
+
+{
+  "reason": "Completa las instrucciones del punto de encuentro."
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/host/experiences/1/schedules
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Content-Type: application/json
+
+{
+  "startsAt": "2026-08-15T13:00:00Z",
+  "endsAt": "2026-08-15T16:00:00Z",
+  "capacity": 12
+}
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/host/experiences/1/schedules
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Accept: application/json
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/experiences/1/availability?from=2026-08-01T00:00:00Z&to=2026-08-31T23:59:59Z&quantity=2
+Accept: application/json
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/reservations/1/reschedule
+Authorization: Bearer {{GoIsland.Api_Token}}
+Idempotency-Key: reservation-reschedule-example-1
+Content-Type: application/json
+
+{
+  "scheduleId": 2
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/reservations/1/cancel
+Authorization: Bearer {{GoIsland.Api_Token}}
+Idempotency-Key: reservation-cancel-example-1
+Content-Type: application/json
+
+{
+  "reason": "Cambio de itinerario"
+}
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/host/reservations
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Accept: application/json
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/host/reservations/1/cancel
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Idempotency-Key: host-cancel-example-1
+Content-Type: application/json
+
+{
+  "reason": "Condiciones meteorologicas adversas"
 }
 
 ###

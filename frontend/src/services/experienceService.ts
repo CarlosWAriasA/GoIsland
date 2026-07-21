@@ -1,18 +1,35 @@
-import type { Experience } from '../types';
-import experiencesMock from '../data/experiencesMock.json';
+import type { Experience, ExperienceSchedule, ExperienceSearchParams } from '../types';
+import { api } from './api';
 
 export const experienceService = {
-  /**
-   * Obtiene todas las experiencias de la plataforma.
-   * Simula la latencia de red mediante un retardo artificial antes de retornar los datos locales del JSON.
-   */
-  getExperiences: async (): Promise<Experience[]> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Datos simulados: este cast se reemplazará por la respuesta real de la API
-        resolve(experiencesMock as Experience[]);
-      }, 600); // Retardo artificial de 600ms para simular latencia de red
+  getExperiences: async (signal?: AbortSignal): Promise<Experience[]> => {
+    const response = await api.get<Experience[]>('/experiences', { signal });
+    return response.data;
+  },
+
+  searchExperiences: async (
+    params: ExperienceSearchParams,
+    signal?: AbortSignal,
+  ): Promise<Experience[]> => {
+    const response = await api.get<Experience[]>('/experiences/search', { params, signal });
+    return response.data;
+  },
+
+  getExperience: async (id: number, signal?: AbortSignal): Promise<Experience> => {
+    const response = await api.get<Experience>(`/experiences/${id}`, { signal });
+    return response.data;
+  },
+
+  getAvailability: async (
+    id: number,
+    params?: { from?: string; to?: string; quantity?: number },
+    signal?: AbortSignal,
+  ): Promise<ExperienceSchedule[]> => {
+    const response = await api.get<ExperienceSchedule[]>(`/experiences/${id}/availability`, {
+      params,
+      signal,
     });
-  }
+    return response.data;
+  },
 };
 export type { Experience };

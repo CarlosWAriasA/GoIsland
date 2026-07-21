@@ -1,110 +1,73 @@
-import React from 'react';
+import { CircleAlert, Eye, EyeOff } from 'lucide-react';
+import { useId, useState } from 'react';
+import type { InputHTMLAttributes, ReactNode } from 'react';
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
-  icon?: React.ReactNode;
+  hint?: string;
+  icon?: ReactNode;
+  passwordToggleLabel?: string;
 }
 
-export const Input: React.FC<InputProps> = ({
+export const Input = ({
   label,
   error,
+  hint,
   icon,
+  passwordToggleLabel,
   className = '',
   id,
-  style,
+  type,
+  'aria-describedby': ariaDescribedBy,
   ...props
-}) => {
-  const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+}: InputProps) => {
+  const generatedId = useId();
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const inputId = id || generatedId;
+  const errorId = `${inputId}-error`;
+  const hintId = `${inputId}-hint`;
+  const describedBy = [ariaDescribedBy, error ? errorId : undefined, hint ? hintId : undefined]
+    .filter(Boolean)
+    .join(' ') || undefined;
+  const hasPasswordToggle = type === 'password';
+  const inputType = hasPasswordToggle && passwordVisible ? 'text' : type;
+  const toggleLabel = passwordToggleLabel || label?.toLowerCase() || 'contraseña';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', marginBottom: '16px', ...style }}>
-      {label && (
-        <label
-          htmlFor={inputId}
-          style={{
-            fontSize: '0.85rem',
-            fontWeight: 600,
-            color: 'var(--color-text)',
-            fontFamily: "'Poppins', sans-serif",
-            letterSpacing: '0.01em',
-            paddingLeft: '2px',
-          }}
-        >
-          {label}
-        </label>
-      )}
-      
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-        {icon && (
-          <div
-            style={{
-              position: 'absolute',
-              left: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-text-muted)',
-              pointerEvents: 'none',
-            }}
-          >
-            {icon}
-          </div>
-        )}
-        
+    <div className="field-group">
+      {label && <label className="field-label" htmlFor={inputId}>{label}</label>}
+      <div className="field-control">
+        {icon && <span className="field-icon" aria-hidden="true">{icon}</span>}
         <input
           id={inputId}
-          className={`input-glass ${className}`}
-          style={{
-            width: '100%',
-            padding: '12px 16px',
-            paddingLeft: icon ? '42px' : '16px',
-            background: 'var(--color-white)',
-            border: error ? '1px solid #ef4444' : '1px solid var(--color-border)',
-            borderRadius: '8px',
-            color: 'var(--color-text)',
-            fontSize: '0.95rem',
-            fontFamily: "'Poppins', sans-serif",
-            outline: 'none',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            boxShadow: 'none',
-          }}
+          type={inputType}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          className={`text-field${icon ? ' text-field--with-icon' : ''}${hasPasswordToggle ? ' text-field--with-toggle' : ''}${error ? ' text-field--error' : ''} ${className}`}
           {...props}
         />
+        {hasPasswordToggle && (
+          <button
+            type="button"
+            className="field-password-toggle"
+            aria-label={`${passwordVisible ? 'Ocultar' : 'Mostrar'} ${toggleLabel}`}
+            aria-pressed={passwordVisible}
+            onClick={() => setPasswordVisible((visible) => !visible)}
+          >
+            {passwordVisible ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+          </button>
+        )}
       </div>
-
+      {hint && <span className="field-hint" id={hintId}>{hint}</span>}
       {error && (
-        <span
-          style={{
-            fontSize: '0.8rem',
-            color: '#ef4444',
-            paddingLeft: '4px',
-            marginTop: '2px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            fontFamily: "'Poppins', sans-serif",
-          }}
-        >
-          <svg style={{ width: '12px', height: '12px' }} fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
+        <span className="field-error" id={errorId}>
+          <CircleAlert size={14} aria-hidden="true" />
           {error}
         </span>
       )}
-
-      <style>{`
-        .input-glass:focus {
-          border-color: ${error ? '#ef4444' : 'var(--color-primary)'} !important;
-          box-shadow: 0 0 0 3px ${error ? 'rgba(239, 68, 68, 0.15)' : 'rgba(0, 86, 179, 0.12)'} !important;
-          background: var(--color-white) !important;
-        }
-        .input-glass::placeholder {
-          color: var(--color-text-muted);
-          opacity: 0.6;
-        }
-      `}</style>
     </div>
   );
 };
+
 export default Input;

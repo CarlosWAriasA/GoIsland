@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoIsland.Api", "GoIsland.Api\GoIsland.Api.csproj", "{90B4F19A-0EA2-4CCC-AA4E-942E303E857B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoIsland.Api.Tests", "GoIsland.Api.Tests\GoIsland.Api.Tests.csproj", "{D3E17919-7BA7-42C1-9241-F0E898385528}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,18 @@ Global
 		{90B4F19A-0EA2-4CCC-AA4E-942E303E857B}.Release|x64.Build.0 = Release|Any CPU
 		{90B4F19A-0EA2-4CCC-AA4E-942E303E857B}.Release|x86.ActiveCfg = Release|Any CPU
 		{90B4F19A-0EA2-4CCC-AA4E-942E303E857B}.Release|x86.Build.0 = Release|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Debug|x64.Build.0 = Debug|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Debug|x86.Build.0 = Debug|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Release|x64.ActiveCfg = Release|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Release|x64.Build.0 = Release|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Release|x86.ActiveCfg = Release|Any CPU
+		{D3E17919-7BA7-42C1-9241-F0E898385528}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

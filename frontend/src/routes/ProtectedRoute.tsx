@@ -1,40 +1,33 @@
-import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
-export const ProtectedRoute: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+export const ProtectedRoute = () => {
+  const { isAuthenticated, isLoading, sessionExpired } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
-      <div style={{
-        minHeight: '80vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '16px',
-      }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          border: '3px solid rgba(255, 255, 255, 0.1)',
-          borderTopColor: 'var(--primary)',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-        }} />
-        <p style={{ color: 'var(--text-secondary)' }}>Verificando autenticación...</p>
-        <style>{`
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
+      <div className="route-loading" role="status">
+        <span className="route-loading__spinner" aria-hidden="true" />
+        <p>Verificando autenticación...</p>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    const from = `${location.pathname}${location.search}${location.hash}`;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          from,
+          message: sessionExpired
+            ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar.'
+            : 'Inicia sesión para acceder a esta página.',
+        }}
+      />
+    );
   }
 
   return <Outlet />;
