@@ -1,22 +1,24 @@
 import axios from 'axios';
-import { ArrowLeft, CalendarDays, MapPin, ReceiptText, TicketCheck, UsersRound } from 'lucide-react';
+import { ArrowLeft, CalendarDays, CreditCard, MapPin, ReceiptText, ShieldCheck, TicketCheck, UsersRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
+import Input from '../components/Input';
 import SelectField from '../components/SelectField';
 import Skeleton from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
+import { useAuth } from '../hooks/useAuth';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
+import { paymentService } from '../services/paymentService';
 import { reservationService } from '../services/reservationService';
-import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
 import type { ExperienceSchedule, Reservation } from '../types';
 
-const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
-  style: 'currency', currency: 'USD',
+const formatPrice = (price: number, currency = 'USD') => new Intl.NumberFormat('es-DO', {
+  style: 'currency', currency,
 }).format(price);
 
 const formatDate = (date: string) => new Intl.DateTimeFormat('es-DO', {
@@ -35,9 +37,12 @@ interface ReservationDetailResult {
   requestKey: string;
   reservation: Reservation | null;
   schedules: ExperienceSchedule[];
+  payments: Payment[];
   error: string | null;
   notFound: boolean;
 }
+
+type PaymentAction = 'pay' | 'confirm' | 'reject' | 'refund';
 
 export const ReservationDetail = () => {
   const { id } = useParams();
@@ -46,11 +51,13 @@ export const ReservationDetail = () => {
   const isValidId = Number.isInteger(parsedId) && parsedId > 0;
   const [retryCount, setRetryCount] = useState(0);
   const requestKey = `${parsedId}::${retryCount}`;
+  const { user } = useAuth();
   const [result, setResult] = useState<ReservationDetailResult | null>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
-  const [busyAction, setBusyAction] = useState<'cancel' | 'reschedule' | null>(null);
+  const [busyAction, setBusyAction] = useState<'cancel' | 'reschedule' | PaymentAction | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [refundReason, setRefundReason] = useState('');
   const loading = isValidId && result?.requestKey !== requestKey;
   const currentResult = result?.requestKey === requestKey ? result : null;
   const created = location.state?.created === true;
@@ -68,8 +75,9 @@ export const ReservationDetail = () => {
             controller.signal,
           );
         }
+        const payments = await paymentService.getForReservation(parsedId, controller.signal);
         if (!controller.signal.aborted) {
-          setResult({ requestKey, reservation, schedules, error: null, notFound: false });
+          setResult({ requestKey, reservation, schedules, payments, error: null, notFound: false });
           setSelectedScheduleId(String(schedules.find((item) => item.id !== reservation.scheduleId)?.id ?? ''));
         }
       })
@@ -77,7 +85,7 @@ export const ReservationDetail = () => {
         if (axios.isCancel(requestError)) return;
         const apiError = toApiError(requestError, 'No fue posible cargar la reserva.');
         setResult({
-          requestKey, reservation: null, schedules: [],
+          requestKey, reservation: null, schedules: [], payments: [],
           error: apiError.status === 404 ? null : apiError.message,
           notFound: apiError.status === 404,
         });
@@ -122,6 +130,52 @@ export const ReservationDetail = () => {
     }
   };
 
+  const runPaymentAction = async (action: PaymentAction, execute: () => Promise<unknown>, message: string) => {
+    setBusyAction(action);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      await execute();
+      setActionMessage(message);
+      setRetryCount((current) => current + 1);
+    } catch (error: unknown) {
+      setActionError(toApiError(error, 'No fue posible procesar el pago.').message);
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const startPayment = () => runPaymentAction(
+    'pay',
+    () => paymentService.create(parsedId),
+    'Pago iniciado. El cobro es una simulacion del entorno de pruebas: decide el resultado con los controles del proveedor.',
+  );
+
+  const confirmPayment = (paymentId: number) => runPaymentAction(
+    'confirm',
+    () => paymentService.mockConfirm(paymentId),
+    'El pago simulado fue aprobado y la reserva quedo confirmada.',
+  );
+
+  const rejectPayment = (paymentId: number) => runPaymentAction(
+    'reject',
+    () => paymentService.mockReject(paymentId),
+    'El pago simulado fue rechazado. La reserva sigue pendiente de pago.',
+  );
+
+  const refundPayment = (paymentId: number) => {
+    const reason = refundReason.trim();
+    if (reason.length < 3) {
+      setActionError('Indica el motivo del reembolso (minimo 3 caracteres).');
+      return;
+    }
+    void runPaymentAction(
+      'refund',
+      () => paymentService.refund(paymentId, reason),
+      'El reembolso simulado quedo registrado y la reserva paso a estado reembolsado.',
+    );
+  };
+
   if (loading) return <ReservationDetailSkeleton />;
   if (!isValidId || currentResult?.notFound) {
     return (
@@ -137,8 +191,13 @@ export const ReservationDetail = () => {
       onRetry={() => setRetryCount((current) => current + 1)} /></div>;
   }
 
-  const { reservation, schedules } = currentResult;
+  const { reservation, schedules, payments } = currentResult;
   const active = reservation.status === 'PendingPayment' || reservation.status === 'Confirmed';
+  const isOwner = user?.id === reservation.userId;
+  const isAdmin = user?.role === 'Admin';
+  const latestPayment = payments[0] ?? null;
+  const showPaymentSection = (isOwner || isAdmin)
+    && (latestPayment !== null || reservation.status === 'PendingPayment');
 
   return (
     <div className="container reservation-detail animate-fade-in">
@@ -170,6 +229,102 @@ export const ReservationDetail = () => {
           </dl>
         </section>
       </div>
+
+      {showPaymentSection && (
+        <section className="surface-panel reservation-payment" aria-labelledby="reservation-payment-title">
+          <div className="reservation-payment__heading">
+            <h2 id="reservation-payment-title">Pago de la reserva</h2>
+            {latestPayment && (
+              <StatusBadge tone="info">Proveedor: {latestPayment.provider} (simulacion)</StatusBadge>
+            )}
+          </div>
+
+          {!latestPayment && reservation.status === 'PendingPayment' && (
+            <>
+              <p className="reservation-payment__note">
+                El cobro se procesa con un proveedor de pago simulado para el entorno de pruebas.
+                No se solicitan ni almacenan datos de tarjeta.
+              </p>
+              {isOwner && (
+                <Button onClick={startPayment} isLoading={busyAction === 'pay'} disabled={busyAction !== null}>
+                  <CreditCard size={18} /> Iniciar pago
+                </Button>
+              )}
+            </>
+          )}
+
+          {latestPayment?.status === 'Failed' && reservation.status === 'PendingPayment' && (
+            <>
+              <Alert tone="error">
+                El intento anterior fue rechazado{latestPayment.failureCode ? ` (${latestPayment.failureCode})` : ''}.
+                La reserva sigue pendiente de pago.
+              </Alert>
+              {isOwner && (
+                <Button onClick={startPayment} isLoading={busyAction === 'pay'} disabled={busyAction !== null}>
+                  <CreditCard size={18} /> Reintentar pago
+                </Button>
+              )}
+            </>
+          )}
+
+          {latestPayment?.status === 'Pending' && (
+            <>
+              <dl className="reservation-payment__breakdown">
+                <div><dt>Subtotal</dt><dd>{formatPrice(latestPayment.subtotalAmount, latestPayment.currency)}</dd></div>
+                <div><dt>Cargo por servicio</dt><dd>{formatPrice(latestPayment.serviceFeeAmount, latestPayment.currency)}</dd></div>
+                <div className="reservation-payment__total"><dt>Total a pagar</dt><dd>{formatPrice(latestPayment.totalAmount, latestPayment.currency)}</dd></div>
+              </dl>
+              <p className="reservation-payment__note">
+                Pago iniciado. En este entorno el resultado lo decide el simulador; la reserva no se
+                confirma hasta que el proveedor apruebe el cobro.
+              </p>
+              {isOwner && (
+                <div className="reservation-payment__simulator" role="group" aria-label="Simulador del proveedor de pago">
+                  <Button onClick={() => void confirmPayment(latestPayment.id)}
+                    isLoading={busyAction === 'confirm'} disabled={busyAction !== null}>
+                    Simular aprobacion
+                  </Button>
+                  <Button variant="danger" onClick={() => void rejectPayment(latestPayment.id)}
+                    isLoading={busyAction === 'reject'} disabled={busyAction !== null}>
+                    Simular rechazo
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+
+          {latestPayment?.status === 'Paid' && (
+            <>
+              <dl className="reservation-payment__breakdown">
+                <div><dt>Total pagado</dt><dd>{formatPrice(latestPayment.totalAmount, latestPayment.currency)}</dd></div>
+                <div><dt>Fecha de pago</dt><dd>{latestPayment.paidAt ? formatDate(latestPayment.paidAt) : '—'}</dd></div>
+                <div><dt>Referencia</dt><dd>{latestPayment.providerPaymentId ?? '—'}</dd></div>
+              </dl>
+              {isAdmin && (
+                <div className="reservation-payment__refund">
+                  <Input
+                    label="Motivo del reembolso"
+                    value={refundReason}
+                    onChange={(event) => setRefundReason(event.target.value)}
+                    hint="Se registra en la auditoria financiera (minimo 3 caracteres)."
+                  />
+                  <Button variant="danger" onClick={() => refundPayment(latestPayment.id)}
+                    isLoading={busyAction === 'refund'} disabled={busyAction !== null}>
+                    <ShieldCheck size={18} /> Reembolsar pago
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+
+          {latestPayment?.status === 'Refunded' && (
+            <dl className="reservation-payment__breakdown">
+              <div><dt>Monto reembolsado</dt><dd>{formatPrice(latestPayment.refundedAmount ?? latestPayment.totalAmount, latestPayment.currency)}</dd></div>
+              <div><dt>Referencia</dt><dd>{latestPayment.providerPaymentId ?? '—'}</dd></div>
+            </dl>
+          )}
+        </section>
+      )}
 
       {active && (
         <section className="surface-panel reservation-actions" aria-labelledby="reservation-actions-title">
