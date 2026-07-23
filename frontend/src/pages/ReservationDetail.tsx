@@ -15,7 +15,9 @@ import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
 import { paymentService } from '../services/paymentService';
 import { reservationService } from '../services/reservationService';
-import type { ExperienceSchedule, Reservation } from '../types';
+import { getPaymentStatusLabel, getPaymentStatusTone } from '../utils/paymentStatus';
+import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
+import type { ExperienceSchedule, Payment, Reservation } from '../types';
 
 const formatPrice = (price: number, currency = 'USD') => new Intl.NumberFormat('es-DO', {
   style: 'currency', currency,
@@ -148,13 +150,13 @@ export const ReservationDetail = () => {
   const startPayment = () => runPaymentAction(
     'pay',
     () => paymentService.create(parsedId),
-    'Pago iniciado. El cobro es una simulacion del entorno de pruebas: decide el resultado con los controles del proveedor.',
+    'Pago iniciado. El cobro es una simulación del entorno de pruebas: decide el resultado con los controles del proveedor.',
   );
 
   const confirmPayment = (paymentId: number) => runPaymentAction(
     'confirm',
     () => paymentService.mockConfirm(paymentId),
-    'El pago simulado fue aprobado y la reserva quedo confirmada.',
+    'El pago simulado fue aprobado y la reserva quedó confirmada.',
   );
 
   const rejectPayment = (paymentId: number) => runPaymentAction(
@@ -166,13 +168,13 @@ export const ReservationDetail = () => {
   const refundPayment = (paymentId: number) => {
     const reason = refundReason.trim();
     if (reason.length < 3) {
-      setActionError('Indica el motivo del reembolso (minimo 3 caracteres).');
+      setActionError('Indica el motivo del reembolso (mínimo 3 caracteres).');
       return;
     }
     void runPaymentAction(
       'refund',
       () => paymentService.refund(paymentId, reason),
-      'El reembolso simulado quedo registrado y la reserva paso a estado reembolsado.',
+      'El reembolso simulado quedó registrado y la reserva pasó a estado reembolsado.',
     );
   };
 
@@ -235,7 +237,14 @@ export const ReservationDetail = () => {
           <div className="reservation-payment__heading">
             <h2 id="reservation-payment-title">Pago de la reserva</h2>
             {latestPayment && (
-              <StatusBadge tone="info">Proveedor: {latestPayment.provider} (simulacion)</StatusBadge>
+              <div className="reservation-payment__badges">
+                <StatusBadge tone={getPaymentStatusTone(latestPayment.status)}>
+                  {getPaymentStatusLabel(latestPayment.status)}
+                </StatusBadge>
+                <span className="reservation-payment__provider">
+                  {latestPayment.provider} · simulación
+                </span>
+              </div>
             )}
           </div>
 
@@ -282,7 +291,7 @@ export const ReservationDetail = () => {
                 <div className="reservation-payment__simulator" role="group" aria-label="Simulador del proveedor de pago">
                   <Button onClick={() => void confirmPayment(latestPayment.id)}
                     isLoading={busyAction === 'confirm'} disabled={busyAction !== null}>
-                    Simular aprobacion
+                    Simular aprobación
                   </Button>
                   <Button variant="danger" onClick={() => void rejectPayment(latestPayment.id)}
                     isLoading={busyAction === 'reject'} disabled={busyAction !== null}>
@@ -306,7 +315,7 @@ export const ReservationDetail = () => {
                     label="Motivo del reembolso"
                     value={refundReason}
                     onChange={(event) => setRefundReason(event.target.value)}
-                    hint="Se registra en la auditoria financiera (minimo 3 caracteres)."
+                    hint="Se registra en la auditoría financiera (mínimo 3 caracteres)."
                   />
                   <Button variant="danger" onClick={() => refundPayment(latestPayment.id)}
                     isLoading={busyAction === 'refund'} disabled={busyAction !== null}>
