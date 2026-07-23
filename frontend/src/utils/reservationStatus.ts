@@ -1,7 +1,5 @@
 export type StatusTone = 'neutral' | 'success' | 'warning' | 'error' | 'info';
 
-// Etiquetas orientadas al usuario para los estados de reserva del backend.
-// Si llega un estado no mapeado, se muestra el valor tal cual (sin romper nada).
 const reservationLabels: Record<string, string> = {
   PendingPayment: 'Pendiente de pago',
   Confirmed: 'Confirmada',
@@ -16,7 +14,6 @@ const reservationLabels: Record<string, string> = {
 
 export const getReservationStatusLabel = (status: string) => reservationLabels[status] ?? status;
 
-// Tono semántico único y consistente en toda la app para los estados de reserva.
 export const getReservationStatusTone = (status: string): StatusTone => {
   if (status === 'Confirmed' || status === 'Paid' || status === 'Completed' || status === 'Refunded') {
     return 'success';

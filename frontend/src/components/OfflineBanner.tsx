@@ -1,8 +1,6 @@
 import { WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-// Aviso global de estado "sin conexión". Solo observa el estado del navegador
-// (navigator.onLine) y no realiza ninguna llamada a la API.
 export const OfflineBanner = () => {
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
 

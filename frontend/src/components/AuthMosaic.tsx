@@ -7,8 +7,6 @@ const tiles = [
   'mar',
 ] as const;
 
-// Mosaico decorativo de fotografías de ambiente de República Dominicana
-// (licencia libre). No representa experiencias reales del backend.
 export const AuthMosaic = () => (
   <div className="auth-mosaic" aria-hidden="true">
     {tiles.map((tile) => (

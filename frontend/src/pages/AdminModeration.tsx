@@ -22,7 +22,6 @@ type ExperienceAction = HostAction;
 type HostFilter = HostVerificationStatus | 'All';
 type ExperienceFilter = ExperienceApprovalStatus | 'All';
 
-// La confirmación usa la misma palabra que el botón que la disparó.
 const actionPastParticiple: Record<HostAction, string> = {
   approve: 'aprobada',
   reject: 'rechazada',

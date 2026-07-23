@@ -15,8 +15,6 @@ import type { Experience } from '../types';
 
 const FEATURED_LIMIT = 6;
 
-// El backend no tiene un campo de "destacado": se usan las experiencias reales
-// del mismo endpoint del catálogo, ordenadas por fecha de creación (más recientes).
 const pickFeatured = (experiences: Experience[]) => [...experiences]
   .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   .slice(0, FEATURED_LIMIT);
@@ -67,7 +65,6 @@ export const Home = () => {
     return () => controller.abort();
   }, [retryCount]);
 
-  // Permite que el enlace "Cómo funciona" del menú ancle a su sección.
   useEffect(() => {
     if (!location.hash) return;
     document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: 'start' });

@@ -6,7 +6,6 @@ interface CardProps {
   experience: Experience;
 }
 
-// Slug de presentación para elegir la foto de ambiente por tipo de actividad.
 const getCategorySlug = (category: string) => {
   switch (category.toLowerCase()) {
     case 'acuático':

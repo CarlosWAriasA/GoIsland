@@ -10,8 +10,6 @@
   color: var(--color-text);
   background-color: var(--color-bg);
 
-  /* Fotografías de ambiente (Unsplash, licencia libre). Siempre con un color
-     de fondo sólido de respaldo: si no cargan, la interfaz sigue coherente. */
   --photo-hero: url('https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1600&q=70');
   --photo-gastronomia: url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=70');
   --photo-naturaleza: url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=900&q=70');
@@ -48,7 +46,6 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.01em;
 }
 
-/* Fraunces (serif cálido) solo en títulos display: personalidad editorial-costera. */
 .font-display,
 .experiences-hero h1,
 .experience-detail__header h1,
@@ -83,7 +80,6 @@ p {
   transition: box-shadow var(--transition-base), border-color var(--transition-base);
 }
 
-/* Interacción quieta: solo cambia el sombreado y el borde, sin desplazamiento. */
 .surface-card:hover {
   border-color: var(--color-border-hover);
   box-shadow: var(--shadow-md);
@@ -154,7 +150,6 @@ textarea {
 .btn-lg { padding: 0.9rem 1.6rem; font-size: 1.05rem; }
 .btn-full { width: 100%; }
 
-/* Botón primario: azul Caribe sólido. Hover: solo cambio de color y sombreado. */
 .btn-primary {
   background: var(--color-primary);
   color: var(--color-white);
@@ -167,7 +162,6 @@ textarea {
   box-shadow: var(--shadow-md);
 }
 
-/* Acción secundaria destacada: ámbar claro con texto tinta. */
 .btn-accent {
   background: var(--color-gold-500);
   border-color: var(--color-gold-500);
@@ -297,7 +291,6 @@ textarea {
   transition: color var(--transition-fast);
 }
 
-/* Subrayado ámbar del enlace activo/hover: aparece por opacidad, sin movimiento. */
 .site-nav__link::after {
   content: '';
   position: absolute;
@@ -355,9 +348,6 @@ textarea {
   color: var(--color-white);
 }
 
-/* Footer: banda navy a todo el ancho con acento ámbar como borde superior.
-   Se usa border-top (no un pseudo-elemento posicionado) para que el acento
-   siga exactamente el ancho del contenedor en cualquier resolución. */
 .site-footer {
   width: 100%;
   margin-top: auto;
@@ -366,7 +356,6 @@ textarea {
   color: var(--color-text-muted);
 }
 
-/* Una sola fila horizontal: marca, enlaces y derechos, sin columnas. */
 .site-footer__inner {
   display: flex;
   flex-wrap: wrap;
@@ -491,7 +480,6 @@ textarea {
   letter-spacing: -0.03em;
 }
 
-/* Wordmark bicolor: "Go" en ámbar claro, "Island" en azul tinta. */
 .logo-text__go {
   color: var(--color-gold-500);
 }
@@ -549,7 +537,6 @@ textarea {
   transition: color var(--transition-fast);
 }
 
-/* Al enfocar un campo, la etiqueta y el icono transicionan al color de marca. */
 .field-group:focus-within .field-label {
   color: var(--color-primary);
 }
@@ -672,7 +659,6 @@ textarea {
   transition: color var(--transition-fast);
 }
 
-/* Categoría activa: subrayado ámbar que aparece por opacidad, igual que el menú. */
 .field-control:has(.select-field) {
   position: relative;
 }
@@ -741,7 +727,6 @@ textarea {
   background: #E4DCCC;
 }
 
-/* Brillo que se desplaza: bloque sólido difuminado (sin gradiente). */
 .skeleton::after {
   content: '';
   position: absolute;
@@ -859,8 +844,6 @@ textarea {
   font-size: 1.15rem;
 }
 
-/* Autenticación: mosaico de fotografías de ambiente detrás de la tarjeta,
-   con una capa plana de un solo color encima para mantener la legibilidad. */
 .auth-page {
   position: relative;
   display: grid;
@@ -876,7 +859,6 @@ textarea {
   position: absolute;
   inset: 0;
   z-index: -1;
-  /* El contenedor centra sus hijos: el mosaico debe cubrir toda la caja. */
   place-self: stretch;
   width: 100%;
   height: 100%;
@@ -906,7 +888,6 @@ textarea {
 .auth-mosaic__tile--ciudad { background-image: var(--photo-ciudad); }
 .auth-mosaic__tile--mar { background-image: var(--photo-hero); }
 
-/* Capa plana semitransparente de un solo color (sin degradado). */
 .auth-mosaic::after {
   content: '';
   position: absolute;
@@ -929,7 +910,6 @@ textarea {
   text-align: center;
 }
 
-/* Medallón compacto de marca: reemplaza el wordmark repetido. */
 .auth-card__brand {
   display: grid;
   place-items: center;
@@ -1175,7 +1155,6 @@ textarea {
   color: var(--color-white);
 }
 
-/* Página de inicio */
 .home-page {
   padding-bottom: var(--space-8);
 }
@@ -1184,7 +1163,6 @@ textarea {
   padding-bottom: 5rem;
 }
 
-/* Buscador simplificado de una sola línea dentro del encabezado. */
 .home-hero__search {
   display: flex;
   align-items: flex-end;
@@ -1203,7 +1181,6 @@ textarea {
   color: var(--color-white);
 }
 
-/* Contador real de experiencias disponibles, con el dato ya cargado. */
 .home-hero__count {
   display: inline-flex;
   align-items: center;
@@ -1349,7 +1326,6 @@ textarea {
   animation: fadeIn 0.4s ease-out forwards;
 }
 
-/* Entrada escalonada y discreta de las tarjetas del catálogo. */
 @keyframes revealUp {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -1379,7 +1355,6 @@ textarea {
   padding: 5rem 1.5rem 7rem;
   color: #fff;
   isolation: isolate;
-  /* Foto de ambiente + capa plana de azul Caribe (un solo color) para legibilidad. */
   background-color: var(--color-caribe-600);
   background-image: var(--photo-hero);
   background-size: cover;
@@ -1387,7 +1362,6 @@ textarea {
   box-shadow: inset 0 0 0 100vw var(--photo-tint-hero);
 }
 
-/* Waterline ámbar en la base del hero: único detalle decorativo de esta zona. */
 .experiences-hero::after {
   content: '';
   position: absolute;
@@ -1429,8 +1403,6 @@ textarea {
   font-size: 1.05rem;
 }
 
-/* Layout del catálogo: búsqueda arriba (superpuesta al encabezado) y
-   resultados debajo, sobre fondo claro con espacio generoso. */
 .experiences-layout {
   display: grid;
   grid-template-columns: 1fr;
@@ -1441,7 +1413,6 @@ textarea {
   padding-bottom: var(--space-8);
 }
 
-/* Buscador: bloque propio, separado del módulo de filtros y superpuesto al encabezado. */
 .experience-searchbar {
   position: relative;
   z-index: 2;
@@ -1467,14 +1438,12 @@ textarea {
   font-size: var(--text-sm);
 }
 
-/* Módulo de filtros: tarjeta aparte, compacta y con todos los campos alineados. */
 .experience-search {
   position: relative;
   padding: var(--space-4);
   border-color: var(--color-caribe-200);
   box-shadow: var(--shadow-sm);
 }
-
 
 .experience-search__heading,
 .experience-results__heading,
@@ -1528,7 +1497,6 @@ textarea {
   margin-bottom: 0;
 }
 
-/* Una sola fila compacta en pantallas grandes: los tres filtros con el mismo peso. */
 @media (min-width: 48rem) {
   .experience-search__fields {
     grid-template-columns: 1fr 1fr 1fr;
@@ -1544,7 +1512,6 @@ textarea {
   border: 0;
 }
 
-/* La leyenda hace de etiqueta única, para que el rango alinee con los otros campos. */
 .experience-search__price legend {
   float: left;
   width: 100%;
@@ -1567,7 +1534,6 @@ textarea {
   margin-bottom: 0;
 }
 
-/* Separador que relaciona visualmente el mínimo y el máximo. */
 .experience-search__price-separator {
   color: var(--color-text-muted);
   font-weight: 700;
@@ -1577,7 +1543,6 @@ textarea {
   margin-top: var(--space-3);
 }
 
-/* Chips de filtros activos: cada uno se puede quitar por separado. */
 .filter-chips {
   display: flex;
   align-items: center;
@@ -1630,7 +1595,6 @@ textarea {
   color: var(--color-error);
 }
 
-/* En pantallas táctiles el área de toque cumple el mínimo de 44 px. */
 @media (pointer: coarse) {
   .filter-chip {
     min-height: 44px;
@@ -1642,7 +1606,6 @@ textarea {
   }
 }
 
-/* Ocultar flechas de incremento de los campos numéricos. */
 input[type='number'] {
   appearance: textfield;
   -moz-appearance: textfield;
@@ -1654,7 +1617,6 @@ input[type='number']::-webkit-inner-spin-button {
   margin: 0;
 }
 
-/* Encabezado de resultados: jerarquía por tamaño y espacio, sin líneas decorativas. */
 .experience-results__heading {
   justify-content: space-between;
   gap: var(--space-4);
@@ -1672,7 +1634,6 @@ input[type='number']::-webkit-inner-spin-button {
   font-weight: 700;
 }
 
-/* El contador reaparece con una transición breve cuando cambia el número. */
 .experience-results__count-label {
   animation: fadeIn 0.24s ease-out;
 }
@@ -1693,14 +1654,11 @@ input[type='number']::-webkit-inner-spin-button {
   flex-direction: column;
 }
 
-/* Hover de tarjeta: solo color de borde y sombra, sin desplazamiento ni zoom. */
 .experience-card:hover {
   border-color: var(--color-caribe-500);
   box-shadow: var(--shadow-hover);
 }
 
-/* Cabecera de tarjeta: foto de ambiente por categoría con capa plana de color.
-   La foto es ambientación por tipo de actividad, no contenido subido por un anfitrión. */
 .experience-card__placeholder {
   position: relative;
   display: flex;
@@ -1710,7 +1668,6 @@ input[type='number']::-webkit-inner-spin-button {
   justify-content: flex-start;
   flex-direction: column;
   color: #fff;
-  /* Foto de ambiente + capa sólida navy (un color con opacidad, sin degradado). */
   background-color: var(--color-navy-900);
   background-image: var(--photo-default);
   background-size: cover;
@@ -1731,7 +1688,6 @@ input[type='number']::-webkit-inner-spin-button {
   filter: drop-shadow(0 2px 6px rgba(18, 59, 87, 0.45));
 }
 
-/* Etiqueta de categoría: azul Caribe sólido, enlaza al catálogo con esa categoría. */
 .experience-card__category {
   display: inline-flex;
   align-items: center;
@@ -1912,7 +1868,6 @@ input[type='number']::-webkit-inner-spin-button {
   border-radius: var(--radius-lg);
   overflow: hidden;
   color: #fff;
-  /* Foto de ambiente + capa sólida navy (un color con opacidad, sin degradado). */
   background-color: var(--color-navy-900);
   background-image: var(--photo-default);
   background-size: cover;

@@ -31,7 +31,6 @@ const emptySearch: SearchForm = {
   maxPrice: '',
 };
 
-// Último filtro usado: se recuerda para cuando el usuario vuelve al catálogo.
 const STORAGE_KEY = 'goisland:catalog-filters';
 
 const toNumber = (value: string) => (value.trim() ? Number(value) : undefined);
@@ -141,11 +140,8 @@ export const Experiences = () => {
     [urlForm],
   );
   const [experiences, setExperiences] = useState<Experience[]>([]);
-  // Categorías reales vistas en los datos del catálogo (unión acumulada,
-  // nunca inventadas): alimentan el menú desplegable de categoría.
   const [knownCategories, setKnownCategories] = useState<string[]>([]);
   const [draft, setDraft] = useState<{ source: string; form: SearchForm }>(() => {
-    // Sin filtros en la URL: se recupera el último filtro usado, si existe.
     const restored = searchParams.toString() ? null : readStoredForm();
     return {
       source: searchParams.toString(),
@@ -159,8 +155,6 @@ export const Experiences = () => {
   const requestKey = `${queryString}::${retryCount}`;
   const loading = completedRequestKey !== requestKey;
   const priceError = getPriceError(form);
-  // El backend no expone búsqueda por título: se filtra en el cliente sobre los
-  // datos ya devueltos por el mismo endpoint, sin cambiar la petición.
   const nameFilter = urlForm.name.trim().toLowerCase();
   const visibleExperiences = useMemo(
     () => (nameFilter
@@ -193,12 +187,11 @@ export const Experiences = () => {
     return () => window.clearTimeout(debounceTimer);
   }, [form, priceError, queryString, setSearchParams]);
 
-  // Guarda el último filtro aplicado para la próxima visita al catálogo.
   useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, queryString);
     } catch {
-      // Si el almacenamiento no está disponible, el catálogo sigue funcionando.
+      void 0;
     }
   }, [queryString]);
 
@@ -274,7 +267,6 @@ export const Experiences = () => {
       </section>
 
       <div className="experiences-layout">
-        {/* Buscar y filtrar son tareas distintas: el buscador vive fuera del módulo de filtros. */}
         <form className="experience-searchbar" onSubmit={submitSearch} role="search">
           <Input
             label="Buscar experiencias"

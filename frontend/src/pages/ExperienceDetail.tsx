@@ -35,7 +35,6 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('es-DO', {
   year: 'numeric',
 }).format(new Date(date));
 
-// Slug de presentación para elegir la foto de ambiente por tipo de actividad.
 const getCategorySlug = (category: string) => {
   switch (category.toLowerCase()) {
     case 'acuático':
