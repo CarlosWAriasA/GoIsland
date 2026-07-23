@@ -18,10 +18,17 @@ public class PaymentUnitOfWorkIntegrationTests : PostgresIntegrationTestBase
         Assert.NotNull(trackedReservation);
 
         trackedReservation.Status = "Confirmed";
+        var tourist = await Context.Users.AsNoTracking()
+            .SingleAsync(item => item.Id == reservation.UserId);
         var payment = new Payment
         {
             ReservationId = reservation.Id,
+            UserId = tourist.Id,
             Amount = reservation.TotalAmount,
+            SubtotalAmount = reservation.TotalAmount,
+            ServiceFeeAmount = 0m,
+            PlatformCommissionAmount = 0m,
+            HostNetAmount = reservation.TotalAmount,
             Status = "Paid"
         };
 

@@ -5,6 +5,7 @@ using GoIsland.Api.Services.Auth;
 using GoIsland.Api.Services.Email;
 using GoIsland.Api.Services.Experiences;
 using GoIsland.Api.Services.Hosts;
+using GoIsland.Api.Services.Payments;
 using GoIsland.Api.Services.Reservations;
 using GoIsland.Api.Services.Reservations.Observers;
 using GoIsland.Api.Services.Schedules;
@@ -89,6 +90,17 @@ else
 {
     throw new InvalidOperationException("Email:Provider debe ser Smtp o Resend.");
 }
+// El proveedor se resuelve antes de registrar servicios: Production no puede arrancar con
+// Mock y un proveedor desconocido detiene la aplicacion, por lo que los endpoints mock jamas
+// quedan mapeados fuera de Development/QA.
+var paymentsProvider = PaymentProviderStartup.ResolveProvider(
+    builder.Configuration["Payments:Provider"],
+    builder.Environment.EnvironmentName);
+if (paymentsProvider.Equals(PaymentProviderStartup.MockProvider, StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddSingleton<IPaymentGateway, MockPaymentGateway>();
+}
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExperienceService, ExperienceService>();
 builder.Services.AddScoped<IExperienceManagementService, ExperienceManagementService>();

@@ -1,0 +1,37 @@
+using System.Security.Claims;
+using GoIsland.Api.DTOs.Payments;
+using GoIsland.Api.Models;
+using GoIsland.Api.Services.Payments;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace GoIsland.Api.Controllers;
+
+[ApiController]
+[Authorize]
+[Route("api/[controller]")]
+public class PaymentsController : ControllerBase
+{
+    public const string GetPaymentByIdRouteName = "GetPaymentById";
+
+    private readonly IPaymentService _paymentService;
+
+    public PaymentsController(IPaymentService paymentService)
+    {
+        _paymentService = paymentService;
+    }
+
+    [HttpGet("{id:int}", Name = GetPaymentByIdRouteName)]
+    public async Task<ActionResult<PaymentResponse>> GetById(int id)
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            return Unauthorized(new { message = "El token no es valido." });
+        }
+
+        var payment = await _paymentService.GetByIdAsync(id, userId, User.IsInRole(UserRoles.Admin));
+        return payment is null
+            ? NotFound(new { message = "No se encontro el pago." })
+            : Ok(payment);
+    }
+}

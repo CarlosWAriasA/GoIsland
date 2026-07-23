@@ -17,6 +17,9 @@ public class GoIslandDbContext : DbContext
     public DbSet<ReservationStatusHistory> ReservationStatusHistories => Set<ReservationStatusHistory>();
     public DbSet<ReservationIdempotencyKey> ReservationIdempotencyKeys => Set<ReservationIdempotencyKey>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<PaymentGatewayAttempt> PaymentGatewayAttempts => Set<PaymentGatewayAttempt>();
+    public DbSet<PaymentWebhookEvent> PaymentWebhookEvents => Set<PaymentWebhookEvent>();
+    public DbSet<Refund> Refunds => Set<Refund>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<HostProfile> HostProfiles => Set<HostProfile>();
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
@@ -160,9 +163,79 @@ public class GoIslandDbContext : DbContext
             entity.HasKey(payment => payment.Id);
             entity.Property(payment => payment.Id).HasColumnName("id");
             entity.Property(payment => payment.ReservationId).HasColumnName("reservation_id").IsRequired();
+            entity.Property(payment => payment.UserId).HasColumnName("user_id").IsRequired();
+            entity.Property(payment => payment.Provider).HasColumnName("provider").HasMaxLength(40).IsRequired();
+            entity.Property(payment => payment.ProviderPaymentId).HasColumnName("provider_payment_id").HasMaxLength(120);
+            entity.Property(payment => payment.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(100).IsRequired();
+            entity.Property(payment => payment.RequestHash).HasColumnName("request_hash").HasMaxLength(64).IsRequired();
+            entity.Property(payment => payment.Currency).HasColumnName("currency").HasMaxLength(3).IsRequired();
             entity.Property(payment => payment.Amount).HasColumnName("amount").HasPrecision(10, 2);
+            entity.Property(payment => payment.SubtotalAmount).HasColumnName("subtotal_amount").HasPrecision(10, 2);
+            entity.Property(payment => payment.ServiceFeeAmount).HasColumnName("service_fee_amount").HasPrecision(10, 2);
+            entity.Property(payment => payment.PlatformCommissionAmount).HasColumnName("platform_commission_amount").HasPrecision(10, 2);
+            entity.Property(payment => payment.HostNetAmount).HasColumnName("host_net_amount").HasPrecision(10, 2);
             entity.Property(payment => payment.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
+            entity.Property(payment => payment.FailureCode).HasColumnName("failure_code").HasMaxLength(80);
+            entity.Property(payment => payment.PaidAt).HasColumnName("paid_at");
+            entity.Property(payment => payment.RefundedAmount).HasColumnName("refunded_amount").HasPrecision(10, 2);
             entity.Property(payment => payment.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(payment => payment.UpdatedAt).HasColumnName("updated_at").IsRequired();
+            entity.HasIndex(payment => payment.Status);
+        });
+
+        modelBuilder.Entity<PaymentGatewayAttempt>(entity =>
+        {
+            entity.ToTable("payment_gateway_attempts");
+            entity.HasKey(attempt => attempt.Id);
+            entity.Property(attempt => attempt.Id).HasColumnName("id");
+            entity.Property(attempt => attempt.PaymentId).HasColumnName("payment_id").IsRequired();
+            entity.Property(attempt => attempt.Provider).HasColumnName("provider").HasMaxLength(40).IsRequired();
+            entity.Property(attempt => attempt.ProviderReferenceId).HasColumnName("provider_reference_id").HasMaxLength(120);
+            entity.Property(attempt => attempt.Outcome).HasColumnName("outcome").HasMaxLength(40).IsRequired();
+            entity.Property(attempt => attempt.FailureCode).HasColumnName("failure_code").HasMaxLength(80);
+            entity.Property(attempt => attempt.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.HasIndex(attempt => new { attempt.PaymentId, attempt.CreatedAt });
+            entity.HasOne(attempt => attempt.Payment)
+                .WithMany()
+                .HasForeignKey(attempt => attempt.PaymentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PaymentWebhookEvent>(entity =>
+        {
+            entity.ToTable("payment_webhook_events");
+            entity.HasKey(webhookEvent => webhookEvent.Id);
+            entity.Property(webhookEvent => webhookEvent.Id).HasColumnName("id");
+            entity.Property(webhookEvent => webhookEvent.Provider).HasColumnName("provider").HasMaxLength(40).IsRequired();
+            entity.Property(webhookEvent => webhookEvent.ProviderEventId).HasColumnName("provider_event_id").HasMaxLength(120).IsRequired();
+            entity.Property(webhookEvent => webhookEvent.PaymentId).HasColumnName("payment_id").IsRequired();
+            entity.Property(webhookEvent => webhookEvent.EventType).HasColumnName("event_type").HasMaxLength(40).IsRequired();
+            entity.Property(webhookEvent => webhookEvent.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.HasIndex(webhookEvent => new { webhookEvent.Provider, webhookEvent.ProviderEventId }).IsUnique();
+            entity.HasOne(webhookEvent => webhookEvent.Payment)
+                .WithMany()
+                .HasForeignKey(webhookEvent => webhookEvent.PaymentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Refund>(entity =>
+        {
+            entity.ToTable("refunds");
+            entity.HasKey(refund => refund.Id);
+            entity.Property(refund => refund.Id).HasColumnName("id");
+            entity.Property(refund => refund.PaymentId).HasColumnName("payment_id").IsRequired();
+            entity.Property(refund => refund.Amount).HasColumnName("amount").HasPrecision(10, 2);
+            entity.Property(refund => refund.Reason).HasColumnName("reason").HasMaxLength(500);
+            entity.Property(refund => refund.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
+            entity.Property(refund => refund.Provider).HasColumnName("provider").HasMaxLength(40).IsRequired();
+            entity.Property(refund => refund.ProviderRefundId).HasColumnName("provider_refund_id").HasMaxLength(120);
+            entity.Property(refund => refund.RequestedByUserId).HasColumnName("requested_by_user_id").IsRequired();
+            entity.Property(refund => refund.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.HasIndex(refund => refund.PaymentId).IsUnique();
+            entity.HasOne(refund => refund.Payment)
+                .WithMany()
+                .HasForeignKey(refund => refund.PaymentId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<PasswordResetToken>(entity =>

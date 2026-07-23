@@ -335,3 +335,63 @@ Content-Type: application/json
 }
 
 ###
+
+# 201 - crea el pago de una reserva PendingPayment; el monto lo calcula el servidor
+POST {{GoIsland.Api_HostAddress}}/api/reservations/1/payments
+Authorization: Bearer {{GoIsland.Api_Token}}
+Idempotency-Key: payment-create-example-1
+
+###
+
+# 400 - falta el encabezado Idempotency-Key
+POST {{GoIsland.Api_HostAddress}}/api/reservations/1/payments
+Authorization: Bearer {{GoIsland.Api_Token}}
+
+###
+
+# 409 - la reserva no esta pendiente de pago o ya tiene un pago vigente
+POST {{GoIsland.Api_HostAddress}}/api/reservations/1/payments
+Authorization: Bearer {{GoIsland.Api_Token}}
+Idempotency-Key: payment-create-example-2
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/reservations/1/payments
+Authorization: Bearer {{GoIsland.Api_Token}}
+Accept: application/json
+
+###
+
+# 404 - el pago no existe o pertenece a otro usuario
+GET {{GoIsland.Api_HostAddress}}/api/payments/1
+Authorization: Bearer {{GoIsland.Api_Token}}
+Accept: application/json
+
+###
+
+# Simulador del gateway, solo disponible con Payments:Provider=Mock (nunca en produccion)
+POST {{GoIsland.Api_HostAddress}}/api/payments/1/mock-confirm
+Authorization: Bearer {{GoIsland.Api_Token}}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/payments/2/mock-reject
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "failureCode": "FondosInsuficientes"
+}
+
+###
+
+# 409 - solo se reembolsa un pago aprobado; repetir no duplica efectos
+POST {{GoIsland.Api_HostAddress}}/api/admin/payments/1/refund
+Authorization: Bearer {{GoIsland.Api_AdminToken}}
+Content-Type: application/json
+
+{
+  "reason": "Cancelacion por condiciones meteorologicas."
+}
+
+###
