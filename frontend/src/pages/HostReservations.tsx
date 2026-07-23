@@ -4,9 +4,11 @@ import Alert from '../components/Alert';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
+import Skeleton from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
 import { toApiError } from '../services/apiError';
 import { reservationService } from '../services/reservationService';
+import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
 import type { Reservation } from '../types';
 
 const formatDate = (value: string) => new Intl.DateTimeFormat('es-DO', {
@@ -44,7 +46,12 @@ export const HostReservations = () => {
     <header className="page-heading"><span className="page-heading__eyebrow">Panel de anfitrión</span><h1>Reservas recibidas</h1>
       <p>Consulta únicamente reservas de tus experiencias y gestiona cancelaciones.</p></header>
     {success && <Alert tone="success">{success}</Alert>}{error && <Alert tone="error">{error}</Alert>}
-    {loading ? <p role="status">Cargando reservas…</p> : error && reservations.length === 0
+    {loading ? (
+      <div className="management-list" role="status">
+        {[1, 2].map((item) => <Skeleton key={item} className="management-card management-card--loading" />)}
+        <span className="visually-hidden">Cargando reservas recibidas…</span>
+      </div>
+    ) : error && reservations.length === 0
       ? <ErrorState description={error} onRetry={() => { setLoading(true); setRetry((value) => value + 1); }} />
       : reservations.length === 0 ? <EmptyState title="Sin reservas recibidas" description="Las nuevas reservas aparecerán aquí." />
         : <div className="management-list">{reservations.map((reservation) => {
@@ -52,7 +59,7 @@ export const HostReservations = () => {
           return <article className="management-card surface-panel" key={reservation.id}>
             <div className="management-card__header"><div><span className="management-card__reference">Reserva #{reservation.id}</span>
               <h2>{reservation.experienceTitle}</h2><p><MapPin size={16} /> {reservation.experienceLocation}</p></div>
-              <StatusBadge tone={active ? 'warning' : reservation.status.startsWith('Cancelled') ? 'error' : 'success'}>{reservation.status}</StatusBadge></div>
+              <StatusBadge tone={getReservationStatusTone(reservation.status)}>{getReservationStatusLabel(reservation.status)}</StatusBadge></div>
             <dl className="management-card__facts"><div><dt><CalendarDays size={16} /> Horario</dt><dd>{formatDate(reservation.startsAt)}</dd></div>
               <div><dt><UsersRound size={16} /> Personas</dt><dd>{reservation.quantity}</dd></div></dl>
             {active && <div className="management-actions"><Button variant="danger" onClick={() => void cancel(reservation)}

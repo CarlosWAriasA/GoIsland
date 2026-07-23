@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import AuthMosaic from '../components/AuthMosaic';
 import Logo from '../components/Logo';
 import { getFieldError, toApiError } from '../services/apiError';
 import { authService } from '../services/authService';
@@ -42,9 +43,10 @@ export const ForgotPassword = () => {
 
   return (
     <div className="auth-page animate-fade-in">
+      <AuthMosaic />
       <section className="auth-card surface-panel" aria-labelledby="forgot-password-title">
         <header className="auth-card__header">
-          <Logo showUnderline fontSize="2.2rem" />
+          <span className="auth-card__brand"><Logo iconOnly fontSize="2.4rem" /></span>
           <h1 id="forgot-password-title">Recupera tu contraseña</h1>
           <p>Te enviaremos un enlace si el correo pertenece a una cuenta registrada.</p>
         </header>

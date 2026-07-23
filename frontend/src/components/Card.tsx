@@ -6,16 +6,32 @@ interface CardProps {
   experience: Experience;
 }
 
-const getCategoryIcon = (category: string) => {
-  const iconProps = { size: 52, 'aria-hidden': true as const };
-
+// Slug de presentación para elegir la foto de ambiente por tipo de actividad.
+const getCategorySlug = (category: string) => {
   switch (category.toLowerCase()) {
     case 'acuático':
+    case 'acuatico':
+      return 'acuatico';
+    case 'cruceros':
+      return 'cruceros';
+    case 'gastronomía':
+    case 'gastronomia':
+      return 'gastronomia';
+    case 'naturaleza':
+      return 'naturaleza';
+    default:
+      return 'default';
+  }
+};
+
+const getCategoryIcon = (category: string) => {
+  const iconProps = { size: 26, 'aria-hidden': true as const };
+
+  switch (getCategorySlug(category)) {
     case 'acuatico':
       return <Waves {...iconProps} />;
     case 'cruceros':
       return <Ship {...iconProps} />;
-    case 'gastronomía':
     case 'gastronomia':
       return <Utensils {...iconProps} />;
     case 'naturaleza':
@@ -46,10 +62,19 @@ export const Card = ({ experience }: CardProps) => {
 
   return (
     <article className="experience-card surface-card">
-      <div className="experience-card__placeholder" role="img" aria-label="Imagen no disponible">
+      <div
+        className={`experience-card__placeholder experience-card__placeholder--${getCategorySlug(category)}`}
+        role="img"
+        aria-label={`Imagen de ambiente de la categoría ${category}`}
+      >
         {getCategoryIcon(category)}
-        <span>{category}</span>
-        <small>Imagen no disponible</small>
+        <Link
+          className="experience-card__category"
+          to={`/experiences?category=${encodeURIComponent(category)}`}
+          aria-label={`Ver experiencias de la categoría ${category}`}
+        >
+          {category}
+        </Link>
       </div>
 
       <div className="experience-card__body">

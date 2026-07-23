@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import AuthMosaic from '../components/AuthMosaic';
 import Logo from '../components/Logo';
 import { getFieldError, toApiError } from '../services/apiError';
 import { authService } from '../services/authService';
@@ -66,9 +67,10 @@ export const ResetPassword = () => {
 
   return (
     <div className="auth-page animate-fade-in">
+      <AuthMosaic />
       <section className="auth-card surface-panel" aria-labelledby="reset-password-title">
         <header className="auth-card__header">
-          <Logo showUnderline fontSize="2.2rem" />
+          <span className="auth-card__brand"><Logo iconOnly fontSize="2.4rem" /></span>
           <h1 id="reset-password-title">Crea una nueva contraseña</h1>
           <p>Elige una contraseña diferente a la utilizada anteriormente.</p>
         </header>

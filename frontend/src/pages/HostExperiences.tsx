@@ -124,7 +124,7 @@ export const HostExperiences = () => {
     try {
       const updated = await hostExperienceService.submit(id);
       setExperiences((current) => current.map((item) => item.id === id ? updated : item));
-      setSuccess('La experiencia fue enviada a moderación.');
+      setSuccess('La experiencia fue enviada a revisión.');
     } catch (requestError: unknown) {
       setError(toApiError(requestError).message);
     } finally {

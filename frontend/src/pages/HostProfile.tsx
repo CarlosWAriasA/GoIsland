@@ -90,7 +90,7 @@ export const HostProfile = () => {
       setForm(toForm(updated));
       setSuccess(isApplication
         ? 'Tu solicitud fue enviada y está pendiente de revisión.'
-        : 'Los datos del perfil fueron actualizados.');
+        : 'Datos del perfil guardados.');
     } catch (error: unknown) {
       setRequestError(toApiError(error));
     } finally {

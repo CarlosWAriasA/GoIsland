@@ -1,21 +1,122 @@
+/*
+  GoIsland — paleta clara y minimalista (definitiva).
+  Turismo costero con ejecución liviana: blanco y arena pálida dominan cada
+  pantalla; el azul Caribe y el ámbar aparecen en puntos deliberados.
+  Cada color tiene un rol fijo. Sin gradientes decorativos: la única excepción
+  es una capa plana semitransparente de un solo color sobre fotografías.
+*/
 :root {
-  --color-ocean-700: #075985;
-  --color-turquoise-600: #0F766E;
-  --color-sand-50: #FFF8ED;
-  --color-coral-500: #E65A4B;
-  --color-ink-900: #16323F;
-  --color-slate-600: #5D6E75;
-  --color-success: #15803D;
-  --color-warning: #B45309;
-  --color-error: #B42318;
-  --color-primary: var(--color-turquoise-600);
-  --color-primary-hover: #0B5F59;
-  --color-gold: var(--color-coral-500);
-  --color-gold-light: rgba(230, 90, 75, 0.12);
-  --color-bg: var(--color-sand-50);
-  --color-text: var(--color-ink-900);
-  --color-text-muted: var(--color-slate-600);
+  /* --- Azul Caribe: color principal de marca --- */
+  --color-caribe-500: #1C6FA5; /* botones primarios, enlaces activos, iconos, foco */
+  --color-caribe-600: #14567F; /* hover / presionado del Caribe */
+  --color-caribe-100: rgba(28, 111, 165, 0.10); /* tinte suave del Caribe */
+  --color-caribe-200: rgba(28, 111, 165, 0.18);
+
+  /* --- Azul tinta: SOLO texto sobre fondos claros, nunca superficie --- */
+  --color-ink: #123B57; /* títulos y texto de alto contraste */
+
+  /* --- Ámbar: acento puntual, siempre sobre fondos claros --- */
+  --color-gold-500: #FFB648; /* acento: "Go" del wordmark, detalles, acciones secundarias */
+  --color-gold-600: #CC8A2E; /* hover / presionado del ámbar */
+  --color-gold-100: rgba(255, 182, 72, 0.18); /* tinte ámbar suave */
+  --color-gold-200: rgba(255, 182, 72, 0.32);
+  --color-on-gold: #123B57; /* texto tinta sobre ámbar (contraste suficiente) */
+
+  /* --- Neutros: fondo dominante de casi toda la aplicación --- */
   --color-white: #FFFFFF;
-  --color-border: #D9E4E5;
-  --color-border-hover: rgba(15, 118, 110, 0.45);
+  --color-sand-50: #FFFDF9;  /* arena muy pálida: fondo de página */
+  --color-sand-100: #FAF4E9; /* arena suave para bloques que respiran */
+  --color-mist-50: #F2F6F9;  /* pastel frío puntual */
+  --color-border: #E4DFD6;   /* bordes sutiles entre tarjetas y secciones */
+  --color-border-hover: #CFC7B8;
+
+  /* --- Texto --- */
+  --color-text: #123B57;        /* cuerpo en azul tinta */
+  --color-text-muted: #5B6B74;  /* apoyo, etiquetas, metadatos */
+  --color-text-subtle: #7C8A93; /* metadatos de menor jerarquía */
+  --color-text-on-navy: #FFFFFF; /* texto sobre foto con capa de color */
+
+  /* --- Estados semánticos (rol único; tonos acordes a la paleta clara) --- */
+  --color-success: #1E7F58;
+  --color-success-bg: #EAF6EF;
+  --color-success-border: #B4DCC5;
+  --color-warning: #A9741C;
+  --color-warning-bg: #FCF3E1;
+  --color-warning-border: #EDD5A4;
+  --color-error: #BC4237;
+  --color-error-bg: #FBEEEC;
+  --color-error-border: #ECBEB8;
+  --color-info: var(--color-caribe-500);
+  --color-info-bg: #EAF2F8;
+  --color-info-border: #BDD5E6;
+
+  /* --- Roles / alias usados en toda la hoja de estilos --- */
+  --color-primary: var(--color-caribe-500);
+  --color-primary-hover: var(--color-caribe-600);
+  --color-primary-soft: var(--color-caribe-100);
+  --color-primary-soft-strong: var(--color-caribe-200);
+  --color-accent: var(--color-gold-500);
+  --color-accent-hover: var(--color-gold-600);
+  --color-bg: var(--color-sand-50);
+
+  /* Alias heredados (compatibilidad con clases existentes) */
+  --color-navy-900: var(--color-ink);
+  --color-navy-700: var(--color-ink);
+  --color-navy-500: var(--color-caribe-500);
+  --color-navy-300: #4A88B5;
+  --color-ocean-500: var(--color-caribe-500);
+  --color-ocean-700: var(--color-caribe-500);
+  --color-turquoise-600: var(--color-caribe-500);
+  --color-coral-500: var(--color-gold-500);
+  --color-ink-900: var(--color-text);
+  --color-slate-600: var(--color-text-muted);
+  --color-gold: var(--color-gold-500);
+  --color-gold-light: var(--color-gold-100);
+  --color-gold-700: var(--color-gold-600);
+
+  /* Acento sólido de firma (motivo waterline): un solo color. */
+  --gold-sun: var(--color-gold-500);
+  --waterline: var(--color-gold-500);
+
+  /* Capas planas de un solo color sobre fotografías (legibilidad). */
+  --photo-tint: rgba(18, 59, 87, 0.45);        /* tarjetas y cabeceras de detalle */
+  --photo-tint-strong: rgba(18, 59, 87, 0.55);
+  --photo-tint-hero: rgba(28, 111, 165, 0.62); /* encabezado del catálogo: azul Caribe */
+
+  /* --- Escala de espaciado (base 4px) --- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* --- Escala tipográfica --- */
+  --text-xs: 0.75rem;
+  --text-sm: 0.85rem;
+  --text-base: 0.95rem;
+  --text-md: 1.05rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --font-body: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-display: 'Fraunces', 'Manrope', Georgia, serif;
+
+  /* --- Sombras: sutiles y consistentes, tintadas al azul tinta --- */
+  --shadow-sm: 0 1px 2px rgba(18, 59, 87, 0.06);
+  --shadow-md: 0 3px 10px -2px rgba(18, 59, 87, 0.08), 0 1px 3px -1px rgba(18, 59, 87, 0.05);
+  --shadow-lg: 0 10px 28px -8px rgba(18, 59, 87, 0.12), 0 3px 8px -4px rgba(18, 59, 87, 0.06);
+  --shadow-hover: 0 14px 32px -10px rgba(18, 59, 87, 0.16);
+  --shadow-navy: 0 16px 40px -14px rgba(18, 59, 87, 0.28);
+
+  /* --- Transiciones (solo color y opacidad en interacciones) --- */
+  --transition-fast: 0.18s ease;
+  --transition-base: 0.28s ease;
+
+  /* --- Radios --- */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
 }

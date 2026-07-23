@@ -33,6 +33,7 @@ export const SelectField = ({
           id={selectId}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
+          data-empty={props.value === '' || props.value === undefined ? 'true' : 'false'}
           className={`text-field select-field${error ? ' text-field--error' : ''} ${className}`}
           {...props}
         />

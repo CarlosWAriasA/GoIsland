@@ -109,7 +109,7 @@ export const ReservationDialog = ({
       footer={(
         <>
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Volver</Button>
-          <Button type="submit" form="reservation-form" isLoading={isSubmitting} disabled={!selectedSchedule}>
+          <Button type="submit" variant="primary" form="reservation-form" isLoading={isSubmitting} disabled={!selectedSchedule}>
             Crear reserva pendiente de pago
           </Button>
         </>
@@ -145,7 +145,7 @@ export const ReservationDialog = ({
           <div className="reservation-form__total"><dt>Total</dt><dd>{formatPrice(total)}</dd></div>
         </dl>
         <Alert tone="info">
-          La reserva quedará en <strong>PendingPayment</strong>. Todavía no implica pago ni confirmación.
+          La reserva quedará <strong>Pendiente de pago</strong>. Todavía no implica pago ni confirmación.
         </Alert>
       </form>
     </Dialog>

@@ -12,6 +12,7 @@ import StatusBadge from '../components/StatusBadge';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
 import { reservationService } from '../services/reservationService';
+import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
 import type { ExperienceSchedule, Reservation } from '../types';
 
 const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
@@ -21,12 +22,6 @@ const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
 const formatDate = (date: string) => new Intl.DateTimeFormat('es-DO', {
   dateStyle: 'long', timeStyle: 'short',
 }).format(new Date(date));
-
-const getStatusTone = (status: string): 'warning' | 'success' | 'error' | 'info' => {
-  if (status === 'Confirmed' || status === 'Completed' || status === 'Refunded') return 'success';
-  if (status.startsWith('Cancelled')) return 'error';
-  return status === 'PendingPayment' || status === 'RefundPending' ? 'warning' : 'info';
-};
 
 const ReservationDetailSkeleton = () => (
   <div className="container reservation-detail reservation-detail--loading" role="status" aria-busy="true">
@@ -148,13 +143,13 @@ export const ReservationDetail = () => {
   return (
     <div className="container reservation-detail animate-fade-in">
       <Link className="reservation-detail__back" to="/reservations"><ArrowLeft size={18} /> Volver a mis reservas</Link>
-      {created && <Alert tone="success">Reserva creada con estado <strong>{reservation.status}</strong>.</Alert>}
+      {created && <Alert tone="success">Reserva creada. Estado actual: <strong>{getReservationStatusLabel(reservation.status)}</strong>.</Alert>}
       {actionMessage && <Alert tone="success">{actionMessage}</Alert>}
       {actionError && <Alert tone="error">{actionError}</Alert>}
 
       <header className="reservation-detail__header">
         <div><span className="page-heading__eyebrow">Reserva #{reservation.id}</span><h1>Detalle de reserva</h1></div>
-        <StatusBadge tone={getStatusTone(reservation.status)}>{reservation.status}</StatusBadge>
+        <StatusBadge tone={getReservationStatusTone(reservation.status)}>{getReservationStatusLabel(reservation.status)}</StatusBadge>
       </header>
 
       <div className="reservation-detail__layout">
@@ -201,7 +196,7 @@ export const ReservationDetail = () => {
         <ol>
           {reservation.statusHistory.map((item, index) => (
             <li key={`${item.createdAt}-${index}`}>
-              <strong>{item.toStatus}</strong> · {formatDate(item.createdAt)}
+              <strong>{getReservationStatusLabel(item.toStatus)}</strong> · {formatDate(item.createdAt)}
               {item.reason && <span>{item.reason}</span>}
             </li>
           ))}

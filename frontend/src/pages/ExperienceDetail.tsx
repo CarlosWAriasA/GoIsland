@@ -35,15 +35,31 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('es-DO', {
   year: 'numeric',
 }).format(new Date(date));
 
-const getCategoryIcon = (category: string) => {
-  const iconProps = { size: 76, 'aria-hidden': true as const };
+// Slug de presentación para elegir la foto de ambiente por tipo de actividad.
+const getCategorySlug = (category: string) => {
   switch (category.toLowerCase()) {
     case 'acuático':
+    case 'acuatico':
+      return 'acuatico';
+    case 'cruceros':
+      return 'cruceros';
+    case 'gastronomía':
+    case 'gastronomia':
+      return 'gastronomia';
+    case 'naturaleza':
+      return 'naturaleza';
+    default:
+      return 'default';
+  }
+};
+
+const getCategoryIcon = (category: string) => {
+  const iconProps = { size: 40, 'aria-hidden': true as const };
+  switch (getCategorySlug(category)) {
     case 'acuatico':
       return <Waves {...iconProps} />;
     case 'cruceros':
       return <Ship {...iconProps} />;
-    case 'gastronomía':
     case 'gastronomia':
       return <Utensils {...iconProps} />;
     case 'naturaleza':
@@ -180,10 +196,13 @@ export const ExperienceDetail = () => {
 
       <div className="experience-detail__layout">
         <div className="experience-detail__main">
-          <div className="experience-detail__placeholder" role="img" aria-label="Imagen no disponible">
+          <div
+            className={`experience-detail__placeholder experience-detail__placeholder--${getCategorySlug(experience.category)}`}
+            role="img"
+            aria-label={`Imagen de ambiente de la categoría ${experience.category}`}
+          >
             {getCategoryIcon(experience.category)}
             <span>{experience.category}</span>
-            <small>Imagen no disponible</small>
           </div>
 
           <header className="experience-detail__header">
@@ -230,6 +249,7 @@ export const ExperienceDetail = () => {
           </Alert>
           <Button
             className="experience-detail__reserve"
+            variant="primary"
             fullWidth
             onClick={handleReserve}
             disabled={!nextSchedule}
@@ -237,7 +257,7 @@ export const ExperienceDetail = () => {
             <TicketCheck size={18} aria-hidden="true" /> Reservar
           </Button>
           <p className="experience-detail__reservation-note">
-            La reserva se crea como <strong>PendingPayment</strong>; el pago no está confirmado.
+            La reserva se crea como <strong>Pendiente de pago</strong>; el pago todavía no está confirmado.
           </p>
         </aside>
       </div>

@@ -7,6 +7,7 @@ import Skeleton from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
 import { toApiError } from '../services/apiError';
 import { reservationService } from '../services/reservationService';
+import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
 import type { Reservation } from '../types';
 
 const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
@@ -21,12 +22,6 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('es-DO', {
   hour: 'numeric',
   minute: '2-digit',
 }).format(new Date(date));
-
-const getStatusTone = (status: string): 'warning' | 'success' | 'error' | 'info' => {
-  if (status === 'Confirmed' || status === 'Paid') return 'success';
-  if (status.startsWith('Cancelled')) return 'error';
-  return status === 'PendingPayment' ? 'warning' : 'info';
-};
 
 const ReservationsSkeleton = () => (
   <div className="reservation-list" aria-hidden="true">
@@ -120,7 +115,7 @@ export const Reservations = () => {
                       <span className="reservation-card__reference">Reserva #{reservation.id}</span>
                       <h2>{reservation.experienceTitle}</h2>
                     </div>
-                    <StatusBadge tone={getStatusTone(reservation.status)}>{reservation.status}</StatusBadge>
+                    <StatusBadge tone={getReservationStatusTone(reservation.status)}>{getReservationStatusLabel(reservation.status)}</StatusBadge>
                   </div>
 
                   <p className="reservation-card__location">

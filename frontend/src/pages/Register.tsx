@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import AuthMosaic from '../components/AuthMosaic';
 import Logo from '../components/Logo';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 import { useAuth } from '../hooks/useAuth';
@@ -89,9 +90,10 @@ export const Register = () => {
 
   return (
     <div className="auth-page animate-fade-in">
+      <AuthMosaic />
       <section className="auth-card surface-panel" aria-labelledby="register-title">
         <header className="auth-card__header">
-          <Logo showUnderline fontSize="2.2rem" />
+          <span className="auth-card__brand"><Logo iconOnly fontSize="2.4rem" /></span>
           <h1 id="register-title">Crea tu cuenta</h1>
           <p>Regístrate como turista para descubrir experiencias dominicanas.</p>
         </header>
@@ -137,6 +139,7 @@ export const Register = () => {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             error={fieldErrors.password}
+            hint={fieldErrors.password ? undefined : 'Usa entre 6 y 100 caracteres.'}
             icon={<LockKeyhole size={18} />}
           />
           <Input

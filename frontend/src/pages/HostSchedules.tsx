@@ -9,6 +9,7 @@ import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import Input from '../components/Input';
 import SelectField from '../components/SelectField';
+import Skeleton from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
 import { getFieldError, toApiError } from '../services/apiError';
 import type { ApiError } from '../services/apiError';
@@ -68,7 +69,7 @@ export const HostSchedules = () => {
         ? current.map((item) => item.id === saved.id ? saved : item)
         : [...current, saved].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
       setForm(emptyForm); setEditingId(null);
-      setSuccess(editingId ? 'Horario actualizado.' : 'Horario publicado con disponibilidad real.');
+      setSuccess(editingId ? 'Horario guardado.' : 'Horario publicado con disponibilidad real.');
     } catch (requestError: unknown) {
       setFormError(toApiError(requestError));
     } finally { setSubmitting(false); }
@@ -130,14 +131,19 @@ export const HostSchedules = () => {
       </section>
 
       {!validExperienceId ? <EmptyState title="Experiencia no válida" description="El identificador de la experiencia no es válido." />
-        : loading ? <p role="status">Cargando horarios…</p> : error && schedules.length === 0
+        : loading ? (
+          <div className="management-list" role="status">
+            {[1, 2].map((item) => <Skeleton key={item} className="management-card management-card--loading" />)}
+            <span className="visually-hidden">Cargando horarios…</span>
+          </div>
+        ) : error && schedules.length === 0
         ? <ErrorState description={error} onRetry={() => { setLoading(true); setRetry((value) => value + 1); }} />
         : schedules.length === 0 ? <EmptyState title="Sin horarios" description="Publica la primera fecha disponible para habilitar reservas." />
           : <div className="management-list">{schedules.map((schedule) => (
             <article className="management-card surface-panel" key={schedule.id}>
               <div className="management-card__header"><div><span className="management-card__reference">Horario #{schedule.id}</span>
                 <h2>{formatDate(schedule.startsAt)}</h2></div>
-                <StatusBadge tone={schedule.status === 'Scheduled' ? 'success' : 'warning'}>{schedule.status}</StatusBadge></div>
+                <StatusBadge tone={schedule.status === 'Scheduled' ? 'success' : 'warning'}>{schedule.status === 'Scheduled' ? 'Abierto' : 'Cerrado'}</StatusBadge></div>
               <dl className="management-card__facts">
                 <div><dt><Clock size={16} /> Finaliza</dt><dd>{formatDate(schedule.endsAt)}</dd></div>
                 <div><dt><UsersRound size={16} /> Disponibles</dt><dd>{schedule.availableSpots} de {schedule.capacity}</dd></div>

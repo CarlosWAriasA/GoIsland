@@ -22,6 +22,13 @@ type ExperienceAction = HostAction;
 type HostFilter = HostVerificationStatus | 'All';
 type ExperienceFilter = ExperienceApprovalStatus | 'All';
 
+// La confirmación usa la misma palabra que el botón que la disparó.
+const actionPastParticiple: Record<HostAction, string> = {
+  approve: 'aprobada',
+  reject: 'rechazada',
+  suspend: 'suspendida',
+};
+
 const requireReason = (action: HostAction) => {
   if (action === 'approve') return undefined;
   const label = action === 'reject' ? 'rechazo' : 'suspensión';
@@ -82,7 +89,7 @@ export const AdminModeration = () => {
     try {
       const updated = await hostService.decideApplication(profile.id, action, reason);
       setApplications((current) => current.map((item) => item.id === updated.id ? updated : item));
-      setSuccess(`La solicitud de ${profile.displayName} fue actualizada.`);
+      setSuccess(`La solicitud de ${profile.displayName} fue ${actionPastParticiple[action]}.`);
     } catch (requestError: unknown) {
       setError(toApiError(requestError).message);
     } finally {
@@ -99,7 +106,7 @@ export const AdminModeration = () => {
     try {
       const updated = await hostService.decideExperience(experience.id, action, reason);
       setExperiences((current) => current.map((item) => item.id === updated.id ? updated : item));
-      setSuccess(`La experiencia “${experience.title}” fue actualizada.`);
+      setSuccess(`La experiencia “${experience.title}” fue ${actionPastParticiple[action]}.`);
     } catch (requestError: unknown) {
       setError(toApiError(requestError).message);
     } finally {
@@ -139,7 +146,7 @@ export const AdminModeration = () => {
       <section className="moderation-section" aria-labelledby="host-moderation-title">
         <div className="moderation-section__heading">
           <div>
-            <span className="page-heading__eyebrow">Bloque 8</span>
+            <span className="page-heading__eyebrow">Verificación de identidad</span>
             <h2 id="host-moderation-title">Solicitudes de anfitrión</h2>
           </div>
           <SelectField
@@ -209,7 +216,7 @@ export const AdminModeration = () => {
       <section className="moderation-section" aria-labelledby="experience-moderation-title">
         <div className="moderation-section__heading">
           <div>
-            <span className="page-heading__eyebrow">Bloque 9</span>
+            <span className="page-heading__eyebrow">Revisión de contenido</span>
             <h2 id="experience-moderation-title">Experiencias</h2>
           </div>
           <SelectField

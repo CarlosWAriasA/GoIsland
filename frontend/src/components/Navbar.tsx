@@ -25,7 +25,7 @@ export const Navbar = () => {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <Link to="/experiences" className="site-header__brand" aria-label="GoIsland, ir a experiencias" onClick={closeMenu}>
+        <Link to="/" className="site-header__brand" aria-label="GoIsland, ir al inicio" onClick={closeMenu}>
           <Logo fontSize="1.45rem" />
         </Link>
 
@@ -45,9 +45,19 @@ export const Navbar = () => {
           className={`site-nav${menuOpen ? ' site-nav--open' : ''}`}
           aria-label="Navegación principal"
         >
+          <NavLink to="/" end className={getNavLinkClass} onClick={closeMenu}>
+            Inicio
+          </NavLink>
+
           <NavLink to="/experiences" className={getNavLinkClass} onClick={closeMenu}>
             Experiencias
           </NavLink>
+
+          {!isAuthenticated && (
+            <NavLink to="/host-profile" className={getNavLinkClass} onClick={closeMenu}>
+              Ser anfitrión
+            </NavLink>
+          )}
 
           {isAuthenticated ? (
             <>
