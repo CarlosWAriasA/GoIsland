@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using GoIsland.Api.DTOs.Payments;
 using GoIsland.Api.DTOs.Reservations;
 using GoIsland.Api.Models;
+using GoIsland.Api.Services.Payments;
 using GoIsland.Api.Services.Reservations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,10 +15,12 @@ namespace GoIsland.Api.Controllers;
 public class ReservationsController : ControllerBase
 {
     private readonly IReservationService _reservationService;
+    private readonly IPaymentService _paymentService;
 
-    public ReservationsController(IReservationService reservationService)
+    public ReservationsController(IReservationService reservationService, IPaymentService paymentService)
     {
         _reservationService = reservationService;
+        _paymentService = paymentService;
     }
 
     [HttpPost]
@@ -87,6 +91,55 @@ public class ReservationsController : ControllerBase
         ReservationCreationStatus.IdempotencyConflict => Conflict(new { message = "La clave de idempotencia ya fue usada con una solicitud diferente." }),
         _ => StatusCode(StatusCodes.Status500InternalServerError)
     };
+
+    [HttpPost("{id:int}/payments")]
+    public async Task<ActionResult<PaymentResponse>> CreatePayment(int id)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(new { message = "El token no es valido." });
+        }
+
+        if (!TryGetIdempotencyKey(out var idempotencyKey))
+        {
+            return BadRequest(new { message = "El encabezado Idempotency-Key es obligatorio y debe tener hasta 100 caracteres." });
+        }
+
+        var result = await _paymentService.CreateAsync(userId, id, idempotencyKey);
+        return result.Status switch
+        {
+            PaymentOperationStatus.Success => CreatedAtRoute(
+                PaymentsController.GetPaymentByIdRouteName,
+                new { id = result.Payment!.Id },
+                result.Payment),
+            PaymentOperationStatus.ReservationNotFound => NotFound(
+                new { message = "No se encontro la reserva." }),
+            PaymentOperationStatus.InvalidTransition => Conflict(
+                new { message = "La reserva no admite un pago en su estado actual o ya tiene un pago vigente." }),
+            PaymentOperationStatus.IdempotencyConflict => Conflict(
+                new { message = "La clave de idempotencia ya fue usada con una solicitud diferente." }),
+            PaymentOperationStatus.ConcurrencyConflict => Conflict(
+                new { message = "El pago cambio mientras se procesaba. Consulta su estado antes de reintentar." }),
+            PaymentOperationStatus.GatewayRejected => StatusCode(
+                StatusCodes.Status502BadGateway,
+                new { message = "El proveedor de pagos rechazo la solicitud." }),
+            _ => StatusCode(StatusCodes.Status500InternalServerError)
+        };
+    }
+
+    [HttpGet("{id:int}/payments")]
+    public async Task<ActionResult<IReadOnlyCollection<PaymentResponse>>> GetPayments(int id)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(new { message = "El token no es valido." });
+        }
+
+        var payments = await _paymentService.GetForReservationAsync(userId, id, User.IsInRole(UserRoles.Admin));
+        return payments is null
+            ? NotFound(new { message = "No se encontro la reserva." })
+            : Ok(payments);
+    }
 
     [HttpGet("my")]
     public async Task<ActionResult<IReadOnlyCollection<ReservationResponse>>> GetMy()

@@ -211,6 +211,53 @@ Checklist final de la guia UX/UI:
 - Verificacion aprobada: compilacion Release sin advertencias, 31 pruebas PostgreSQL, `npm run lint`,
   `npm run build` y `git diff --check`.
 
+### Entrega C completada - Pagos mock persistentes
+
+- PostgreSQL amplia `payments` con proveedor, referencia externa, idempotencia por usuario, moneda,
+  desglose (subtotal, cargo de servicio, comision de plataforma y neto del anfitrion), codigo de
+  fallo, fecha de pago y monto reembolsado; un indice parcial unico garantiza un solo pago vigente
+  por reserva sin bloquear los reintentos tras un rechazo.
+- `payment_gateway_attempts`, `payment_webhook_events` y `refunds` persisten cada intento del
+  gateway, cada evento procesado exactamente una vez y cada reembolso con motivo y actor.
+- `IPaymentGateway` es el puerto neutral del dominio; `MockPaymentGateway` se registra con
+  `Payments:Provider=Mock` y la aplicacion rechaza arrancar en Production con ese proveedor o con
+  cualquier proveedor desconocido, por lo que `mock-confirm` y `mock-reject` jamas quedan mapeados
+  fuera de Development/QA.
+- `POST /api/reservations/{id}/payments` exige `Idempotency-Key`, calcula el desglose en el servidor
+  y nace `Pending`; bloqueos transaccionales por clave y reserva evitan llamadas concurrentes
+  duplicadas al gateway, la misma clave devuelve el mismo pago y su reutilizacion con otra reserva
+  responde `409`.
+- `mock-confirm` convierte el pago en `Paid` y la reserva en `Confirmed` una sola vez gracias al
+  evento unico por proveedor; `mock-reject` marca `Failed` con codigo de fallo sin confirmar la
+  reserva y habilita un nuevo intento; solo el dueno del pago o un administrador operan el simulador.
+- `POST /api/admin/payments/{id}/refund` registra el reembolso mock con motivo, mueve la reserva a
+  `Refunded` y libera los cupos exactamente una vez; un bloqueo por pago y una clave estable del
+  gateway hacen que repetirlo, incluso concurrentemente, no duplique efectos.
+- El detalle de reserva del frontend muestra el desglose real devuelto por el servidor, el
+  distintivo `Proveedor: Mock (simulacion)`, los controles para decidir el resultado simulado, el
+  reintento tras un rechazo y el formulario de reembolso del administrador; no se solicitan ni
+  representan datos de tarjeta.
+- El script idempotente `006_create_payments.sql` fue aplicado al PostgreSQL compartido.
+- Verificacion aprobada: compilacion Release sin advertencias, 51 pruebas (43 PostgreSQL y 8 de
+  gateway, contrato HTTP y validacion de arranque), `npm run lint`, `npm run build`,
+  `git diff --check` y 30 pasos E2E HTTP reales, incluida la comprobacion de que la aplicacion no
+  arranca fuera de Development/QA con el proveedor mock.
+
+### Tareas para sustituir el gateway mock por Stripe
+
+- Crear `StripePaymentGateway : IPaymentGateway` con PaymentIntents y registrarlo mediante
+  `Payments:Provider=Stripe`; las credenciales viven en user-secrets o variables de ambiente,
+  nunca en el repositorio.
+- Sustituir `mock-confirm` y `mock-reject` por `POST /api/payments/webhook` con verificacion de
+  firma; `payment_intent.succeeded` y `payment_intent.payment_failed` alimentan
+  `payment_webhook_events` para conservar el procesamiento exactamente una vez.
+- Mapear `PaymentIntent.Id` a `ProviderPaymentId` y los reembolsos de Stripe a `refunds`
+  (`Refund.Id` a `ProviderRefundId`).
+- Entregar al frontend el `clientSecret` del PaymentIntent y reemplazar los botones simulados por
+  Stripe Payment Element; el cliente sigue sin tocar numeros de tarjeta.
+- Evaluar Stripe Connect para transferir `HostNetAmount` a los anfitriones cuando exista onboarding.
+- Verificar en modo prueba con `stripe listen` antes de retirar el gateway mock de QA.
+
 ## Fuente de diseno analizada
 
 Este plan aplica la guia `Guia_Diseno_UX_UI_Prototipos_IA_Julissa_Mateo_Abad.pdf`, revisada en
@@ -741,7 +788,7 @@ planificarse como una version coordinada y no introducirse silenciosamente.
 ## Orden inmediato recomendado
 
 1. Configurar las credenciales de Google y del proveedor de correo en cada ambiente.
-2. Continuar con calendario y reservas completas de la Entrega B.
+2. Continuar con notificaciones y resenas de la Entrega D.
 3. Mantener cada entrega vertical verificada antes de acumular la siguiente.
 
 Este enfoque evita tanto el extremo de detener el backend por completo como el de terminar todos
