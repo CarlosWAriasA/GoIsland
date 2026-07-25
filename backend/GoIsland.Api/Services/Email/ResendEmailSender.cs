@@ -43,6 +43,26 @@ public class ResendEmailSender : IEmailSender
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task SendNotificationAsync(string email, string fullName, string subject, string message, string? actionUrl)
+    {
+        var apiKey = GetRequiredSetting("Resend:ApiKey");
+        var fromEmail = GetRequiredSetting("Email:FromEmail");
+        var fromName = _configuration["Email:FromName"] ?? "GoIsland";
+        using var request = new HttpRequestMessage(HttpMethod.Post, "emails")
+        {
+            Content = JsonContent.Create(new
+            {
+                from = $"{fromName} <{fromEmail}>",
+                to = new[] { email },
+                subject,
+                html = NotificationEmailContent.Build(fullName, message, actionUrl)
+            })
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        using var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
     private string GetRequiredSetting(string key)
     {
         return _configuration[key]

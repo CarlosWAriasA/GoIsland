@@ -3,6 +3,7 @@ using System.Text;
 using GoIsland.Api.Data;
 using GoIsland.Api.DTOs.Payments;
 using GoIsland.Api.Models;
+using GoIsland.Api.Services.Notifications;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -20,16 +21,19 @@ public class PaymentService : IPaymentService
     private readonly IPaymentGateway _gateway;
     private readonly IConfiguration _configuration;
     private readonly ILogger<PaymentService> _logger;
+    private readonly IOutboxWriter _outbox;
 
     public PaymentService(
         GoIslandDbContext context,
         IPaymentGateway gateway,
         IConfiguration configuration,
+        IOutboxWriter outbox,
         ILogger<PaymentService> logger)
     {
         _context = context;
         _gateway = gateway;
         _configuration = configuration;
+        _outbox = outbox;
         _logger = logger;
     }
 
@@ -180,6 +184,13 @@ public class PaymentService : IPaymentService
             await AddHistoryAsync(reservation, ReservationStatuses.PendingPayment,
                 ReservationStatuses.Confirmed, actorUserId,
                 $"Pago {payment.ProviderPaymentId} aprobado por {_gateway.ProviderName}.", now);
+            var experience = await _context.Experiences.AsNoTracking()
+                .SingleAsync(item => item.Id == reservation.ExperienceId);
+            await _outbox.EnqueueAsync(reservation.UserId, "PaymentConfirmed", "Pago confirmado",
+                $"El pago de tu reserva para {experience.Title} fue confirmado.", reservation);
+            await _outbox.EnqueueAsync(experience.HostId, "ReservationConfirmed", "Reserva confirmada",
+                $"Una reserva para {experience.Title} fue confirmada mediante pago.", reservation,
+                "/host/reservations");
         }
 
         await AddAttemptAsync(payment, PaymentGatewayAttemptOutcomes.Approved,
@@ -293,8 +304,15 @@ public class PaymentService : IPaymentService
                     .SingleAsync(item => item.Id == reservation.ScheduleId);
                 if (schedule.StartsAt > now)
                 {
+                    var previousSpots = schedule.AvailableSpots;
                     schedule.AvailableSpots += reservation.Quantity;
                     schedule.UpdatedAt = now;
+                    await _context.CapacityAudits.AddAsync(new CapacityAudit
+                    {
+                        ScheduleId = schedule.Id, Reservation = reservation,
+                        PreviousSpots = previousSpots, NewSpots = schedule.AvailableSpots,
+                        Reason = "PaymentRefunded", CreatedAt = now
+                    });
                 }
             }
 
@@ -302,6 +320,8 @@ public class PaymentService : IPaymentService
             reservation.UpdatedAt = now;
             await AddHistoryAsync(reservation, previous, ReservationStatuses.Refunded, adminUserId,
                 $"Reembolso mock registrado: {reason.Trim()}", now);
+            await _outbox.EnqueueAsync(reservation.UserId, "RefundCompleted", "Reembolso completado",
+                $"El reembolso de {payment.Amount:0.00} {payment.Currency} fue registrado.", reservation);
         }
 
         try

@@ -3,6 +3,7 @@ using System.Text;
 using GoIsland.Api.Data;
 using GoIsland.Api.DTOs.Reservations;
 using GoIsland.Api.Models;
+using GoIsland.Api.Services.Notifications;
 using Microsoft.EntityFrameworkCore;
 
 namespace GoIsland.Api.Services.Reservations;
@@ -12,15 +13,18 @@ public class ReservationService : IReservationService
     private const decimal MaxTotalAmount = 99_999_999.99m;
     private readonly GoIslandDbContext _context;
     private readonly ILogger<ReservationService> _logger;
+    private readonly IOutboxWriter _outbox;
     private readonly List<IReservationObserver> _observers = [];
 
     public ReservationService(
         GoIslandDbContext context,
         IEnumerable<IReservationObserver> observers,
+        IOutboxWriter outbox,
         ILogger<ReservationService> logger)
     {
         _context = context;
         _logger = logger;
+        _outbox = outbox;
         foreach (var observer in observers) Subscribe(observer);
     }
 
@@ -90,6 +94,7 @@ public class ReservationService : IReservationService
         }
 
         var now = DateTime.UtcNow;
+        var previousSpots = match.Schedule.AvailableSpots;
         match.Schedule.AvailableSpots -= request.Quantity;
         match.Schedule.UpdatedAt = now;
         var reservation = new Reservation
@@ -106,6 +111,12 @@ public class ReservationService : IReservationService
         await _context.Reservations.AddAsync(reservation);
         await AddHistoryAsync(reservation, null, reservation.Status, userId, "Reserva creada.", now);
         await AddIdempotencyAsync(reservation, userId, "Create", key, requestHash, now);
+        await AddCapacityAuditAsync(reservation, match.Schedule, previousSpots, "ReservationCreated", now);
+        await _outbox.EnqueueAsync(userId, "ReservationCreated", "Reserva pendiente de pago",
+            $"Tu reserva para {match.Experience.Title} fue creada y espera el pago.", reservation);
+        await _outbox.EnqueueAsync(match.Experience.HostId, "ReservationReceived", "Nueva reserva recibida",
+            $"Recibiste una reserva de {request.Quantity} cupos para {match.Experience.Title}.", reservation,
+            "/host/reservations");
 
         try
         {
@@ -180,6 +191,8 @@ public class ReservationService : IReservationService
             return new(ReservationCreationStatus.InsufficientSpots);
 
         var now = DateTime.UtcNow;
+        var previousCurrentSpots = current.AvailableSpots;
+        var previousTargetSpots = target.AvailableSpots;
         current.AvailableSpots += reservation.Quantity;
         current.UpdatedAt = now;
         target.AvailableSpots -= reservation.Quantity;
@@ -189,6 +202,10 @@ public class ReservationService : IReservationService
         await AddHistoryAsync(reservation, reservation.Status, reservation.Status, userId,
             $"Reprogramada del horario {current.Id} al {target.Id}.", now);
         await AddIdempotencyAsync(reservation, userId, operation, key, requestHash, now);
+        await AddCapacityAuditAsync(reservation, current, previousCurrentSpots, "ReservationRescheduledFrom", now);
+        await AddCapacityAuditAsync(reservation, target, previousTargetSpots, "ReservationRescheduledTo", now);
+        await _outbox.EnqueueAsync(userId, "ReservationRescheduled", "Reserva reprogramada",
+            $"Tu reserva fue movida al {target.StartsAt:yyyy-MM-dd HH:mm} UTC.", reservation);
 
         try
         {
@@ -259,6 +276,8 @@ public class ReservationService : IReservationService
         await AddHistoryAsync(owned.Reservation, previous, owned.Reservation.Status, hostUserId,
             "Marcada como completada por el anfitrion.", now);
         await AddIdempotencyAsync(owned.Reservation, hostUserId, operation, key, requestHash, now);
+        await _outbox.EnqueueAsync(owned.Reservation.UserId, "ReservationCompleted", "Experiencia completada",
+            "Tu experiencia termino. Ya puedes compartir una resena verificada.", owned.Reservation);
         await _context.SaveChangesAsync();
         return new(ReservationCreationStatus.Success, await BuildResponseAsync(id));
     }
@@ -309,11 +328,23 @@ public class ReservationService : IReservationService
             : ReservationStatuses.CancelledByTourist;
         reservation.CancelledAt = now;
         reservation.UpdatedAt = now;
+        var previousSpots = schedule.AvailableSpots;
         schedule.AvailableSpots += reservation.Quantity;
         schedule.UpdatedAt = now;
         await AddHistoryAsync(reservation, previous, reservation.Status, actorUserId,
             reason ?? (byHost ? "Cancelada por el anfitrion." : "Cancelada por el turista."), now);
         await AddIdempotencyAsync(reservation, actorUserId, operation, key, requestHash, now);
+        await AddCapacityAuditAsync(reservation, schedule, previousSpots,
+            byHost ? "CancelledByHost" : "CancelledByTourist", now);
+        var otherUserId = byHost
+            ? reservation.UserId
+            : await _context.Experiences.Where(item => item.Id == reservation.ExperienceId)
+                .Select(item => item.HostId).SingleAsync();
+        await _outbox.EnqueueAsync(otherUserId,
+            byHost ? "ReservationCancelledByHost" : "ReservationCancelledByTourist",
+            "Reserva cancelada",
+            byHost ? "El anfitrion cancelo la reserva." : "El turista cancelo la reserva.",
+            reservation, byHost ? null : "/host/reservations");
 
         try
         {
@@ -441,6 +472,18 @@ public class ReservationService : IReservationService
             Operation = operation,
             Key = key,
             RequestHash = requestHash,
+            CreatedAt = now
+        });
+
+    private async Task AddCapacityAuditAsync(Reservation reservation, ExperienceSchedule schedule,
+        int previousSpots, string reason, DateTime now) =>
+        await _context.CapacityAudits.AddAsync(new CapacityAudit
+        {
+            Reservation = reservation,
+            ScheduleId = schedule.Id,
+            PreviousSpots = previousSpots,
+            NewSpots = schedule.AvailableSpots,
+            Reason = reason,
             CreatedAt = now
         });
 

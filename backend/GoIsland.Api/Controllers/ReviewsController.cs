@@ -1,0 +1,84 @@
+using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using GoIsland.Api.DTOs.Reviews;
+using GoIsland.Api.Models;
+using GoIsland.Api.Services.Reviews;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace GoIsland.Api.Controllers;
+
+[ApiController, Route("api")]
+public class ReviewsController : ControllerBase
+{
+    private readonly IReviewService _service;
+    public ReviewsController(IReviewService service) => _service = service;
+
+    [HttpPost("reservations/{reservationId:int}/review"), Authorize]
+    public async Task<IActionResult> Create(int reservationId, ReviewRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        var result = await _service.CreateAsync(userId, reservationId, request);
+        return Map(result, created: true);
+    }
+
+    [HttpPut("reviews/{id:int}"), Authorize]
+    public async Task<IActionResult> Update(int id, ReviewRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        return Map(await _service.UpdateAsync(userId, id, request));
+    }
+
+    [HttpDelete("reviews/{id:int}"), Authorize]
+    public async Task<IActionResult> Delete(int id)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        var status = await _service.DeleteAsync(userId, id);
+        return status switch
+        {
+            ReviewMutationStatus.Success => NoContent(),
+            ReviewMutationStatus.Forbidden => StatusCode(403, new { message = "No puedes eliminar una resena ajena." }),
+            _ => NotFound(new { message = "No se encontro la resena." })
+        };
+    }
+
+    [HttpGet("experiences/{id:int}/reviews"), AllowAnonymous]
+    public async Task<IActionResult> ForExperience(int id) => Ok(await _service.GetForExperienceAsync(id));
+
+    [HttpGet("hosts/{id:int}/reviews"), AllowAnonymous]
+    public async Task<IActionResult> ForHost(int id) => Ok(await _service.GetForHostAsync(id));
+
+    [HttpGet("admin/reviews"), Authorize(Roles = UserRoles.Admin)]
+    public async Task<IActionResult> ForAdmin([FromQuery] string? status)
+    {
+        if (!string.IsNullOrWhiteSpace(status) && !ReviewModerationStatuses.All.Contains(status))
+            return BadRequest(new { message = "El estado de moderacion no es valido." });
+        return Ok(await _service.GetForAdminAsync(status));
+    }
+
+    [HttpPost("admin/reviews/{id:int}/hide"), Authorize(Roles = UserRoles.Admin)]
+    public async Task<IActionResult> Hide(int id, ReviewModerationRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        return Map(await _service.HideAsync(userId, id, request.Reason));
+    }
+
+    private IActionResult Map(ReviewMutationResult result, bool created = false) => result.Status switch
+    {
+        ReviewMutationStatus.Success when created => StatusCode(StatusCodes.Status201Created, result.Review),
+        ReviewMutationStatus.Success => Ok(result.Review),
+        ReviewMutationStatus.Forbidden => StatusCode(403, new { message = "No puedes modificar una resena ajena." }),
+        ReviewMutationStatus.ReservationNotCompleted => Conflict(new { message = "Solo puedes resenar una reserva completada." }),
+        ReviewMutationStatus.Duplicate => Conflict(new { message = "Esta reserva ya tiene una resena." }),
+        ReviewMutationStatus.EditWindowExpired => Conflict(new { message = "El periodo de 30 dias para editar la resena termino." }),
+        _ => NotFound(new { message = "No se encontro la reserva o resena." })
+    };
+
+    private bool TryGetUserId(out int userId) => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
+}
+
+public class ReviewModerationRequest
+{
+    [Required, StringLength(500, MinimumLength = 3)]
+    public string Reason { get; set; } = string.Empty;
+}

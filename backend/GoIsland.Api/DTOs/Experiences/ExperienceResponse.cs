@@ -12,4 +12,6 @@ public class ExperienceResponse
     public int AvailableSpots { get; set; }
     public bool IsApproved { get; set; }
     public DateTime CreatedAt { get; set; }
+    public decimal? AverageRating { get; set; }
+    public int ReviewCount { get; set; }
 }

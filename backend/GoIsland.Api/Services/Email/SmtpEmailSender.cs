@@ -58,6 +58,36 @@ public class SmtpEmailSender : IEmailSender
         await client.SendMailAsync(message);
     }
 
+    public async Task SendNotificationAsync(string email, string fullName, string subject, string body, string? actionUrl)
+    {
+        var host = GetRequiredSetting("Smtp:Host");
+        var fromEmail = GetRequiredSetting("Email:FromEmail");
+        var fromName = _configuration["Email:FromName"] ?? "GoIsland";
+        using var message = new MailMessage
+        {
+            From = new MailAddress(fromEmail, fromName),
+            Subject = subject,
+            Body = NotificationEmailContent.Build(fullName, body, actionUrl),
+            IsBodyHtml = true
+        };
+        message.To.Add(new MailAddress(email));
+        using var client = BuildClient(host);
+        await client.SendMailAsync(message);
+    }
+
+    private SmtpClient BuildClient(string host)
+    {
+        var client = new SmtpClient(host, _configuration.GetValue<int?>("Smtp:Port") ?? 587)
+        {
+            EnableSsl = _configuration.GetValue<bool?>("Smtp:EnableSsl") ?? true,
+            UseDefaultCredentials = false
+        };
+        var username = _configuration["Smtp:Username"];
+        var password = _configuration["Smtp:Password"];
+        if (!string.IsNullOrWhiteSpace(username)) client.Credentials = new NetworkCredential(username, password);
+        return client;
+    }
+
     private string GetRequiredSetting(string key)
     {
         return _configuration[key]

@@ -18,6 +18,7 @@ import HostSchedules from '../pages/HostSchedules';
 import HostReservations from '../pages/HostReservations';
 import AdminModeration from '../pages/AdminModeration';
 import RoleRoute from './RoleRoute';
+import Notifications from '../pages/Notifications';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -36,6 +37,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/reservations" element={<Reservations />} />
         <Route path="/reservations/:id" element={<ReservationDetail />} />
         <Route path="/host-profile" element={<HostProfile />} />
+        <Route path="/notifications" element={<Notifications />} />
 
         <Route element={<RoleRoute allowedRoles={['Host']} />}>
           <Route path="/host/experiences" element={<HostExperiences />} />

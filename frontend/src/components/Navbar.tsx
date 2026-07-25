@@ -86,6 +86,9 @@ export const Navbar = () => {
               <NavLink to="/profile" className={getNavLinkClass} onClick={closeMenu}>
                 Mi perfil
               </NavLink>
+              <NavLink to="/notifications" className={getNavLinkClass} onClick={closeMenu}>
+                Notificaciones
+              </NavLink>
               <span className="site-nav__greeting">
                 Hola, <strong>{user?.fullName.split(' ')[0]}</strong>
               </span>

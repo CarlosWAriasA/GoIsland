@@ -395,3 +395,76 @@ Content-Type: application/json
 }
 
 ###
+
+# Bandeja persistente del usuario autenticado
+GET {{GoIsland.Api_HostAddress}}/api/notifications?unreadOnly=false
+Authorization: Bearer {{GoIsland.Api_Token}}
+Accept: application/json
+
+###
+
+PATCH {{GoIsland.Api_HostAddress}}/api/notifications/1/read
+Authorization: Bearer {{GoIsland.Api_Token}}
+
+###
+
+PUT {{GoIsland.Api_HostAddress}}/api/notifications/preferences
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "dashboardEnabled": true,
+  "emailEnabled": true,
+  "pushEnabled": false
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/devices
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "token": "firebase-registration-token-with-at-least-20-characters",
+  "platform": "Web"
+}
+
+###
+
+# 201 solo si la reserva pertenece al usuario y esta Completed
+POST {{GoIsland.Api_HostAddress}}/api/reservations/1/review
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "comment": "Una experiencia excelente y muy bien organizada."
+}
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/experiences/1/reviews
+Accept: application/json
+
+###
+
+PUT {{GoIsland.Api_HostAddress}}/api/reviews/1
+Authorization: Bearer {{GoIsland.Api_Token}}
+Content-Type: application/json
+
+{
+  "rating": 4,
+  "comment": "Muy buena experiencia; actualizo algunos detalles de mi opinion."
+}
+
+###
+
+POST {{GoIsland.Api_HostAddress}}/api/admin/reviews/1/hide
+Authorization: Bearer {{GoIsland.Api_AdminToken}}
+Content-Type: application/json
+
+{
+  "reason": "Contenido reportado y revisado por moderacion."
+}
+
+###

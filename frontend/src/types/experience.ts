@@ -9,6 +9,8 @@ export interface Experience {
   availableSpots: number;
   isApproved: boolean;
   createdAt: string;
+  averageRating: number | null;
+  reviewCount: number;
 }
 
 export interface ExperienceSearchParams {

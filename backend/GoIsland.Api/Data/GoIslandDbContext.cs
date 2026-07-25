@@ -24,6 +24,13 @@ public class GoIslandDbContext : DbContext
     public DbSet<HostProfile> HostProfiles => Set<HostProfile>();
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
     public DbSet<UserExternalLogin> UserExternalLogins => Set<UserExternalLogin>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<UserNotificationPreference> UserNotificationPreferences => Set<UserNotificationPreference>();
+    public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<OutboxAttempt> OutboxAttempts => Set<OutboxAttempt>();
+    public DbSet<CapacityAudit> CapacityAudits => Set<CapacityAudit>();
+    public DbSet<Review> Reviews => Set<Review>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -282,6 +289,113 @@ public class GoIslandDbContext : DbContext
             entity.Property(log => log.Reason).HasColumnName("reason").HasMaxLength(500);
             entity.Property(log => log.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.HasIndex(log => new { log.EntityType, log.EntityId });
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("notifications");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.UserId).HasColumnName("user_id").IsRequired();
+            entity.Property(item => item.OutboxMessageId).HasColumnName("outbox_message_id").IsRequired();
+            entity.Property(item => item.Type).HasColumnName("type").HasMaxLength(80).IsRequired();
+            entity.Property(item => item.Title).HasColumnName("title").HasMaxLength(160).IsRequired();
+            entity.Property(item => item.Message).HasColumnName("message").HasMaxLength(1000).IsRequired();
+            entity.Property(item => item.ActionUrl).HasColumnName("action_url").HasMaxLength(500);
+            entity.Property(item => item.ReadAt).HasColumnName("read_at");
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.HasIndex(item => item.OutboxMessageId).IsUnique();
+            entity.HasIndex(item => new { item.UserId, item.CreatedAt });
+        });
+
+        modelBuilder.Entity<UserNotificationPreference>(entity =>
+        {
+            entity.ToTable("user_notification_preferences");
+            entity.HasKey(item => item.UserId);
+            entity.Property(item => item.UserId).HasColumnName("user_id");
+            entity.Property(item => item.DashboardEnabled).HasColumnName("dashboard_enabled");
+            entity.Property(item => item.EmailEnabled).HasColumnName("email_enabled");
+            entity.Property(item => item.PushEnabled).HasColumnName("push_enabled");
+            entity.Property(item => item.UpdatedAt).HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<DeviceToken>(entity =>
+        {
+            entity.ToTable("device_tokens");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.UserId).HasColumnName("user_id");
+            entity.Property(item => item.Token).HasColumnName("token").HasMaxLength(4096).IsRequired();
+            entity.Property(item => item.Platform).HasColumnName("platform").HasMaxLength(20).IsRequired();
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
+            entity.Property(item => item.LastSeenAt).HasColumnName("last_seen_at");
+            entity.HasIndex(item => item.Token).IsUnique();
+            entity.HasIndex(item => item.UserId);
+        });
+
+        modelBuilder.Entity<OutboxMessage>(entity =>
+        {
+            entity.ToTable("outbox_messages");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.UserId).HasColumnName("user_id");
+            entity.Property(item => item.ReservationId).HasColumnName("reservation_id");
+            entity.Property(item => item.Type).HasColumnName("type").HasMaxLength(80).IsRequired();
+            entity.Property(item => item.Title).HasColumnName("title").HasMaxLength(160).IsRequired();
+            entity.Property(item => item.Message).HasColumnName("message").HasMaxLength(1000).IsRequired();
+            entity.Property(item => item.ActionUrl).HasColumnName("action_url").HasMaxLength(500);
+            entity.Property(item => item.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
+            entity.Property(item => item.AttemptCount).HasColumnName("attempt_count");
+            entity.Property(item => item.NextAttemptAt).HasColumnName("next_attempt_at");
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
+            entity.Property(item => item.ProcessedAt).HasColumnName("processed_at");
+            entity.Property(item => item.LastError).HasColumnName("last_error").HasMaxLength(500);
+            entity.HasIndex(item => new { item.Status, item.NextAttemptAt });
+        });
+
+        modelBuilder.Entity<OutboxAttempt>(entity =>
+        {
+            entity.ToTable("outbox_attempts");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.OutboxMessageId).HasColumnName("outbox_message_id");
+            entity.Property(item => item.Channel).HasColumnName("channel").HasMaxLength(40).IsRequired();
+            entity.Property(item => item.Succeeded).HasColumnName("succeeded");
+            entity.Property(item => item.ErrorCode).HasColumnName("error_code").HasMaxLength(120);
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
+            entity.HasIndex(item => new { item.OutboxMessageId, item.Channel });
+        });
+
+        modelBuilder.Entity<CapacityAudit>(entity =>
+        {
+            entity.ToTable("capacity_audits");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.ScheduleId).HasColumnName("schedule_id");
+            entity.Property(item => item.ReservationId).HasColumnName("reservation_id");
+            entity.Property(item => item.PreviousSpots).HasColumnName("previous_spots");
+            entity.Property(item => item.NewSpots).HasColumnName("new_spots");
+            entity.Property(item => item.Reason).HasColumnName("reason").HasMaxLength(120).IsRequired();
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<Review>(entity =>
+        {
+            entity.ToTable("reviews");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.ReservationId).HasColumnName("reservation_id");
+            entity.Property(item => item.UserId).HasColumnName("user_id");
+            entity.Property(item => item.ExperienceId).HasColumnName("experience_id");
+            entity.Property(item => item.HostId).HasColumnName("host_id");
+            entity.Property(item => item.Rating).HasColumnName("rating");
+            entity.Property(item => item.Comment).HasColumnName("comment").HasMaxLength(1000).IsRequired();
+            entity.Property(item => item.ModerationStatus).HasColumnName("moderation_status").HasMaxLength(40).IsRequired();
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
+            entity.Property(item => item.UpdatedAt).HasColumnName("updated_at");
+            entity.HasIndex(item => item.ReservationId).IsUnique();
+            entity.HasIndex(item => new { item.ExperienceId, item.ModerationStatus });
+            entity.HasIndex(item => new { item.HostId, item.ModerationStatus });
         });
     }
 }

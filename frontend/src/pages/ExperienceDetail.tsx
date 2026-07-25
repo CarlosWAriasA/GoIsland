@@ -22,7 +22,8 @@ import Skeleton from '../components/Skeleton';
 import { useAuth } from '../hooks/useAuth';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
-import type { Experience, ExperienceSchedule } from '../types';
+import { reviewService } from '../services/reviewService';
+import type { Experience, ExperienceSchedule, Review } from '../types';
 
 const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
   style: 'currency',
@@ -99,12 +100,14 @@ export const ExperienceDetail = () => {
     requestKey: string;
     experience: Experience | null;
     schedules: ExperienceSchedule[];
+    reviews: Review[];
     error: string | null;
     notFound: boolean;
   } | null>(null);
   const loading = isValidId && result?.requestKey !== requestKey;
   const experience = result?.requestKey === requestKey ? result.experience : null;
   const schedules = result?.requestKey === requestKey ? result.schedules : [];
+  const reviews = result?.requestKey === requestKey ? result.reviews : [];
   const error = result?.requestKey === requestKey ? result.error : null;
   const notFound = !isValidId || (result?.requestKey === requestKey && result.notFound);
 
@@ -116,11 +119,13 @@ export const ExperienceDetail = () => {
     Promise.all([
       experienceService.getExperience(parsedId, controller.signal),
       experienceService.getAvailability(parsedId, undefined, controller.signal),
+      reviewService.forExperience(parsedId, controller.signal),
     ])
-      .then(([data, availability]) => setResult({
+      .then(([data, availability, publicReviews]) => setResult({
         requestKey,
         experience: data,
         schedules: availability,
+        reviews: publicReviews,
         error: null,
         notFound: false,
       }))
@@ -131,6 +136,7 @@ export const ExperienceDetail = () => {
           requestKey,
           experience: null,
           schedules: [],
+          reviews: [],
           error: apiError.status === 404 ? null : apiError.message,
           notFound: apiError.status === 404,
         });
@@ -260,6 +266,18 @@ export const ExperienceDetail = () => {
           </p>
         </aside>
       </div>
+      <section className="surface-panel experience-reviews" aria-labelledby="experience-reviews-title">
+        <div className="experience-reviews__heading">
+          <h2 id="experience-reviews-title">Resenas verificadas</h2>
+          {experience.averageRating !== null && <strong>{experience.averageRating.toFixed(1)} / 5 · {experience.reviewCount}</strong>}
+        </div>
+        {reviews.length === 0 ? <p>Aun no hay resenas de reservas completadas.</p> : (
+          <ol>{reviews.map((review) => <li key={review.id} className="review-card">
+            <div><strong>{review.authorName}</strong><span aria-label={`${review.rating} de 5 estrellas`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span></div>
+            <p>{review.comment}</p><small>{formatDate(review.createdAt)}</small>
+          </li>)}</ol>
+        )}
+      </section>
       {reservationOpen && (
         <ReservationDialog
           experience={experience}

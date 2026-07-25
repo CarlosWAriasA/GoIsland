@@ -4,3 +4,5 @@ export * from './reservation';
 export * from './host';
 export * from './schedule';
 export * from './payment';
+export * from './notification';
+export * from './review';

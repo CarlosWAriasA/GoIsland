@@ -8,6 +8,7 @@ import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import Input from '../components/Input';
 import SelectField from '../components/SelectField';
+import TextAreaField from '../components/TextAreaField';
 import Skeleton from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../hooks/useAuth';
@@ -17,7 +18,8 @@ import { paymentService } from '../services/paymentService';
 import { reservationService } from '../services/reservationService';
 import { getPaymentStatusLabel, getPaymentStatusTone } from '../utils/paymentStatus';
 import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
-import type { ExperienceSchedule, Payment, Reservation } from '../types';
+import { reviewService } from '../services/reviewService';
+import type { ExperienceSchedule, Payment, Reservation, Review } from '../types';
 
 const formatPrice = (price: number, currency = 'USD') => new Intl.NumberFormat('es-DO', {
   style: 'currency', currency,
@@ -42,6 +44,7 @@ interface ReservationDetailResult {
   payments: Payment[];
   error: string | null;
   notFound: boolean;
+  review: Review | null;
 }
 
 type PaymentAction = 'pay' | 'confirm' | 'reject' | 'refund';
@@ -56,10 +59,12 @@ export const ReservationDetail = () => {
   const { user } = useAuth();
   const [result, setResult] = useState<ReservationDetailResult | null>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
-  const [busyAction, setBusyAction] = useState<'cancel' | 'reschedule' | PaymentAction | null>(null);
+  const [busyAction, setBusyAction] = useState<'cancel' | 'reschedule' | 'review' | PaymentAction | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [refundReason, setRefundReason] = useState('');
+  const [rating, setRating] = useState('5');
+  const [reviewComment, setReviewComment] = useState('');
   const loading = isValidId && result?.requestKey !== requestKey;
   const currentResult = result?.requestKey === requestKey ? result : null;
   const created = location.state?.created === true;
@@ -78,16 +83,22 @@ export const ReservationDetail = () => {
           );
         }
         const payments = await paymentService.getForReservation(parsedId, controller.signal);
+        const reviews = reservation.status === 'Completed'
+          ? await reviewService.forExperience(reservation.experienceId, controller.signal)
+          : [];
+        const review = reviews.find((item) => item.reservationId === reservation.id) ?? null;
         if (!controller.signal.aborted) {
-          setResult({ requestKey, reservation, schedules, payments, error: null, notFound: false });
+          setResult({ requestKey, reservation, schedules, payments, review, error: null, notFound: false });
           setSelectedScheduleId(String(schedules.find((item) => item.id !== reservation.scheduleId)?.id ?? ''));
+          setRating(String(review?.rating ?? 5));
+          setReviewComment(review?.comment ?? '');
         }
       })
       .catch((requestError: unknown) => {
         if (axios.isCancel(requestError)) return;
         const apiError = toApiError(requestError, 'No fue posible cargar la reserva.');
         setResult({
-          requestKey, reservation: null, schedules: [], payments: [],
+          requestKey, reservation: null, schedules: [], payments: [], review: null,
           error: apiError.status === 404 ? null : apiError.message,
           notFound: apiError.status === 404,
         });
@@ -176,6 +187,36 @@ export const ReservationDetail = () => {
       () => paymentService.refund(paymentId, reason),
       'El reembolso simulado quedó registrado y la reserva pasó a estado reembolsado.',
     );
+  };
+
+  const saveReview = async () => {
+    const comment = reviewComment.trim();
+    if (comment.length < 10) { setActionError('La resena debe tener al menos 10 caracteres.'); return; }
+    setBusyAction('review');
+    setActionError(null);
+    try {
+      const input = { rating: Number(rating), comment };
+      const review = currentResult?.review
+        ? await reviewService.update(currentResult.review.id, input)
+        : await reviewService.create(parsedId, input);
+      setResult((current) => current?.requestKey === requestKey ? { ...current, review } : current);
+      setActionMessage('Tu resena verificada fue guardada.');
+    } catch (requestError: unknown) {
+      setActionError(toApiError(requestError, 'No fue posible guardar la resena.').message);
+    } finally { setBusyAction(null); }
+  };
+
+  const deleteReview = async () => {
+    if (!currentResult?.review || !window.confirm('¿Eliminar tu resena?')) return;
+    setBusyAction('review');
+    try {
+      await reviewService.remove(currentResult.review.id);
+      setResult((current) => current?.requestKey === requestKey ? { ...current, review: null } : current);
+      setReviewComment('');
+      setActionMessage('Tu resena fue eliminada.');
+    } catch (requestError: unknown) {
+      setActionError(toApiError(requestError, 'No fue posible eliminar la resena.').message);
+    } finally { setBusyAction(null); }
   };
 
   if (loading) return <ReservationDetailSkeleton />;
@@ -352,6 +393,26 @@ export const ReservationDetail = () => {
           )}
           <Button variant="danger" onClick={() => void cancelReservation()}
             isLoading={busyAction === 'cancel'} disabled={busyAction !== null}>Cancelar reserva</Button>
+        </section>
+      )}
+
+      {reservation.status === 'Completed' && isOwner && (
+        <section className="surface-panel review-form" aria-labelledby="review-form-title">
+          <h2 id="review-form-title">{currentResult.review ? 'Editar tu resena' : 'Comparte tu experiencia'}</h2>
+          <p>Esta opinion queda vinculada a una reserva completada.</p>
+          <SelectField label="Calificacion" value={rating} onChange={(event) => setRating(event.target.value)}>
+            <option value="5">5 · Excelente</option><option value="4">4 · Muy buena</option>
+            <option value="3">3 · Buena</option><option value="2">2 · Regular</option><option value="1">1 · Mala</option>
+          </SelectField>
+          <TextAreaField label="Comentario" value={reviewComment} maxLength={1000}
+            hint={`${reviewComment.length}/1000; minimo 10 caracteres.`}
+            onChange={(event) => setReviewComment(event.target.value)} />
+          <div className="management-actions">
+            <Button onClick={() => void saveReview()} isLoading={busyAction === 'review'}>
+              Guardar resena
+            </Button>
+            {currentResult.review && <Button variant="danger" onClick={() => void deleteReview()}>Eliminar resena</Button>}
+          </div>
         </section>
       )}
 

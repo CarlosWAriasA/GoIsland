@@ -5,10 +5,12 @@ using GoIsland.Api.Services.Email;
 using GoIsland.Api.Services.Experiences;
 using GoIsland.Api.Services.Hosts;
 using GoIsland.Api.Services.Payments;
+using GoIsland.Api.Services.Notifications;
 using GoIsland.Api.Services.Reservations;
 using GoIsland.Api.Services.Reservations.Observers;
 using GoIsland.Api.Services.Security;
 using GoIsland.Api.Services.Schedules;
+using GoIsland.Api.Services.Reviews;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
@@ -60,6 +62,10 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
         services.AddScoped<IExperienceService, ExperienceService>();
         services.AddScoped<IExperienceManagementService, ExperienceManagementService>();
         services.AddScoped<IHostService, HostService>();
+        services.AddScoped<NotificationService>();
+        services.AddScoped<INotificationService>(provider => provider.GetRequiredService<NotificationService>());
+        services.AddScoped<IOutboxWriter>(provider => provider.GetRequiredService<NotificationService>());
+        services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IReservationObserver, EmailNotificationObserver>();
         services.AddScoped<IReservationObserver, PushNotificationObserver>();
         services.AddScoped<IReservationObserver, CapacityManagerObserver>();
@@ -113,6 +119,13 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             "Scripts",
             "006_create_payments.sql"));
         await Context.Database.ExecuteSqlRawAsync(paymentsScript);
+
+        var notificationsScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "007_create_notifications_and_reviews.sql"));
+        await Context.Database.ExecuteSqlRawAsync(notificationsScript);
 
         // Fuerza una consulta real y falla temprano si el esquema no esta aplicado.
         await Context.Users.AsNoTracking().AnyAsync();

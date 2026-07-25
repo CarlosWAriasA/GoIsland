@@ -258,6 +258,30 @@ Checklist final de la guia UX/UI:
 - Evaluar Stripe Connect para transferir `HostNetAmount` a los anfitriones cuando exista onboarding.
 - Verificar en modo prueba con `stripe listen` antes de retirar el gateway mock de QA.
 
+### Entrega D implementada - pendiente validacion externa de push
+
+- PostgreSQL incorpora `outbox_messages`, intentos por canal, notificaciones persistentes,
+  preferencias, dispositivos, auditoria de capacidad y resenas verificadas; el script idempotente
+  `007_create_notifications_and_reviews.sql` fue aplicado al ambiente compartido.
+- Crear, reprogramar, cancelar y completar reservas, confirmar pagos y registrar reembolsos agregan
+  sus eventos al outbox dentro del mismo `SaveChanges` que modifica el negocio.
+- Un servicio en segundo plano reclama mensajes de forma atomica, recupera leases vencidos y aplica
+  hasta ocho intentos con espera exponencial. Dashboard, correo y push registran sus intentos por
+  separado para no repetir un canal configurado ya completado durante un reintento.
+- Correo transaccional reutiliza el proveedor SMTP/Resend configurado. Push usa Firebase Cloud
+  Messaging HTTP v1 y credenciales de cuenta de servicio protegidas; el ambiente actual no tiene
+  `Firebase:ProjectId` ni `Firebase:ServiceAccountJson`, por lo que la entrega no afirma una prueba
+  externa de push hasta configurar ambos secretos.
+- El cliente agrega `/notifications`, lectura por usuario y preferencias de bandeja, correo y push;
+  la ruta es privada y conserva los estados accesibles de carga, vacio, error y exito.
+- Una resena solo nace desde una reserva `Completed`, es unica por reserva y editable por su autor
+  durante 30 dias. Eliminar conserva el registro como `Deleted`; ocultar exige motivo y crea
+  auditoria administrativa. Las consultas publicas y los agregados incluyen solo `Visible`.
+- El detalle de experiencia muestra promedio, cantidad y comentarios verificados; el detalle de una
+  reserva completada permite crear, editar y eliminar la resena propia.
+- Verificacion aprobada: compilacion Release sin advertencias, 55 pruebas .NET/PostgreSQL,
+  `npm run lint`, `npm run build`, `git diff --check` y navegacion local sin errores de consola.
+
 ## Fuente de diseno analizada
 
 Este plan aplica la guia `Guia_Diseno_UX_UI_Prototipos_IA_Julissa_Mateo_Abad.pdf`, revisada en
@@ -788,8 +812,9 @@ planificarse como una version coordinada y no introducirse silenciosamente.
 ## Orden inmediato recomendado
 
 1. Configurar las credenciales de Google y del proveedor de correo en cada ambiente.
-2. Continuar con notificaciones y resenas de la Entrega D.
-3. Mantener cada entrega vertical verificada antes de acumular la siguiente.
+2. Configurar Firebase en QA y comprobar una entrega push real para cerrar completamente la Entrega D.
+3. Comenzar mapas y dashboard de la Entrega E solo despues de esa validacion externa.
+4. Mantener cada entrega vertical verificada antes de acumular la siguiente.
 
 Este enfoque evita tanto el extremo de detener el backend por completo como el de terminar todos
 los modulos sin haber comprobado que el frontend puede consumir correctamente sus contratos.
