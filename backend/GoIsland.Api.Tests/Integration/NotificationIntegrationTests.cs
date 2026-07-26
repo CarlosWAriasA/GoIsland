@@ -18,7 +18,12 @@ public class NotificationIntegrationTests : PostgresIntegrationTestBase
             DashboardEnabled = true, EmailEnabled = false, PushEnabled = true
         });
         var device = await service.RegisterDeviceAsync(first.Id,
-            new RegisterDeviceRequest { Platform = "Web", Token = $"token-{Guid.NewGuid():N}" });
+            new RegisterDeviceRequest
+            {
+                Endpoint = $"https://push.goisland.test/{Guid.NewGuid():N}",
+                P256dh = Convert.ToBase64String(Guid.NewGuid().ToByteArray()) + "public-key",
+                Auth = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+            });
         var outbox = new OutboxMessage
         {
             UserId = first.Id, Type = "Test", Title = "Evento persistido", Message = "Mensaje de integracion"

@@ -41,7 +41,7 @@ builder.Services
 
             return new BadRequestObjectResult(new
             {
-                message = "La solicitud tiene errores de validacion.",
+                message = "Revisa los datos indicados e inténtalo nuevamente.",
                 errors
             });
         };
@@ -111,7 +111,7 @@ builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<INotificationService>(services => services.GetRequiredService<NotificationService>());
 builder.Services.AddScoped<IOutboxWriter>(services => services.GetRequiredService<NotificationService>());
 builder.Services.AddScoped<IOutboxProcessor, OutboxProcessor>();
-builder.Services.AddHttpClient<IPushNotificationSender, FirebasePushSender>();
+builder.Services.AddSingleton<IPushNotificationSender, WebPushSender>();
 builder.Services.AddHostedService<OutboxBackgroundService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IReservationObserver, EmailNotificationObserver>();
@@ -202,8 +202,8 @@ app.UseExceptionHandler(errorApplication =>
         await context.Response.WriteAsJsonAsync(new
         {
             message = databaseUnavailable
-                ? "La base de datos no esta disponible temporalmente."
-                : "Ocurrio un error inesperado al procesar la solicitud."
+                ? "GoIsland no está disponible temporalmente. Inténtalo de nuevo en unos minutos."
+                : "Ocurrió un error inesperado. Inténtalo nuevamente."
         });
     });
 });

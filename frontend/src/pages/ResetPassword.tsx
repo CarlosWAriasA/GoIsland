@@ -28,7 +28,7 @@ export const ResetPassword = () => {
 
   const validate = () => {
     const errors: ResetErrors = {};
-    if (!token) errors.token = 'El token de recuperacion es obligatorio.';
+    if (!token) errors.token = 'El enlace de recuperación está incompleto.';
     if (!newPassword) errors.newPassword = 'La nueva contrasena es obligatoria.';
     else if (newPassword.length < 6 || newPassword.length > 100) {
       errors.newPassword = 'La nueva contrasena debe tener entre 6 y 100 caracteres.';
@@ -75,7 +75,7 @@ export const ResetPassword = () => {
           <p>Elige una contraseña diferente a la utilizada anteriormente.</p>
         </header>
 
-        {!token && <Alert tone="error">El enlace de recuperación no contiene un token válido.</Alert>}
+        {!token && <Alert tone="error">Este enlace de recuperación no es válido o está incompleto.</Alert>}
         {fieldErrors.token && <Alert tone="error">{fieldErrors.token}</Alert>}
         {error && <Alert tone="error">{error}</Alert>}
         {success && (

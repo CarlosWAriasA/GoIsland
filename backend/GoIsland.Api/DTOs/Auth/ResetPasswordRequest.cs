@@ -4,8 +4,8 @@ namespace GoIsland.Api.DTOs.Auth;
 
 public class ResetPasswordRequest
 {
-    [Required(ErrorMessage = "El token de recuperacion es obligatorio.")]
-    [StringLength(500, ErrorMessage = "El token de recuperacion no es valido.")]
+    [Required(ErrorMessage = "El enlace de recuperación está incompleto.")]
+    [StringLength(500, ErrorMessage = "El enlace de recuperación no es válido.")]
     public string Token { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "La nueva contrasena es obligatoria.")]

@@ -233,10 +233,10 @@ Checklist final de la guia UX/UI:
 - `POST /api/admin/payments/{id}/refund` registra el reembolso mock con motivo, mueve la reserva a
   `Refunded` y libera los cupos exactamente una vez; un bloqueo por pago y una clave estable del
   gateway hacen que repetirlo, incluso concurrentemente, no duplique efectos.
-- El detalle de reserva del frontend muestra el desglose real devuelto por el servidor, el
-  distintivo `Proveedor: Mock (simulacion)`, los controles para decidir el resultado simulado, el
-  reintento tras un rechazo y el formulario de reembolso del administrador; no se solicitan ni
-  representan datos de tarjeta.
+- El detalle de reserva muestra el desglose real devuelto por el servidor y una unica accion
+  `Pagar`; en el ambiente actual el pago se confirma automaticamente sin exponer al usuario el
+  proveedor temporal ni controles de simulacion. El administrador conserva el formulario de
+  reembolso y el cliente no solicita ni representa datos de tarjeta.
 - El script idempotente `006_create_payments.sql` fue aplicado al PostgreSQL compartido.
 - Verificacion aprobada: compilacion Release sin advertencias, 51 pruebas (43 PostgreSQL y 8 de
   gateway, contrato HTTP y validacion de arranque), `npm run lint`, `npm run build`,
@@ -258,7 +258,7 @@ Checklist final de la guia UX/UI:
 - Evaluar Stripe Connect para transferir `HostNetAmount` a los anfitriones cuando exista onboarding.
 - Verificar en modo prueba con `stripe listen` antes de retirar el gateway mock de QA.
 
-### Entrega D implementada - pendiente validacion externa de push
+### Entrega D completada - Notificaciones y resenas
 
 - PostgreSQL incorpora `outbox_messages`, intentos por canal, notificaciones persistentes,
   preferencias, dispositivos, auditoria de capacidad y resenas verificadas; el script idempotente
@@ -268,10 +268,16 @@ Checklist final de la guia UX/UI:
 - Un servicio en segundo plano reclama mensajes de forma atomica, recupera leases vencidos y aplica
   hasta ocho intentos con espera exponencial. Dashboard, correo y push registran sus intentos por
   separado para no repetir un canal configurado ya completado durante un reintento.
-- Correo transaccional reutiliza el proveedor SMTP/Resend configurado. Push usa Firebase Cloud
-  Messaging HTTP v1 y credenciales de cuenta de servicio protegidas; el ambiente actual no tiene
-  `Firebase:ProjectId` ni `Firebase:ServiceAccountJson`, por lo que la entrega no afirma una prueba
-  externa de push hasta configurar ambos secretos.
+- Correo transaccional reutiliza el proveedor SMTP/Resend configurado. Push usa el protocolo Web
+  Push estandar con VAPID, sin SDK ni proyecto de Firebase. Las suscripciones guardan `endpoint`,
+  `p256dh` y `auth`, y el service worker muestra la notificacion y valida el destino antes de abrirlo.
+- Desarrollo local tiene `WebPush:Subject`, `WebPush:PublicKey` y `WebPush:PrivateKey` en
+  `dotnet user-secrets`; QA y produccion deben configurar su propio par VAPID. El script idempotente
+  `008_create_web_push_subscriptions.sql` fue aplicado al PostgreSQL compartido y retiro la tabla
+  legada de tokens Firebase, cuyos valores no eran convertibles al protocolo Web Push.
+- Las claves VAPID se generan una sola vez con `VapidHelper.GenerateVapidKeys`; la publica puede
+  entregarse al navegador y la privada vive exclusivamente en user-secrets o variables de ambiente.
+  Rotarlas exige que los navegadores se suscriban nuevamente.
 - El cliente agrega `/notifications`, lectura por usuario y preferencias de bandeja, correo y push;
   la ruta es privada y conserva los estados accesibles de carga, vacio, error y exito.
 - Una resena solo nace desde una reserva `Completed`, es unica por reserva y editable por su autor
@@ -279,8 +285,10 @@ Checklist final de la guia UX/UI:
   auditoria administrativa. Las consultas publicas y los agregados incluyen solo `Visible`.
 - El detalle de experiencia muestra promedio, cantidad y comentarios verificados; el detalle de una
   reserva completada permite crear, editar y eliminar la resena propia.
-- Verificacion aprobada: compilacion Release sin advertencias, 55 pruebas .NET/PostgreSQL,
-  `npm run lint`, `npm run build`, `git diff --check` y navegacion local sin errores de consola.
+- Verificacion aprobada: compilacion sin advertencias, 65 pruebas .NET/PostgreSQL, contrato VAPID
+  y alta/baja de suscripcion contra PostgreSQL, `npm run lint`, `npm run build`, `git diff --check`
+  y navegacion local sin errores de consola. La activacion y el estado activo de los avisos fueron
+  confirmados visualmente en un navegador con permisos habilitados.
 
 ## Fuente de diseno analizada
 
@@ -480,7 +488,8 @@ parte del responsable de backend.
 - Los contratos ya integrados no se cambiaran sin versionarlos o coordinar la migracion.
 - Cada entrega debe tener criterios de aceptacion verificables desde Swagger y desde el frontend.
 - Los datos funcionales siempre procederan del backend y PostgreSQL.
-- El gateway mock de pagos sera la unica simulacion autorizada y se identificara como `Mock`.
+- El gateway temporal de pagos solo se usa como detalle interno del ambiente; la interfaz presenta
+  el flujo final de pago y nunca expone controles de simulacion.
 
 ## Bloque 0 - Congelar contrato y eliminar comportamientos falsos
 
@@ -768,7 +777,7 @@ A partir de aqui, cada bloque backend debe integrarse antes de comenzar demasiad
 
 - Backend: bloque 12.
 - Integrar creacion de pago y consulta de estado usando el contrato neutral del gateway.
-- Mostrar claramente que el proveedor es `Mock` en desarrollo/QA.
+- Presentar una unica accion `Pagar` y completar automaticamente el pago en el ambiente actual.
 - No recolectar ni representar numeros reales de tarjeta.
 - Preparar el cliente para consultar estados sin asumir exito inmediato.
 
@@ -812,8 +821,8 @@ planificarse como una version coordinada y no introducirse silenciosamente.
 ## Orden inmediato recomendado
 
 1. Configurar las credenciales de Google y del proveedor de correo en cada ambiente.
-2. Configurar Firebase en QA y comprobar una entrega push real para cerrar completamente la Entrega D.
-3. Comenzar mapas y dashboard de la Entrega E solo despues de esa validacion externa.
+2. Configurar en QA y produccion las credenciales propias para los avisos a dispositivos.
+3. Comenzar mapas y dashboard de la Entrega E.
 4. Mantener cada entrega vertical verificada antes de acumular la siguiente.
 
 Este enfoque evita tanto el extremo de detener el backend por completo como el de terminar todos

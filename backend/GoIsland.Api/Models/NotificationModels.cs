@@ -37,12 +37,14 @@ public class UserNotificationPreference
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
-public class DeviceToken
+public class WebPushSubscription
 {
     public int Id { get; set; }
     public int UserId { get; set; }
-    public string Token { get; set; } = string.Empty;
-    public string Platform { get; set; } = string.Empty;
+    public string Endpoint { get; set; } = string.Empty;
+    public string P256dh { get; set; } = string.Empty;
+    public string Auth { get; set; } = string.Empty;
+    public DateTime? ExpirationTime { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime LastSeenAt { get; set; } = DateTime.UtcNow;
 }

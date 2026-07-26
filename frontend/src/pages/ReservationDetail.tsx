@@ -47,7 +47,7 @@ interface ReservationDetailResult {
   review: Review | null;
 }
 
-type PaymentAction = 'pay' | 'confirm' | 'reject' | 'refund';
+type PaymentAction = 'pay' | 'refund';
 
 export const ReservationDetail = () => {
   const { id } = useParams();
@@ -150,30 +150,21 @@ export const ReservationDetail = () => {
     try {
       await execute();
       setActionMessage(message);
-      setRetryCount((current) => current + 1);
     } catch (error: unknown) {
       setActionError(toApiError(error, 'No fue posible procesar el pago.').message);
     } finally {
+      setRetryCount((current) => current + 1);
       setBusyAction(null);
     }
   };
 
   const startPayment = () => runPaymentAction(
     'pay',
-    () => paymentService.create(parsedId),
-    'Pago iniciado. El cobro es una simulación del entorno de pruebas: decide el resultado con los controles del proveedor.',
-  );
-
-  const confirmPayment = (paymentId: number) => runPaymentAction(
-    'confirm',
-    () => paymentService.mockConfirm(paymentId),
-    'El pago simulado fue aprobado y la reserva quedó confirmada.',
-  );
-
-  const rejectPayment = (paymentId: number) => runPaymentAction(
-    'reject',
-    () => paymentService.mockReject(paymentId),
-    'El pago simulado fue rechazado. La reserva sigue pendiente de pago.',
+    () => paymentService.pay(
+      parsedId,
+      currentResult?.payments[0]?.status === 'Pending' ? currentResult.payments[0].id : undefined,
+    ),
+    'Pago completado. Tu reserva quedó confirmada.',
   );
 
   const refundPayment = (paymentId: number) => {
@@ -185,13 +176,13 @@ export const ReservationDetail = () => {
     void runPaymentAction(
       'refund',
       () => paymentService.refund(paymentId, reason),
-      'El reembolso simulado quedó registrado y la reserva pasó a estado reembolsado.',
+      'El reembolso quedó registrado y la reserva pasó a estado reembolsado.',
     );
   };
 
   const saveReview = async () => {
     const comment = reviewComment.trim();
-    if (comment.length < 10) { setActionError('La resena debe tener al menos 10 caracteres.'); return; }
+    if (comment.length < 10) { setActionError('La reseña debe tener al menos 10 caracteres.'); return; }
     setBusyAction('review');
     setActionError(null);
     try {
@@ -200,22 +191,22 @@ export const ReservationDetail = () => {
         ? await reviewService.update(currentResult.review.id, input)
         : await reviewService.create(parsedId, input);
       setResult((current) => current?.requestKey === requestKey ? { ...current, review } : current);
-      setActionMessage('Tu resena verificada fue guardada.');
+      setActionMessage('Tu reseña verificada fue guardada.');
     } catch (requestError: unknown) {
-      setActionError(toApiError(requestError, 'No fue posible guardar la resena.').message);
+      setActionError(toApiError(requestError, 'No fue posible guardar la reseña.').message);
     } finally { setBusyAction(null); }
   };
 
   const deleteReview = async () => {
-    if (!currentResult?.review || !window.confirm('¿Eliminar tu resena?')) return;
+    if (!currentResult?.review || !window.confirm('¿Eliminar tu reseña?')) return;
     setBusyAction('review');
     try {
       await reviewService.remove(currentResult.review.id);
       setResult((current) => current?.requestKey === requestKey ? { ...current, review: null } : current);
       setReviewComment('');
-      setActionMessage('Tu resena fue eliminada.');
+      setActionMessage('Tu reseña fue eliminada.');
     } catch (requestError: unknown) {
-      setActionError(toApiError(requestError, 'No fue posible eliminar la resena.').message);
+      setActionError(toApiError(requestError, 'No fue posible eliminar la reseña.').message);
     } finally { setBusyAction(null); }
   };
 
@@ -282,36 +273,26 @@ export const ReservationDetail = () => {
                 <StatusBadge tone={getPaymentStatusTone(latestPayment.status)}>
                   {getPaymentStatusLabel(latestPayment.status)}
                 </StatusBadge>
-                <span className="reservation-payment__provider">
-                  {latestPayment.provider} · simulación
-                </span>
               </div>
             )}
           </div>
 
           {!latestPayment && reservation.status === 'PendingPayment' && (
-            <>
-              <p className="reservation-payment__note">
-                El cobro se procesa con un proveedor de pago simulado para el entorno de pruebas.
-                No se solicitan ni almacenan datos de tarjeta.
-              </p>
-              {isOwner && (
-                <Button onClick={startPayment} isLoading={busyAction === 'pay'} disabled={busyAction !== null}>
-                  <CreditCard size={18} /> Iniciar pago
-                </Button>
-              )}
-            </>
+            isOwner && (
+              <Button onClick={startPayment} isLoading={busyAction === 'pay'} disabled={busyAction !== null}>
+                <CreditCard size={18} /> Pagar
+              </Button>
+            )
           )}
 
           {latestPayment?.status === 'Failed' && reservation.status === 'PendingPayment' && (
             <>
               <Alert tone="error">
-                El intento anterior fue rechazado{latestPayment.failureCode ? ` (${latestPayment.failureCode})` : ''}.
-                La reserva sigue pendiente de pago.
+                No pudimos completar el pago anterior. Puedes intentarlo nuevamente.
               </Alert>
               {isOwner && (
                 <Button onClick={startPayment} isLoading={busyAction === 'pay'} disabled={busyAction !== null}>
-                  <CreditCard size={18} /> Reintentar pago
+                  <CreditCard size={18} /> Pagar
                 </Button>
               )}
             </>
@@ -325,20 +306,12 @@ export const ReservationDetail = () => {
                 <div className="reservation-payment__total"><dt>Total a pagar</dt><dd>{formatPrice(latestPayment.totalAmount, latestPayment.currency)}</dd></div>
               </dl>
               <p className="reservation-payment__note">
-                Pago iniciado. En este entorno el resultado lo decide el simulador; la reserva no se
-                confirma hasta que el proveedor apruebe el cobro.
+                El pago está listo para completarse.
               </p>
               {isOwner && (
-                <div className="reservation-payment__simulator" role="group" aria-label="Simulador del proveedor de pago">
-                  <Button onClick={() => void confirmPayment(latestPayment.id)}
-                    isLoading={busyAction === 'confirm'} disabled={busyAction !== null}>
-                    Simular aprobación
-                  </Button>
-                  <Button variant="danger" onClick={() => void rejectPayment(latestPayment.id)}
-                    isLoading={busyAction === 'reject'} disabled={busyAction !== null}>
-                    Simular rechazo
-                  </Button>
-                </div>
+                <Button onClick={startPayment} isLoading={busyAction === 'pay'} disabled={busyAction !== null}>
+                  <CreditCard size={18} /> Pagar
+                </Button>
               )}
             </>
           )}
@@ -348,7 +321,7 @@ export const ReservationDetail = () => {
               <dl className="reservation-payment__breakdown">
                 <div><dt>Total pagado</dt><dd>{formatPrice(latestPayment.totalAmount, latestPayment.currency)}</dd></div>
                 <div><dt>Fecha de pago</dt><dd>{latestPayment.paidAt ? formatDate(latestPayment.paidAt) : '—'}</dd></div>
-                <div><dt>Referencia</dt><dd>{latestPayment.providerPaymentId ?? '—'}</dd></div>
+                <div><dt>Número de operación</dt><dd>{latestPayment.providerPaymentId ?? '—'}</dd></div>
               </dl>
               {isAdmin && (
                 <div className="reservation-payment__refund">
@@ -356,7 +329,7 @@ export const ReservationDetail = () => {
                     label="Motivo del reembolso"
                     value={refundReason}
                     onChange={(event) => setRefundReason(event.target.value)}
-                    hint="Se registra en la auditoría financiera (mínimo 3 caracteres)."
+                    hint="Este motivo quedará guardado para futuras consultas (mínimo 3 caracteres)."
                   />
                   <Button variant="danger" onClick={() => refundPayment(latestPayment.id)}
                     isLoading={busyAction === 'refund'} disabled={busyAction !== null}>
@@ -370,7 +343,7 @@ export const ReservationDetail = () => {
           {latestPayment?.status === 'Refunded' && (
             <dl className="reservation-payment__breakdown">
               <div><dt>Monto reembolsado</dt><dd>{formatPrice(latestPayment.refundedAmount ?? latestPayment.totalAmount, latestPayment.currency)}</dd></div>
-              <div><dt>Referencia</dt><dd>{latestPayment.providerPaymentId ?? '—'}</dd></div>
+              <div><dt>Número de operación</dt><dd>{latestPayment.providerPaymentId ?? '—'}</dd></div>
             </dl>
           )}
         </section>
@@ -398,7 +371,7 @@ export const ReservationDetail = () => {
 
       {reservation.status === 'Completed' && isOwner && (
         <section className="surface-panel review-form" aria-labelledby="review-form-title">
-          <h2 id="review-form-title">{currentResult.review ? 'Editar tu resena' : 'Comparte tu experiencia'}</h2>
+          <h2 id="review-form-title">{currentResult.review ? 'Editar tu reseña' : 'Comparte tu experiencia'}</h2>
           <p>Esta opinion queda vinculada a una reserva completada.</p>
           <SelectField label="Calificacion" value={rating} onChange={(event) => setRating(event.target.value)}>
             <option value="5">5 · Excelente</option><option value="4">4 · Muy buena</option>
@@ -409,9 +382,9 @@ export const ReservationDetail = () => {
             onChange={(event) => setReviewComment(event.target.value)} />
           <div className="management-actions">
             <Button onClick={() => void saveReview()} isLoading={busyAction === 'review'}>
-              Guardar resena
+              Guardar reseña
             </Button>
-            {currentResult.review && <Button variant="danger" onClick={() => void deleteReview()}>Eliminar resena</Button>}
+            {currentResult.review && <Button variant="danger" onClick={() => void deleteReview()}>Eliminar reseña</Button>}
           </div>
         </section>
       )}

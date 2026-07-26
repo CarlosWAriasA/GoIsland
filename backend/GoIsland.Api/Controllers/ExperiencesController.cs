@@ -84,7 +84,7 @@ public class ExperiencesController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var result = await _managementService.CreateAsync(userId, request);

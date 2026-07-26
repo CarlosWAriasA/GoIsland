@@ -26,7 +26,7 @@ public class GoIslandDbContext : DbContext
     public DbSet<UserExternalLogin> UserExternalLogins => Set<UserExternalLogin>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<UserNotificationPreference> UserNotificationPreferences => Set<UserNotificationPreference>();
-    public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
+    public DbSet<WebPushSubscription> WebPushSubscriptions => Set<WebPushSubscription>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<OutboxAttempt> OutboxAttempts => Set<OutboxAttempt>();
     public DbSet<CapacityAudit> CapacityAudits => Set<CapacityAudit>();
@@ -319,17 +319,19 @@ public class GoIslandDbContext : DbContext
             entity.Property(item => item.UpdatedAt).HasColumnName("updated_at");
         });
 
-        modelBuilder.Entity<DeviceToken>(entity =>
+        modelBuilder.Entity<WebPushSubscription>(entity =>
         {
-            entity.ToTable("device_tokens");
+            entity.ToTable("web_push_subscriptions");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Id).HasColumnName("id");
             entity.Property(item => item.UserId).HasColumnName("user_id");
-            entity.Property(item => item.Token).HasColumnName("token").HasMaxLength(4096).IsRequired();
-            entity.Property(item => item.Platform).HasColumnName("platform").HasMaxLength(20).IsRequired();
+            entity.Property(item => item.Endpoint).HasColumnName("endpoint").HasMaxLength(4096).IsRequired();
+            entity.Property(item => item.P256dh).HasColumnName("p256dh").HasMaxLength(512).IsRequired();
+            entity.Property(item => item.Auth).HasColumnName("auth").HasMaxLength(512).IsRequired();
+            entity.Property(item => item.ExpirationTime).HasColumnName("expiration_time");
             entity.Property(item => item.CreatedAt).HasColumnName("created_at");
             entity.Property(item => item.LastSeenAt).HasColumnName("last_seen_at");
-            entity.HasIndex(item => item.Token).IsUnique();
+            entity.HasIndex(item => item.Endpoint).IsUnique();
             entity.HasIndex(item => item.UserId);
         });
 

@@ -13,3 +13,20 @@ export interface NotificationPreferences {
   emailEnabled: boolean;
   pushEnabled: boolean;
 }
+
+export interface WebPushPublicKeyResponse {
+  publicKey: string;
+}
+
+export interface RegisterWebPushSubscription {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  expirationTime: string | null;
+}
+
+export interface WebPushDevice {
+  id: number;
+  expirationTime: string | null;
+  lastSeenAt: string;
+}

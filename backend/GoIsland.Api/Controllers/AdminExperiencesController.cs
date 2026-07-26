@@ -52,7 +52,7 @@ public class AdminExperiencesController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var adminUserId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var result = await _service.ReviewAsync(id, adminUserId, action, reason);
@@ -61,7 +61,7 @@ public class AdminExperiencesController : ControllerBase
             ExperienceManagementStatus.Success => Ok(result.Experience),
             ExperienceManagementStatus.NotFound => NotFound(new { message = "No se encontro la experiencia." }),
             ExperienceManagementStatus.ReasonRequired => BadRequest(new { message = "Debes indicar el motivo de la decision." }),
-            ExperienceManagementStatus.InvalidTransition => Conflict(new { message = "La experiencia no admite esa transicion de estado." }),
+            ExperienceManagementStatus.InvalidTransition => Conflict(new { message = "No puedes aplicar esa decisión al estado actual de la experiencia." }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };
     }

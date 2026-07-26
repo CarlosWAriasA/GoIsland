@@ -25,7 +25,7 @@ public class UsersController : ControllerBase
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!int.TryParse(userIdValue, out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var user = await _unitOfWork.Users.GetByIdAsync(userId);

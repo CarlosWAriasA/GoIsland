@@ -12,7 +12,7 @@ const reservationLabels: Record<string, string> = {
   Refunded: 'Reembolsada',
 };
 
-export const getReservationStatusLabel = (status: string) => reservationLabels[status] ?? status;
+export const getReservationStatusLabel = (status: string) => reservationLabels[status] ?? 'Estado no disponible';
 
 export const getReservationStatusTone = (status: string): StatusTone => {
   if (status === 'Confirmed' || status === 'Paid' || status === 'Completed' || status === 'Refunded') {

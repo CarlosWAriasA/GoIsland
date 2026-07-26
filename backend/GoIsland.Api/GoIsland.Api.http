@@ -425,9 +425,17 @@ Authorization: Bearer {{GoIsland.Api_Token}}
 Content-Type: application/json
 
 {
-  "token": "firebase-registration-token-with-at-least-20-characters",
-  "platform": "Web"
+  "endpoint": "https://push-service.example/subscriptions/example-browser-subscription",
+  "p256dh": "url-safe-public-encryption-key-with-at-least-20-characters",
+  "auth": "url-safe-authentication-secret",
+  "expirationTime": null
 }
+
+###
+
+GET {{GoIsland.Api_HostAddress}}/api/devices/web-push-public-key
+Authorization: Bearer {{GoIsland.Api_Token}}
+Accept: application/json
 
 ###
 

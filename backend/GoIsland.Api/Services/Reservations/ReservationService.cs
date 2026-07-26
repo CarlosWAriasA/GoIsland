@@ -200,12 +200,12 @@ public class ReservationService : IReservationService
         reservation.ScheduleId = target.Id;
         reservation.UpdatedAt = now;
         await AddHistoryAsync(reservation, reservation.Status, reservation.Status, userId,
-            $"Reprogramada del horario {current.Id} al {target.Id}.", now);
+            "La fecha y hora de la reserva fueron actualizadas.", now);
         await AddIdempotencyAsync(reservation, userId, operation, key, requestHash, now);
         await AddCapacityAuditAsync(reservation, current, previousCurrentSpots, "ReservationRescheduledFrom", now);
         await AddCapacityAuditAsync(reservation, target, previousTargetSpots, "ReservationRescheduledTo", now);
         await _outbox.EnqueueAsync(userId, "ReservationRescheduled", "Reserva reprogramada",
-            $"Tu reserva fue movida al {target.StartsAt:yyyy-MM-dd HH:mm} UTC.", reservation);
+            "Tu reserva cambió de fecha y hora. Consulta los detalles actualizados.", reservation);
 
         try
         {
@@ -277,7 +277,7 @@ public class ReservationService : IReservationService
             "Marcada como completada por el anfitrion.", now);
         await AddIdempotencyAsync(owned.Reservation, hostUserId, operation, key, requestHash, now);
         await _outbox.EnqueueAsync(owned.Reservation.UserId, "ReservationCompleted", "Experiencia completada",
-            "Tu experiencia termino. Ya puedes compartir una resena verificada.", owned.Reservation);
+            "Tu experiencia terminó. Ya puedes compartir una reseña verificada.", owned.Reservation);
         await _context.SaveChangesAsync();
         return new(ReservationCreationStatus.Success, await BuildResponseAsync(id));
     }
@@ -343,7 +343,7 @@ public class ReservationService : IReservationService
         await _outbox.EnqueueAsync(otherUserId,
             byHost ? "ReservationCancelledByHost" : "ReservationCancelledByTourist",
             "Reserva cancelada",
-            byHost ? "El anfitrion cancelo la reserva." : "El turista cancelo la reserva.",
+            byHost ? "El anfitrión canceló la reserva." : "El turista canceló la reserva.",
             reservation, byHost ? null : "/host/reservations");
 
         try

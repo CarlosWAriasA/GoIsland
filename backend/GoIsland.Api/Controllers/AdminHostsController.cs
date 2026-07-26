@@ -61,7 +61,7 @@ public class AdminHostsController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var adminUserId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var result = await _hostService.ReviewAsync(id, adminUserId, action, reason);
@@ -70,7 +70,7 @@ public class AdminHostsController : ControllerBase
             HostOperationStatus.Success => Ok(result.Profile),
             HostOperationStatus.NotFound => NotFound(new { message = "No se encontro la solicitud de anfitrion." }),
             HostOperationStatus.ReasonRequired => BadRequest(new { message = "Debes indicar el motivo de la decision." }),
-            HostOperationStatus.InvalidTransition => Conflict(new { message = "La solicitud no admite esa transicion de estado." }),
+            HostOperationStatus.InvalidTransition => Conflict(new { message = "No puedes aplicar esa decisión al estado actual de la solicitud." }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };
     }

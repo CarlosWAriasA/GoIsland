@@ -183,7 +183,7 @@ public class PaymentService : IPaymentService
             reservation.UpdatedAt = now;
             await AddHistoryAsync(reservation, ReservationStatuses.PendingPayment,
                 ReservationStatuses.Confirmed, actorUserId,
-                $"Pago {payment.ProviderPaymentId} aprobado por {_gateway.ProviderName}.", now);
+                "El pago fue aprobado.", now);
             var experience = await _context.Experiences.AsNoTracking()
                 .SingleAsync(item => item.Id == reservation.ExperienceId);
             await _outbox.EnqueueAsync(reservation.UserId, "PaymentConfirmed", "Pago confirmado",
@@ -319,7 +319,7 @@ public class PaymentService : IPaymentService
             reservation.Status = ReservationStatuses.Refunded;
             reservation.UpdatedAt = now;
             await AddHistoryAsync(reservation, previous, ReservationStatuses.Refunded, adminUserId,
-                $"Reembolso mock registrado: {reason.Trim()}", now);
+                $"Reembolso registrado. Motivo: {reason.Trim()}", now);
             await _outbox.EnqueueAsync(reservation.UserId, "RefundCompleted", "Reembolso completado",
                 $"El reembolso de {payment.Amount:0.00} {payment.Currency} fue registrado.", reservation);
         }

@@ -127,6 +127,13 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             "007_create_notifications_and_reviews.sql"));
         await Context.Database.ExecuteSqlRawAsync(notificationsScript);
 
+        var webPushScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "008_create_web_push_subscriptions.sql"));
+        await Context.Database.ExecuteSqlRawAsync(webPushScript);
+
         // Fuerza una consulta real y falla temprano si el esquema no esta aplicado.
         await Context.Users.AsNoTracking().AnyAsync();
     }

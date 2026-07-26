@@ -28,12 +28,12 @@ public class ReservationsController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         if (!TryGetIdempotencyKey(out var idempotencyKey))
         {
-            return BadRequest(new { message = "El encabezado Idempotency-Key es obligatorio y debe tener hasta 100 caracteres." });
+            return BadRequest(new { message = "No pudimos validar esta operación. Actualiza la página e inténtalo de nuevo." });
         }
 
         var result = await _reservationService.CreateAsync(userId, request, idempotencyKey);
@@ -45,7 +45,7 @@ public class ReservationsController : ControllerBase
                 new { id = result.Reservation!.Id },
                 result.Reservation),
             ReservationCreationStatus.ExperienceNotFound or ReservationCreationStatus.ScheduleNotFound => NotFound(
-                new { message = "No se encontro un horario disponible con ese identificador." }),
+                new { message = "No encontramos ese horario disponible. Elige otra fecha e inténtalo nuevamente." }),
             ReservationCreationStatus.ScheduleUnavailable => Conflict(
                 new { message = "El horario ya no esta disponible para nuevas reservas." }),
             ReservationCreationStatus.InsufficientSpots => Conflict(
@@ -55,7 +55,7 @@ public class ReservationsController : ControllerBase
             ReservationCreationStatus.ConcurrencyConflict => Conflict(
                 new { message = "Los cupos cambiaron mientras se procesaba la reserva. Intenta nuevamente." }),
             ReservationCreationStatus.IdempotencyConflict => Conflict(
-                new { message = "La clave de idempotencia ya fue usada con una solicitud diferente." }),
+                new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };
     }
@@ -63,18 +63,18 @@ public class ReservationsController : ControllerBase
     [HttpPost("{id:int}/cancel")]
     public async Task<ActionResult<ReservationResponse>> Cancel(int id, CancelReservationRequest request)
     {
-        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "El token no es valido." });
+        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         if (!TryGetIdempotencyKey(out var key))
-            return BadRequest(new { message = "El encabezado Idempotency-Key es obligatorio y debe tener hasta 100 caracteres." });
+            return BadRequest(new { message = "No pudimos validar esta operación. Actualiza la página e inténtalo de nuevo." });
         return MapMutation(await _reservationService.CancelAsync(id, userId, request, key));
     }
 
     [HttpPost("{id:int}/reschedule")]
     public async Task<ActionResult<ReservationResponse>> Reschedule(int id, RescheduleReservationRequest request)
     {
-        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "El token no es valido." });
+        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         if (!TryGetIdempotencyKey(out var key))
-            return BadRequest(new { message = "El encabezado Idempotency-Key es obligatorio y debe tener hasta 100 caracteres." });
+            return BadRequest(new { message = "No pudimos validar esta operación. Actualiza la página e inténtalo de nuevo." });
         return MapMutation(await _reservationService.RescheduleAsync(id, userId, request, key));
     }
 
@@ -88,7 +88,7 @@ public class ReservationsController : ControllerBase
         ReservationCreationStatus.DifferentExperience => Conflict(new { message = "Solo puedes reprogramar dentro de la misma experiencia." }),
         ReservationCreationStatus.InvalidTransition => Conflict(new { message = "La reserva no admite esa operacion en su estado o fecha actual." }),
         ReservationCreationStatus.ConcurrencyConflict => Conflict(new { message = "La disponibilidad cambio. Intenta nuevamente." }),
-        ReservationCreationStatus.IdempotencyConflict => Conflict(new { message = "La clave de idempotencia ya fue usada con una solicitud diferente." }),
+        ReservationCreationStatus.IdempotencyConflict => Conflict(new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
         _ => StatusCode(StatusCodes.Status500InternalServerError)
     };
 
@@ -97,12 +97,12 @@ public class ReservationsController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         if (!TryGetIdempotencyKey(out var idempotencyKey))
         {
-            return BadRequest(new { message = "El encabezado Idempotency-Key es obligatorio y debe tener hasta 100 caracteres." });
+            return BadRequest(new { message = "No pudimos validar esta operación. Actualiza la página e inténtalo de nuevo." });
         }
 
         var result = await _paymentService.CreateAsync(userId, id, idempotencyKey);
@@ -117,12 +117,12 @@ public class ReservationsController : ControllerBase
             PaymentOperationStatus.InvalidTransition => Conflict(
                 new { message = "La reserva no admite un pago en su estado actual o ya tiene un pago vigente." }),
             PaymentOperationStatus.IdempotencyConflict => Conflict(
-                new { message = "La clave de idempotencia ya fue usada con una solicitud diferente." }),
+                new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
             PaymentOperationStatus.ConcurrencyConflict => Conflict(
                 new { message = "El pago cambio mientras se procesaba. Consulta su estado antes de reintentar." }),
             PaymentOperationStatus.GatewayRejected => StatusCode(
                 StatusCodes.Status502BadGateway,
-                new { message = "El proveedor de pagos rechazo la solicitud." }),
+                new { message = "No pudimos iniciar el pago. Inténtalo nuevamente." }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };
     }
@@ -132,7 +132,7 @@ public class ReservationsController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var payments = await _paymentService.GetForReservationAsync(userId, id, User.IsInRole(UserRoles.Admin));
@@ -146,7 +146,7 @@ public class ReservationsController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         return Ok(await _reservationService.GetByUserIdAsync(userId));
@@ -157,7 +157,7 @@ public class ReservationsController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var reservation = await _reservationService.GetByIdAsync(

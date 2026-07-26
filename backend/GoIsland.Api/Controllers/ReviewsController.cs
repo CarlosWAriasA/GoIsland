@@ -37,8 +37,8 @@ public class ReviewsController : ControllerBase
         return status switch
         {
             ReviewMutationStatus.Success => NoContent(),
-            ReviewMutationStatus.Forbidden => StatusCode(403, new { message = "No puedes eliminar una resena ajena." }),
-            _ => NotFound(new { message = "No se encontro la resena." })
+            ReviewMutationStatus.Forbidden => StatusCode(403, new { message = "No puedes eliminar una reseña ajena." }),
+            _ => NotFound(new { message = "No se encontró la reseña." })
         };
     }
 
@@ -67,11 +67,11 @@ public class ReviewsController : ControllerBase
     {
         ReviewMutationStatus.Success when created => StatusCode(StatusCodes.Status201Created, result.Review),
         ReviewMutationStatus.Success => Ok(result.Review),
-        ReviewMutationStatus.Forbidden => StatusCode(403, new { message = "No puedes modificar una resena ajena." }),
-        ReviewMutationStatus.ReservationNotCompleted => Conflict(new { message = "Solo puedes resenar una reserva completada." }),
-        ReviewMutationStatus.Duplicate => Conflict(new { message = "Esta reserva ya tiene una resena." }),
-        ReviewMutationStatus.EditWindowExpired => Conflict(new { message = "El periodo de 30 dias para editar la resena termino." }),
-        _ => NotFound(new { message = "No se encontro la reserva o resena." })
+        ReviewMutationStatus.Forbidden => StatusCode(403, new { message = "No puedes modificar una reseña ajena." }),
+        ReviewMutationStatus.ReservationNotCompleted => Conflict(new { message = "Solo puedes reseñar una reserva completada." }),
+        ReviewMutationStatus.Duplicate => Conflict(new { message = "Esta reserva ya tiene una reseña." }),
+        ReviewMutationStatus.EditWindowExpired => Conflict(new { message = "El período de 30 días para editar la reseña terminó." }),
+        _ => NotFound(new { message = "No se encontró la reserva o la reseña." })
     };
 
     private bool TryGetUserId(out int userId) => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);

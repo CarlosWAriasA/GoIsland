@@ -50,28 +50,35 @@ public class NotificationService : INotificationService, IOutboxWriter
 
     public async Task<DeviceResponse> RegisterDeviceAsync(int userId, RegisterDeviceRequest request)
     {
-        var token = request.Token.Trim();
-        var item = await _context.DeviceTokens.SingleOrDefaultAsync(value => value.Token == token);
+        var endpoint = request.Endpoint.Trim();
+        var item = await _context.WebPushSubscriptions.SingleOrDefaultAsync(value => value.Endpoint == endpoint);
         if (item is null)
         {
-            item = new DeviceToken { UserId = userId, Token = token, Platform = request.Platform, CreatedAt = DateTime.UtcNow };
-            await _context.DeviceTokens.AddAsync(item);
+            item = new WebPushSubscription
+            {
+                UserId = userId,
+                Endpoint = endpoint,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _context.WebPushSubscriptions.AddAsync(item);
         }
         else
         {
             item.UserId = userId;
-            item.Platform = request.Platform;
         }
+        item.P256dh = request.P256dh.Trim();
+        item.Auth = request.Auth.Trim();
+        item.ExpirationTime = request.ExpirationTime;
         item.LastSeenAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-        return new() { Id = item.Id, Platform = item.Platform, LastSeenAt = item.LastSeenAt };
+        return new() { Id = item.Id, ExpirationTime = item.ExpirationTime, LastSeenAt = item.LastSeenAt };
     }
 
     public async Task<bool> DeleteDeviceAsync(int userId, int id)
     {
-        var item = await _context.DeviceTokens.SingleOrDefaultAsync(value => value.Id == id && value.UserId == userId);
+        var item = await _context.WebPushSubscriptions.SingleOrDefaultAsync(value => value.Id == id && value.UserId == userId);
         if (item is null) return false;
-        _context.DeviceTokens.Remove(item);
+        _context.WebPushSubscriptions.Remove(item);
         await _context.SaveChangesAsync();
         return true;
     }

@@ -24,7 +24,7 @@ public class HostExperiencesController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var result = await _service.CreateAsync(userId, request);
@@ -41,7 +41,7 @@ public class HostExperiencesController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         return Ok(await _service.GetMineAsync(userId));
@@ -52,7 +52,7 @@ public class HostExperiencesController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var experience = await _service.GetMineByIdAsync(userId, id);
@@ -66,7 +66,7 @@ public class HostExperiencesController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         return ToActionResult(await _service.UpdateAsync(userId, id, request));
@@ -77,7 +77,7 @@ public class HostExperiencesController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var result = await _service.DeleteAsync(userId, id);
@@ -94,7 +94,7 @@ public class HostExperiencesController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         return ToActionResult(await _service.SubmitAsync(userId, id));

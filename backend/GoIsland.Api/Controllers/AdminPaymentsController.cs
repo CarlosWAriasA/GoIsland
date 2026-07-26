@@ -24,7 +24,7 @@ public class AdminPaymentsController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var adminUserId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var result = await _paymentService.RefundAsync(id, adminUserId, request.Reason);
@@ -36,7 +36,7 @@ public class AdminPaymentsController : ControllerBase
                 new { message = "Solo se puede reembolsar un pago aprobado." }),
             PaymentOperationStatus.GatewayRejected => StatusCode(
                 StatusCodes.Status502BadGateway,
-                new { message = "El proveedor de pagos rechazo el reembolso." }),
+                new { message = "No pudimos completar el reembolso. Inténtalo nuevamente." }),
             PaymentOperationStatus.ConcurrencyConflict => Conflict(
                 new { message = "La disponibilidad cambio mientras se procesaba el reembolso. Intenta nuevamente." }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)

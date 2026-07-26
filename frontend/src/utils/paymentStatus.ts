@@ -7,7 +7,7 @@ const paymentLabels: Record<string, string> = {
   Refunded: 'Reembolsado',
 };
 
-export const getPaymentStatusLabel = (status: string) => paymentLabels[status] ?? status;
+export const getPaymentStatusLabel = (status: string) => paymentLabels[status] ?? 'Estado no disponible';
 
 export const getPaymentStatusTone = (status: string): StatusTone => {
   if (status === 'Paid') return 'success';

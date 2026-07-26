@@ -17,7 +17,7 @@ export const toApiError = (error: unknown, fallback = fallbackMessage): ApiError
   if (!data || typeof data !== 'object') {
     return {
       message: error.code === 'ERR_NETWORK'
-        ? 'No fue posible conectar con GoIsland. Verifica que la API esté disponible.'
+        ? 'No fue posible conectar con GoIsland. Revisa tu conexión e inténtalo de nuevo.'
         : fallback,
       status: error.response?.status,
     };

@@ -10,7 +10,20 @@ namespace GoIsland.Api.Controllers;
 public class DevicesController : ControllerBase
 {
     private readonly INotificationService _service;
-    public DevicesController(INotificationService service) => _service = service;
+    private readonly IPushNotificationSender _pushSender;
+
+    public DevicesController(INotificationService service, IPushNotificationSender pushSender)
+    {
+        _service = service;
+        _pushSender = pushSender;
+    }
+
+    [HttpGet("web-push-public-key")]
+    public IActionResult GetWebPushPublicKey() =>
+        _pushSender.IsConfigured
+            ? Ok(new WebPushPublicKeyResponse { PublicKey = _pushSender.PublicKey! })
+            : StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new { message = "Los avisos para este dispositivo no están disponibles en este momento." });
 
     [HttpPost]
     public async Task<IActionResult> Register(RegisterDeviceRequest request)

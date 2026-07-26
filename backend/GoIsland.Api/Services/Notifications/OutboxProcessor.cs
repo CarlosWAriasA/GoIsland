@@ -94,9 +94,23 @@ public class OutboxProcessor : IOutboxProcessor
             if (pushEnabled && _pushSender.IsConfigured
                 && !await ChannelSucceededAsync(id, NotificationChannels.Push, cancellationToken))
             {
-                var tokens = await _context.DeviceTokens.AsNoTracking()
-                    .Where(value => value.UserId == item.UserId).Select(value => value.Token).ToArrayAsync(cancellationToken);
-                foreach (var token in tokens) await _pushSender.SendAsync(token, item.Title, item.Message, url);
+                var subscriptions = await _context.WebPushSubscriptions.AsNoTracking()
+                    .Where(value => value.UserId == item.UserId).ToArrayAsync(cancellationToken);
+                foreach (var subscription in subscriptions)
+                {
+                    try
+                    {
+                        await _pushSender.SendAsync(
+                            new WebPushSubscriptionData(subscription.Endpoint, subscription.P256dh, subscription.Auth),
+                            item.Title, item.Message, url, cancellationToken);
+                    }
+                    catch (PushSubscriptionExpiredException)
+                    {
+                        _context.WebPushSubscriptions.Remove(subscription);
+                        _logger.LogInformation(
+                            "Se retiro la suscripcion Web Push expirada {SubscriptionId}.", subscription.Id);
+                    }
+                }
                 await RecordAttemptAsync(id, NotificationChannels.Push, true, null, cancellationToken);
                 await _context.SaveChangesAsync(cancellationToken);
             }

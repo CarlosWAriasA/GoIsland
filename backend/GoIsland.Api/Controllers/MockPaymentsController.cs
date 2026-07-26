@@ -29,7 +29,7 @@ public class MockPaymentsController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         return MapResult(await _paymentService.MockConfirmAsync(id, userId, IsAdmin()));
@@ -40,7 +40,7 @@ public class MockPaymentsController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         return MapResult(await _paymentService.MockRejectAsync(id, userId, IsAdmin(), request?.FailureCode));

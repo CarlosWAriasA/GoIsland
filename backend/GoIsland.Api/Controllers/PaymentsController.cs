@@ -26,7 +26,7 @@ public class PaymentsController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var payment = await _paymentService.GetByIdAsync(id, userId, User.IsInRole(UserRoles.Admin));

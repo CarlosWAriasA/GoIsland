@@ -23,7 +23,7 @@ public class HostsController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var result = await _hostService.ApplyAsync(userId, request);
@@ -47,7 +47,7 @@ public class HostsController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var profile = await _hostService.GetMineAsync(userId);
@@ -61,7 +61,7 @@ public class HostsController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var result = await _hostService.UpdateMineAsync(userId, request);

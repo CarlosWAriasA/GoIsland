@@ -268,10 +268,10 @@ export const ExperienceDetail = () => {
       </div>
       <section className="surface-panel experience-reviews" aria-labelledby="experience-reviews-title">
         <div className="experience-reviews__heading">
-          <h2 id="experience-reviews-title">Resenas verificadas</h2>
+          <h2 id="experience-reviews-title">Reseñas verificadas</h2>
           {experience.averageRating !== null && <strong>{experience.averageRating.toFixed(1)} / 5 · {experience.reviewCount}</strong>}
         </div>
-        {reviews.length === 0 ? <p>Aun no hay resenas de reservas completadas.</p> : (
+        {reviews.length === 0 ? <p>Aún no hay reseñas de reservas completadas.</p> : (
           <ol>{reviews.map((review) => <li key={review.id} className="review-card">
             <div><strong>{review.authorName}</strong><span aria-label={`${review.rating} de 5 estrellas`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span></div>
             <p>{review.comment}</p><small>{formatDate(review.createdAt)}</small>

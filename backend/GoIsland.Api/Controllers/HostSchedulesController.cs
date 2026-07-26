@@ -21,7 +21,7 @@ public class HostSchedulesController : ControllerBase
     [HttpPost("experiences/{experienceId:int}/schedules")]
     public async Task<IActionResult> Create(int experienceId, CreateScheduleRequest request)
     {
-        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "El token no es valido." });
+        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         var result = await _service.CreateAsync(userId, experienceId, request);
         return Map(result, created: true);
     }
@@ -29,7 +29,7 @@ public class HostSchedulesController : ControllerBase
     [HttpGet("experiences/{experienceId:int}/schedules")]
     public async Task<IActionResult> GetAll(int experienceId)
     {
-        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "El token no es valido." });
+        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         var schedules = await _service.GetForHostAsync(userId, experienceId);
         return schedules is null
             ? NotFound(new { message = "No se encontro la experiencia." })
@@ -39,14 +39,14 @@ public class HostSchedulesController : ControllerBase
     [HttpPut("schedules/{id:int}")]
     public async Task<IActionResult> Update(int id, UpdateScheduleRequest request)
     {
-        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "El token no es valido." });
+        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         return Map(await _service.UpdateAsync(userId, id, request));
     }
 
     [HttpDelete("schedules/{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "El token no es valido." });
+        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         var result = await _service.DeleteAsync(userId, id);
         return result.Status == ScheduleOperationStatus.Success
             ? NoContent()
@@ -59,8 +59,8 @@ public class HostSchedulesController : ControllerBase
         ScheduleOperationStatus.Success => Ok(result.Schedule),
         ScheduleOperationStatus.NotFound => NotFound(new { message = "No se encontro el horario o la experiencia." }),
         ScheduleOperationStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrion no esta aprobado o fue suspendido." }),
-        ScheduleOperationStatus.InvalidDates => BadRequest(new { message = "Usa fechas futuras con zona horaria; la fecha final debe ser posterior a la inicial." }),
-        ScheduleOperationStatus.InvalidStatus => Conflict(new { message = "El horario solo puede cambiar entre Scheduled y Closed." }),
+        ScheduleOperationStatus.InvalidDates => BadRequest(new { message = "Elige fechas futuras y asegúrate de que la hora de finalización sea posterior al inicio." }),
+        ScheduleOperationStatus.InvalidStatus => Conflict(new { message = "El horario solo puede estar abierto o cerrado." }),
         ScheduleOperationStatus.CapacityConflict => Conflict(new { message = "La capacidad no puede ser menor que los cupos ya reservados." }),
         ScheduleOperationStatus.HasReservations => Conflict(new { message = "No se puede eliminar un horario que tiene reservas." }),
         _ => StatusCode(StatusCodes.Status500InternalServerError)

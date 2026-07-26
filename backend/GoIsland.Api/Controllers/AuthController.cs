@@ -56,12 +56,12 @@ public class AuthController : ControllerBase
             GoogleAuthStatus.Success => Ok(result.Response),
             GoogleAuthStatus.NotConfigured => StatusCode(
                 StatusCodes.Status503ServiceUnavailable,
-                new { message = "El inicio de sesion con Google no esta configurado." }),
+                new { message = "El acceso con Google no está disponible en este momento." }),
             GoogleAuthStatus.AccountConflict => Conflict(new
             {
                 message = "Esta cuenta local ya esta vinculada a otra cuenta de Google."
             }),
-            _ => Unauthorized(new { message = "La credencial de Google no es valida." })
+            _ => Unauthorized(new { message = "No pudimos validar tu acceso con Google. Inténtalo nuevamente." })
         };
     }
 
@@ -71,7 +71,7 @@ public class AuthController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var result = await _authService.ChangePasswordAsync(userId, request);
@@ -95,7 +95,7 @@ public class AuthController : ControllerBase
         {
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new
             {
-                message = "El servicio de recuperacion por correo no esta configurado."
+                message = "No podemos enviar correos de recuperación en este momento. Inténtalo más tarde."
             });
         }
 
@@ -115,7 +115,7 @@ public class AuthController : ControllerBase
             ResetPasswordStatus.Success => NoContent(),
             ResetPasswordStatus.NewPasswordMatchesCurrent => BadRequest(
                 new { message = "La nueva contrasena debe ser diferente a la anterior." }),
-            _ => BadRequest(new { message = "El token de recuperacion no es valido o ha expirado." })
+            _ => BadRequest(new { message = "Este enlace de recuperación no es válido o ya venció." })
         };
     }
 
@@ -125,7 +125,7 @@ public class AuthController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            return Unauthorized(new { message = "El token no es valido." });
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
         var user = await _unitOfWork.Users.GetByIdAsync(userId);

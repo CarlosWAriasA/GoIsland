@@ -99,13 +99,13 @@ export const HostSchedules = () => {
   return (
     <div className="container management-page animate-fade-in">
       <Link className="reservation-detail__back" to="/host/experiences"><ArrowLeft size={18} /> Mis experiencias</Link>
-      <header className="page-heading"><span className="page-heading__eyebrow">Calendario operativo</span>
-        <h1>Horarios de la experiencia #{experienceId}</h1><p>Publica fechas futuras y administra cupos por horario.</p></header>
+      <header className="page-heading"><span className="page-heading__eyebrow">Organiza tus fechas</span>
+        <h1>Horarios de la experiencia</h1><p>Publica nuevas fechas y decide cuántas personas pueden reservar.</p></header>
       {success && <Alert tone="success">{success}</Alert>}{error && <Alert tone="error">{error}</Alert>}
 
       <section className="management-form surface-panel" aria-labelledby="schedule-form-title">
         <div className="management-form__heading"><CalendarPlus /><div><h2 id="schedule-form-title">
-          {editingId ? 'Editar horario' : 'Nuevo horario'}</h2><p>Las fechas se envían y almacenan en UTC.</p></div></div>
+          {editingId ? 'Editar horario' : 'Nuevo horario'}</h2><p>Usa la fecha y hora de tu dispositivo.</p></div></div>
         {formError && <Alert tone="error">{formError.message}</Alert>}
         <form onSubmit={submit}>
           <div className="management-form__grid">
@@ -130,7 +130,7 @@ export const HostSchedules = () => {
         </form>
       </section>
 
-      {!validExperienceId ? <EmptyState title="Experiencia no válida" description="El identificador de la experiencia no es válido." />
+      {!validExperienceId ? <EmptyState title="Experiencia no disponible" description="No pudimos abrir esta experiencia. Regresa a tus experiencias e inténtalo nuevamente." />
         : loading ? (
           <div className="management-list" role="status">
             {[1, 2].map((item) => <Skeleton key={item} className="management-card management-card--loading" />)}
