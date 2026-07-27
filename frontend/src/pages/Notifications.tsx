@@ -30,6 +30,7 @@ export const Notifications = () => {
   const [pushStatus, setPushStatus] = useState<WebPushStatus | 'checking'>('checking');
   const [updatingPush, setUpdatingPush] = useState(false);
   const [pushFeedback, setPushFeedback] = useState<string | null>(null);
+  const [reloadCount, setReloadCount] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -39,19 +40,20 @@ export const Notifications = () => {
     ]).then(([notifications, currentPreferences]) => {
       setItems(notifications);
       setPreferences(currentPreferences);
+      setError(null);
     }).catch((requestError: unknown) => {
       if (!axios.isCancel(requestError)) setError(toApiError(requestError, 'No fue posible cargar las notificaciones.').message);
     });
     void getWebPushStatus().then(setPushStatus, () => setPushStatus('unsupported'));
     return () => controller.abort();
-  }, []);
+  }, [reloadCount]);
 
   const markRead = async (id: number) => {
     try {
       const updated = await notificationService.markRead(id);
       setItems((current) => current?.map((item) => item.id === id ? updated : item) ?? current);
     } catch (requestError: unknown) {
-      setError(toApiError(requestError, 'No fue posible marcar la notificacion.').message);
+      setError(toApiError(requestError, 'No fue posible marcar la notificación.').message);
     }
   };
 
@@ -104,11 +106,26 @@ export const Notifications = () => {
     }
   };
 
-  if (error && !items) return <div className="container management-page"><ErrorState description={error} /></div>;
-  if (!items || !preferences) return <div className="container management-page" role="status"><Skeleton className="management-summary" /></div>;
+  if (error && !items) {
+    return (
+      <div className="container management-page">
+        <ErrorState description={error} onRetry={() => setReloadCount((current) => current + 1)} />
+      </div>
+    );
+  }
+
+  if (!items || !preferences) {
+    return (
+      <div className="container management-page" role="status" aria-busy="true">
+        <Skeleton className="management-skeleton" />
+        <Skeleton className="management-skeleton" />
+        <span className="visually-hidden">Cargando notificaciones…</span>
+      </div>
+    );
+  }
 
   return (
-    <main className="container management-page animate-fade-in">
+    <div className="container management-page animate-fade-in">
       <header className="page-heading"><span className="page-heading__eyebrow">Tu actividad</span><h1>Notificaciones</h1>
         <p>Aquí encontrarás novedades sobre tus reservas, pagos y experiencias.</p></header>
       {error && <Alert tone="error">{error}</Alert>}
@@ -132,7 +149,7 @@ export const Notifications = () => {
           <div>
             <strong>Este dispositivo</strong>
             <small>
-              {pushStatus === 'checking' && 'Comprobando si los avisos están activados...'}
+              {pushStatus === 'checking' && 'Comprobando si los avisos están activados…'}
               {pushStatus === 'active' && 'Los avisos están activados en este dispositivo.'}
               {pushStatus === 'inactive' && 'Los avisos no están activados en este dispositivo.'}
               {pushStatus === 'denied' && 'Los avisos están bloqueados en la configuración del sitio.'}
@@ -155,17 +172,17 @@ export const Notifications = () => {
 
       <section className="notification-list" aria-labelledby="notification-list-title">
         <h2 id="notification-list-title">Actividad reciente</h2>
-        {items.length === 0 ? <EmptyState title="Aun no hay notificaciones" description="Los cambios de tus reservas apareceran aqui." /> : (
+        {items.length === 0 ? <EmptyState title="Aún no hay notificaciones" description="Aquí verás los avisos de tus reservas, pagos y experiencias." /> : (
           <ol>{items.map((item) => (
             <li className={`surface-card notification-item${item.readAt ? '' : ' notification-item--unread'}`} key={item.id}>
               <div><span className="notification-item__date">{formatDate(item.createdAt)}</span><h3>{item.title}</h3><p>{item.message}</p>
                 {item.actionUrl && <Link to={item.actionUrl}>Ver detalle</Link>}</div>
-              {!item.readAt && <Button variant="ghost" size="sm" onClick={() => void markRead(item.id)}><Check size={17} /> Marcar leida</Button>}
+              {!item.readAt && <Button variant="ghost" size="sm" onClick={() => void markRead(item.id)}><Check size={17} /> Marcar leída</Button>}
             </li>
           ))}</ol>
         )}
       </section>
-    </main>
+    </div>
   );
 };
 

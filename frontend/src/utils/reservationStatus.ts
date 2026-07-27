@@ -3,11 +3,9 @@ export type StatusTone = 'neutral' | 'success' | 'warning' | 'error' | 'info';
 const reservationLabels: Record<string, string> = {
   PendingPayment: 'Pendiente de pago',
   Confirmed: 'Confirmada',
-  Paid: 'Pagada',
   Completed: 'Completada',
-  Cancelled: 'Cancelada',
+  CancelledByTourist: 'Cancelada por el turista',
   CancelledByHost: 'Cancelada por el anfitrión',
-  CancelledByUser: 'Cancelada por el turista',
   RefundPending: 'Reembolso pendiente',
   Refunded: 'Reembolsada',
 };
@@ -15,7 +13,7 @@ const reservationLabels: Record<string, string> = {
 export const getReservationStatusLabel = (status: string) => reservationLabels[status] ?? 'Estado no disponible';
 
 export const getReservationStatusTone = (status: string): StatusTone => {
-  if (status === 'Confirmed' || status === 'Paid' || status === 'Completed' || status === 'Refunded') {
+  if (status === 'Confirmed' || status === 'Completed' || status === 'Refunded') {
     return 'success';
   }
   if (status.startsWith('Cancelled')) return 'error';

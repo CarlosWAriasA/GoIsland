@@ -9,6 +9,8 @@ import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import Input from '../components/Input';
 import Skeleton from '../components/Skeleton';
+import Typewriter from '../components/Typewriter';
+import { useRevealOnScroll } from '../hooks/useRevealOnScroll';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
 import type { Experience } from '../types';
@@ -44,6 +46,8 @@ export const Home = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [completedRequest, setCompletedRequest] = useState<number | null>(null);
   const loading = completedRequest !== retryCount;
+
+  useRevealOnScroll(!loading);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -81,7 +85,9 @@ export const Home = () => {
       <section className="experiences-hero home-hero" aria-labelledby="home-title">
         <div className="experiences-hero__content">
           <span className="experiences-hero__eyebrow">Bienvenido a GoIsland</span>
-          <h1 id="home-title">La isla, contada por quienes viven en ella</h1>
+          <h1 id="home-title">
+            <Typewriter text="La isla, contada por quienes viven en ella" />
+          </h1>
           <p>
             Anfitriones dominicanos abren sus rutas, su mar y su cocina.
             Tú eliges la fecha; nosotros mostramos cupos y precios reales.
@@ -110,7 +116,7 @@ export const Home = () => {
         </div>
       </section>
 
-      <section className="container home-section" aria-labelledby="featured-title" aria-busy={loading}>
+      <section className="container home-section" data-reveal aria-labelledby="featured-title" aria-busy={loading}>
         <div className="home-section__heading">
           <h2 className="home-section__title" id="featured-title">Experiencias destacadas</h2>
           <Link className="home-section__link" to="/experiences">
@@ -140,7 +146,7 @@ export const Home = () => {
         )}
       </section>
 
-      <section className="container home-section" id="como-funciona" aria-labelledby="how-title">
+      <section className="container home-section" id="como-funciona" data-reveal aria-labelledby="how-title">
         <h2 className="home-section__title" id="how-title">Cómo funciona</h2>
         <ol className="how-steps">
           <li className="surface-panel how-step">
@@ -161,7 +167,7 @@ export const Home = () => {
         </ol>
       </section>
 
-      <section className="container home-actions">
+      <section className="container home-actions" data-reveal>
         <Link className="button-link button-link--primary" to="/experiences">Explorar experiencias</Link>
         <Link className="button-link button-link--outline" to="/host-profile">Quiero ser anfitrión</Link>
       </section>

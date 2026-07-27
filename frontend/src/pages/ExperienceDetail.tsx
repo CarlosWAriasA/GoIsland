@@ -22,6 +22,7 @@ import Skeleton from '../components/Skeleton';
 import { useAuth } from '../hooks/useAuth';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
+import RatingStars from '../components/RatingStars';
 import { reviewService } from '../services/reviewService';
 import type { Experience, ExperienceSchedule, Review } from '../types';
 
@@ -269,11 +270,23 @@ export const ExperienceDetail = () => {
       <section className="surface-panel experience-reviews" aria-labelledby="experience-reviews-title">
         <div className="experience-reviews__heading">
           <h2 id="experience-reviews-title">Reseñas verificadas</h2>
-          {experience.averageRating !== null && <strong>{experience.averageRating.toFixed(1)} / 5 · {experience.reviewCount}</strong>}
+          {experience.averageRating !== null && (
+            <p className="experience-reviews__average">
+              <RatingStars value={Math.round(experience.averageRating)} />
+              <strong>{experience.averageRating.toFixed(1)}</strong>
+              <span>
+                de 5 · {experience.reviewCount} {experience.reviewCount === 1 ? 'reseña' : 'reseñas'}
+              </span>
+            </p>
+          )}
         </div>
-        {reviews.length === 0 ? <p>Aún no hay reseñas de reservas completadas.</p> : (
+        {reviews.length === 0 ? (
+          <p className="experience-reviews__empty">
+            Todavía no hay reseñas. Solo quienes completaron la experiencia pueden escribir una.
+          </p>
+        ) : (
           <ol>{reviews.map((review) => <li key={review.id} className="review-card">
-            <div><strong>{review.authorName}</strong><span aria-label={`${review.rating} de 5 estrellas`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span></div>
+            <div><strong>{review.authorName}</strong><RatingStars value={review.rating} /></div>
             <p>{review.comment}</p><small>{formatDate(review.createdAt)}</small>
           </li>)}</ol>
         )}
