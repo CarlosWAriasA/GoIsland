@@ -41,6 +41,54 @@ public class ExperienceService : IExperienceService
         return await AddRatingsAsync(experiences);
     }
 
+    public async Task<IReadOnlyCollection<ExperienceResponse>> GetNearbyAsync(NearbyExperiencesRequest request)
+    {
+        var latitude = (double)request.Latitude;
+        var longitude = (double)request.Longitude;
+        var radiusKm = (double)request.RadiusKm;
+        var latitudeDelta = radiusKm / 111.32d;
+        var longitudeScale = Math.Max(Math.Abs(Math.Cos(latitude * Math.PI / 180d)), 0.01d);
+        var longitudeDelta = radiusKm / (111.32d * longitudeScale);
+        var minimumLatitude = (decimal)Math.Max(-90d, latitude - latitudeDelta);
+        var maximumLatitude = (decimal)Math.Min(90d, latitude + latitudeDelta);
+        var minimumLongitude = (decimal)Math.Max(-180d, longitude - longitudeDelta);
+        var maximumLongitude = (decimal)Math.Min(180d, longitude + longitudeDelta);
+
+        var candidates = await _context.Experiences.AsNoTracking()
+            .Where(item => item.IsApproved
+                && item.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && item.Latitude.HasValue
+                && item.Longitude.HasValue
+                && item.Latitude >= minimumLatitude
+                && item.Latitude <= maximumLatitude
+                && item.Longitude >= minimumLongitude
+                && item.Longitude <= maximumLongitude)
+            .ToArrayAsync();
+
+        var distances = candidates
+            .Select(item => new
+            {
+                Experience = item,
+                Distance = CalculateDistanceKm(
+                    latitude,
+                    longitude,
+                    (double)item.Latitude!.Value,
+                    (double)item.Longitude!.Value)
+            })
+            .Where(item => item.Distance <= radiusKm)
+            .OrderBy(item => item.Distance)
+            .ToArray();
+
+        var responses = await AddRatingsAsync(distances.Select(item => item.Experience));
+        var distanceById = distances.ToDictionary(item => item.Experience.Id, item => item.Distance);
+        foreach (var response in responses)
+        {
+            response.DistanceKm = Math.Round((decimal)distanceById[response.Id], 1);
+        }
+
+        return responses.OrderBy(item => item.DistanceKm).ToArray();
+    }
+
     private async Task<IReadOnlyCollection<ExperienceResponse>> AddRatingsAsync(IEnumerable<Experience> source)
     {
         var experiences = source.ToArray();
@@ -70,6 +118,8 @@ public class ExperienceService : IExperienceService
             Title = experience.Title,
             Description = experience.Description,
             Location = experience.Location,
+            Latitude = experience.Latitude,
+            Longitude = experience.Longitude,
             Category = experience.Category,
             Price = experience.Price,
             Capacity = experience.Capacity,
@@ -78,4 +128,24 @@ public class ExperienceService : IExperienceService
             CreatedAt = experience.CreatedAt
         };
     }
+
+    private static double CalculateDistanceKm(
+        double firstLatitude,
+        double firstLongitude,
+        double secondLatitude,
+        double secondLongitude)
+    {
+        const double earthRadiusKm = 6371.0088d;
+        var latitudeDelta = DegreesToRadians(secondLatitude - firstLatitude);
+        var longitudeDelta = DegreesToRadians(secondLongitude - firstLongitude);
+        var firstLatitudeRadians = DegreesToRadians(firstLatitude);
+        var secondLatitudeRadians = DegreesToRadians(secondLatitude);
+        var haversine = Math.Pow(Math.Sin(latitudeDelta / 2d), 2d)
+            + Math.Cos(firstLatitudeRadians)
+            * Math.Cos(secondLatitudeRadians)
+            * Math.Pow(Math.Sin(longitudeDelta / 2d), 2d);
+        return earthRadiusKm * 2d * Math.Atan2(Math.Sqrt(haversine), Math.Sqrt(1d - haversine));
+    }
+
+    private static double DegreesToRadians(double degrees) => degrees * Math.PI / 180d;
 }

@@ -32,6 +32,8 @@ export interface ManagedExperienceRequest {
   title: string;
   description: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
   category: string;
   price: number;
   capacity: number;
@@ -48,4 +50,28 @@ export interface ManagedExperience extends ManagedExperienceRequest {
   reviewedByAdminId: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface HostDashboardSchedule {
+  id: number;
+  experienceId: number;
+  experienceTitle: string;
+  startsAt: string;
+  endsAt: string;
+  reservedSpots: number;
+  capacity: number;
+}
+
+export interface HostDashboard {
+  totalExperiences: number;
+  publishedExperiences: number;
+  upcomingSchedules: number;
+  upcomingReservations: number;
+  reservedSpots: number;
+  completedReservations: number;
+  netEarnings: number;
+  currency: string;
+  averageRating: number | null;
+  reviewCount: number;
+  nextSchedules: HostDashboardSchedule[];
 }

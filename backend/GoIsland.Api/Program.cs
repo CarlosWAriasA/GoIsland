@@ -107,6 +107,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExperienceService, ExperienceService>();
 builder.Services.AddScoped<IExperienceManagementService, ExperienceManagementService>();
 builder.Services.AddScoped<IHostService, HostService>();
+builder.Services.AddScoped<IHostDashboardService, HostDashboardService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<INotificationService>(services => services.GetRequiredService<NotificationService>());
 builder.Services.AddScoped<IOutboxWriter>(services => services.GetRequiredService<NotificationService>());

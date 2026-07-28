@@ -20,11 +20,23 @@ import AdminModeration from '../pages/AdminModeration';
 import RoleRoute from './RoleRoute';
 import Notifications from '../pages/Notifications';
 
+const ExperienceMapPage = React.lazy(() => import('../pages/ExperienceMapPage'));
+const HostDashboard = React.lazy(() => import('../pages/HostDashboard'));
+
+const pageFallback = (
+  <div className="container route-loading" role="status">
+    Cargando...
+  </div>
+);
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/experiences" element={<Experiences />} />
+      <Route path="/experiences/map" element={
+        <React.Suspense fallback={pageFallback}><ExperienceMapPage /></React.Suspense>
+      } />
       <Route path="/experiences/:id" element={<ExperienceDetail />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -40,6 +52,9 @@ export const AppRoutes: React.FC = () => {
         <Route path="/notifications" element={<Notifications />} />
 
         <Route element={<RoleRoute allowedRoles={['Host']} />}>
+          <Route path="/host/dashboard" element={
+            <React.Suspense fallback={pageFallback}><HostDashboard /></React.Suspense>
+          } />
           <Route path="/host/experiences" element={<HostExperiences />} />
           <Route path="/host/experiences/:id/schedules" element={<HostSchedules />} />
           <Route path="/host/reservations" element={<HostReservations />} />

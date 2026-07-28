@@ -78,6 +78,14 @@ public class ExperiencesController : ControllerBase
         return Ok(await _experienceService.SearchAsync(request));
     }
 
+    [HttpGet("nearby")]
+    [AllowAnonymous]
+    public async Task<ActionResult<IReadOnlyCollection<ExperienceResponse>>> Nearby(
+        [FromQuery] NearbyExperiencesRequest request)
+    {
+        return Ok(await _experienceService.GetNearbyAsync(request));
+    }
+
     [HttpPost]
     [Authorize]
     public async Task<IActionResult> Create(CreateExperienceRequest request)

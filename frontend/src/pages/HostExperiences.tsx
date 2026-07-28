@@ -1,5 +1,5 @@
-import { CalendarDays, MapPin, Pencil, Plus, Send, Trash2, UsersRound } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { CalendarDays, LocateFixed, MapPin, Pencil, Plus, Send, Trash2, UsersRound } from 'lucide-react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import Alert from '../components/Alert';
@@ -17,10 +17,14 @@ import { hostExperienceService } from '../services/hostExperienceService';
 import type { ManagedExperience, ManagedExperienceRequest } from '../types';
 import { getModerationLabel, getModerationTone } from '../utils/moderationStatus';
 
+const ExperienceMap = lazy(() => import('../components/ExperienceMap'));
+
 const emptyForm: ManagedExperienceRequest = {
   title: '',
   description: '',
   location: '',
+  latitude: null,
+  longitude: null,
   category: '',
   price: 0,
   capacity: 1,
@@ -30,6 +34,74 @@ const formatCurrency = (amount: number) => new Intl.NumberFormat('es-DO', {
   style: 'currency',
   currency: 'USD',
 }).format(amount);
+
+interface LocationPickerProps {
+  latitude: number | null;
+  longitude: number | null;
+  onChange: (latitude: number | null, longitude: number | null) => void;
+  error?: string;
+}
+
+const LocationPicker = ({ latitude, longitude, onChange, error }: LocationPickerProps) => {
+  const [locating, setLocating] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const selectedPoint = latitude !== null && longitude !== null ? { latitude, longitude } : null;
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setMessage('Este dispositivo no permite conocer tu ubicación.');
+      return;
+    }
+    setLocating(true);
+    setMessage(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        onChange(
+          Number(position.coords.latitude.toFixed(6)),
+          Number(position.coords.longitude.toFixed(6)),
+        );
+        setMessage('Ubicación seleccionada.');
+        setLocating(false);
+      },
+      () => {
+        setMessage('No pudimos usar tu ubicación. Puedes señalar el lugar directamente en el mapa.');
+        setLocating(false);
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+    );
+  };
+
+  return (
+    <div className="location-picker">
+      <div className="location-picker__heading">
+        <div>
+          <strong>Ubicación en el mapa</strong>
+          <small>Señala el lugar exacto donde se realizará la experiencia.</small>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={useCurrentLocation} isLoading={locating}>
+          <LocateFixed size={17} aria-hidden="true" /> Usar mi ubicación
+        </Button>
+      </div>
+      {message && <Alert tone="info">{message}</Alert>}
+      {error && <span className="field-error" role="alert">{error}</span>}
+      <Suspense fallback={<Skeleton className="location-picker__map-loading" />}>
+        <ExperienceMap
+          selectedPoint={selectedPoint}
+          onSelect={(point) => onChange(point.latitude, point.longitude)}
+          label="Selecciona la ubicación de la experiencia"
+        />
+      </Suspense>
+      <div className="location-picker__status">
+        <span>{selectedPoint ? 'Punto seleccionado' : 'Aún no has señalado un punto'}</span>
+        {selectedPoint && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null, null)}>
+            Quitar punto
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const HostExperiences = () => {
   const [experiences, setExperiences] = useState<ManagedExperience[]>([]);
@@ -79,6 +151,8 @@ export const HostExperiences = () => {
       title: experience.title,
       description: experience.description,
       location: experience.location,
+      latitude: experience.latitude,
+      longitude: experience.longitude,
       category: experience.category,
       price: experience.price,
       capacity: experience.capacity,
@@ -232,6 +306,18 @@ export const HostExperiences = () => {
               rows={6}
               required
             />
+            <LocationPicker
+              latitude={form.latitude}
+              longitude={form.longitude}
+              onChange={(latitude, longitude) => setForm((current) => ({
+                ...current,
+                latitude,
+                longitude,
+              }))}
+              error={formError
+                ? getFieldError(formError, 'Latitude') ?? getFieldError(formError, 'Longitude')
+                : undefined}
+            />
             <div className="management-actions">
               <Button variant="outline" onClick={closeForm}>Cancelar</Button>
               <Button type="submit" isLoading={submitting}>Guardar borrador</Button>
@@ -274,6 +360,7 @@ export const HostExperiences = () => {
                 <div><dt>Categoría</dt><dd>{experience.category}</dd></div>
                 <div><dt>Precio</dt><dd>{formatCurrency(experience.price)}</dd></div>
                 <div><dt>Cupos</dt><dd>{experience.availableSpots} de {experience.capacity}</dd></div>
+                <div><dt>Mapa</dt><dd>{experience.latitude !== null ? 'Ubicación definida' : 'Sin ubicación'}</dd></div>
               </dl>
               <div className="management-actions">
                 {experience.approvalStatus === 'Approved' && (

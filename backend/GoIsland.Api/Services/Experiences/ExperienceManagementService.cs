@@ -30,6 +30,8 @@ public class ExperienceManagementService : IExperienceManagementService
             Title = request.Title.Trim(),
             Description = request.Description.Trim(),
             Location = request.Location.Trim(),
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
             Category = request.Category.Trim(),
             Price = request.Price,
             Capacity = request.Capacity,
@@ -94,6 +96,8 @@ public class ExperienceManagementService : IExperienceManagementService
         experience.Title = request.Title.Trim();
         experience.Description = request.Description.Trim();
         experience.Location = request.Location.Trim();
+        experience.Latitude = request.Latitude;
+        experience.Longitude = request.Longitude;
         experience.Category = request.Category.Trim();
         experience.Price = request.Price;
         experience.Capacity = request.Capacity;
@@ -250,6 +254,8 @@ public class ExperienceManagementService : IExperienceManagementService
                    Title = experience.Title,
                    Description = experience.Description,
                    Location = experience.Location,
+                   Latitude = experience.Latitude,
+                   Longitude = experience.Longitude,
                    Category = experience.Category,
                    Price = experience.Price,
                    Capacity = experience.Capacity,

@@ -62,6 +62,7 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
         services.AddScoped<IExperienceService, ExperienceService>();
         services.AddScoped<IExperienceManagementService, ExperienceManagementService>();
         services.AddScoped<IHostService, HostService>();
+        services.AddScoped<IHostDashboardService, HostDashboardService>();
         services.AddScoped<NotificationService>();
         services.AddScoped<INotificationService>(provider => provider.GetRequiredService<NotificationService>());
         services.AddScoped<IOutboxWriter>(provider => provider.GetRequiredService<NotificationService>());
@@ -133,6 +134,13 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             "Scripts",
             "008_create_web_push_subscriptions.sql"));
         await Context.Database.ExecuteSqlRawAsync(webPushScript);
+
+        var locationsScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "009_add_experience_locations.sql"));
+        await Context.Database.ExecuteSqlRawAsync(locationsScript);
 
         // Fuerza una consulta real y falla temprano si el esquema no esta aplicado.
         await Context.Users.AsNoTracking().AnyAsync();

@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace GoIsland.Api.DTOs.Experiences;
 
-public class UpdateExperienceRequest
+public class UpdateExperienceRequest : IValidatableObject
 {
     [Required(ErrorMessage = "El titulo es obligatorio.")]
     [StringLength(160, MinimumLength = 3, ErrorMessage = "El titulo debe tener entre 3 y 160 caracteres.")]
@@ -16,6 +16,12 @@ public class UpdateExperienceRequest
     [StringLength(160, MinimumLength = 2, ErrorMessage = "La ubicacion debe tener entre 2 y 160 caracteres.")]
     public string Location { get; set; } = string.Empty;
 
+    [Range(typeof(decimal), "-90", "90", ErrorMessage = "El punto seleccionado no es válido.")]
+    public decimal? Latitude { get; set; }
+
+    [Range(typeof(decimal), "-180", "180", ErrorMessage = "El punto seleccionado no es válido.")]
+    public decimal? Longitude { get; set; }
+
     [Required(ErrorMessage = "La categoria es obligatoria.")]
     [StringLength(80, MinimumLength = 2, ErrorMessage = "La categoria debe tener entre 2 y 80 caracteres.")]
     public string Category { get; set; } = string.Empty;
@@ -25,4 +31,14 @@ public class UpdateExperienceRequest
 
     [Range(1, int.MaxValue, ErrorMessage = "La capacidad debe ser mayor que cero.")]
     public int Capacity { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (Latitude.HasValue != Longitude.HasValue)
+        {
+            yield return new ValidationResult(
+                "Selecciona un punto completo en el mapa.",
+                [nameof(Latitude), nameof(Longitude)]);
+        }
+    }
 }

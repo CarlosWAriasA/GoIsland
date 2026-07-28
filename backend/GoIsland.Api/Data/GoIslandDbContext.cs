@@ -74,6 +74,8 @@ public class GoIslandDbContext : DbContext
             entity.Property(experience => experience.Title).HasColumnName("title").HasMaxLength(160).IsRequired();
             entity.Property(experience => experience.Description).HasColumnName("description").HasMaxLength(2000).IsRequired();
             entity.Property(experience => experience.Location).HasColumnName("location").HasMaxLength(160).IsRequired();
+            entity.Property(experience => experience.Latitude).HasColumnName("latitude").HasPrecision(9, 6);
+            entity.Property(experience => experience.Longitude).HasColumnName("longitude").HasPrecision(9, 6);
             entity.Property(experience => experience.Category).HasColumnName("category").HasMaxLength(80).IsRequired();
             entity.Property(experience => experience.Price).HasColumnName("price").HasPrecision(10, 2);
             entity.Property(experience => experience.Capacity).HasColumnName("capacity").IsRequired();

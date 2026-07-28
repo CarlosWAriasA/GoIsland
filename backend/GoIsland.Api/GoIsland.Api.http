@@ -456,6 +456,19 @@ Accept: application/json
 
 ###
 
+# Experiencias aprobadas a menos de 25 km del punto indicado
+GET {{GoIsland.Api_HostAddress}}/api/experiences/nearby?latitude=18.4861&longitude=-69.9312&radiusKm=25
+Accept: application/json
+
+###
+
+# Métricas reales del anfitrión autenticado
+GET {{GoIsland.Api_HostAddress}}/api/host/dashboard
+Authorization: Bearer {{GoIsland.Api_HostToken}}
+Accept: application/json
+
+###
+
 PUT {{GoIsland.Api_HostAddress}}/api/reviews/1
 Authorization: Bearer {{GoIsland.Api_Token}}
 Content-Type: application/json

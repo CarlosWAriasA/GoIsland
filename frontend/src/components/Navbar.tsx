@@ -57,6 +57,9 @@ export const Navbar = () => {
           <NavLink to="/experiences" className={getNavLinkClass} onClick={closeMenu}>
             Experiencias
           </NavLink>
+          <NavLink to="/experiences/map" className={getNavLinkClass} onClick={closeMenu}>
+            Mapa
+          </NavLink>
 
           {isAuthenticated ? (
             <>
@@ -66,6 +69,9 @@ export const Navbar = () => {
 
               {user?.role === 'Host' && (
                 <>
+                  <NavLink to="/host/dashboard" className={getNavLinkClass} onClick={closeMenu}>
+                    Mi actividad
+                  </NavLink>
                   <NavLink to="/host/experiences" className={getNavLinkClass} onClick={closeMenu}>
                     Mis experiencias
                   </NavLink>

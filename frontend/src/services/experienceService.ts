@@ -20,6 +20,19 @@ export const experienceService = {
     return response.data;
   },
 
+  getNearby: async (
+    latitude: number,
+    longitude: number,
+    radiusKm: number,
+    signal?: AbortSignal,
+  ): Promise<Experience[]> => {
+    const response = await api.get<Experience[]>('/experiences/nearby', {
+      params: { latitude, longitude, radiusKm },
+      signal,
+    });
+    return response.data;
+  },
+
   getAvailability: async (
     id: number,
     params?: { from?: string; to?: string; quantity?: number },

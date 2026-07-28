@@ -290,6 +290,26 @@ Checklist final de la guia UX/UI:
   y navegacion local sin errores de consola. La activacion y el estado activo de los avisos fueron
   confirmados visualmente en un navegador con permisos habilitados.
 
+### Entrega E completada - Mapas y panel del anfitrion
+
+- PostgreSQL incorpora coordenadas opcionales y validadas para cada experiencia mediante
+  `009_add_experience_locations.sql`, aplicado al ambiente compartido. Las experiencias existentes
+  permanecen validas sin inventar una ubicacion; el anfitrion puede senalarla al editar.
+- `GET /api/experiences/nearby` recibe un punto y un radio de 1 a 300 km, limita candidatos en
+  PostgreSQL y calcula la distancia Haversine antes de devolver solo experiencias aprobadas,
+  ordenadas de menor a mayor distancia.
+- `GET /api/host/dashboard` exige un anfitrion aprobado y agrega exclusivamente sus experiencias,
+  proximos horarios, reservas confirmadas, personas reservadas, experiencias completadas,
+  ingresos netos, calificacion y resenas visibles.
+- El frontend agrega `/experiences/map`, busqueda a menos de 50 km con permiso explicito del
+  dispositivo, mapa en el detalle cuando existe ubicacion y selector de punto para el anfitrion.
+- `/host/dashboard` presenta seis metricas reales y las proximas cinco fechas, con enlaces directos
+  a su calendario. Ninguna cifra se calcula con datos locales ni se comparte entre anfitriones.
+- El mapa usa Leaflet y teselas de OpenStreetMap con atribucion visible, sin cuentas, claves ni
+  servicios de pago. Su codigo se carga solamente al abrir una pantalla que lo necesita.
+- Verificacion aprobada: migracion aplicada, compilacion .NET sin advertencias, 68 pruebas
+  .NET/PostgreSQL, `npm run lint`, `npm run build` y paquete principal por debajo de 500 kB.
+
 ## Fuente de diseno analizada
 
 Este plan aplica la guia `Guia_Diseno_UX_UI_Prototipos_IA_Julissa_Mateo_Abad.pdf`, revisada en
@@ -313,7 +333,8 @@ Principios tomados de la guia:
 - La ejecucion comenzo por el Bloque 0 y avanzara en entregas verticales verificables.
 - Los datos funcionales deben proceder del backend y PostgreSQL.
 - No se permitiran experiencias, calificaciones, resenas, favoritos ni confirmaciones inventadas.
-- Stripe es la unica integracion que podra usar un gateway mock temporal claramente identificado.
+- El proveedor temporal de pagos permanece como detalle interno; la interfaz presenta el flujo
+  final con una unica accion `Pagar`.
 - Una pantalla no se considerara integrada si solamente se ve bien con datos locales.
 - Las mejoras futuras que requieran endpoints inexistentes se mostraran como bloqueadas, no como
   funcionalidades aparentes.
@@ -790,6 +811,7 @@ A partir de aqui, cada bloque backend debe integrarse antes de comenzar demasiad
 
 - Backend: bloques 15 y 16.
 - Integrar cercania, ubicacion, rutas acordadas y metricas del anfitrion.
+- Estado: completada mediante ubicaciones persistentes, cercania publica y panel privado real.
 
 ## Compatibilidad de contratos
 
@@ -822,7 +844,7 @@ planificarse como una version coordinada y no introducirse silenciosamente.
 
 1. Configurar las credenciales de Google y del proveedor de correo en cada ambiente.
 2. Configurar en QA y produccion las credenciales propias para los avisos a dispositivos.
-3. Comenzar mapas y dashboard de la Entrega E.
+3. Definir la siguiente entrega funcional despues de mapas y panel del anfitrion.
 4. Mantener cada entrega vertical verificada antes de acumular la siguiente.
 
 Este enfoque evita tanto el extremo de detener el backend por completo como el de terminar todos

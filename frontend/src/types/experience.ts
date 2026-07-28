@@ -3,6 +3,9 @@ export interface Experience {
   title: string;
   description: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
+  distanceKm: number | null;
   category: string;
   price: number;
   capacity: number;

@@ -11,7 +11,7 @@ import {
   UsersRound,
   Waves,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
@@ -25,6 +25,8 @@ import { experienceService } from '../services/experienceService';
 import RatingStars from '../components/RatingStars';
 import { reviewService } from '../services/reviewService';
 import type { Experience, ExperienceSchedule, Review } from '../types';
+
+const ExperienceMap = lazy(() => import('../components/ExperienceMap'));
 
 const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
   style: 'currency',
@@ -224,6 +226,23 @@ export const ExperienceDetail = () => {
             <h2 id="experience-description-title">Sobre esta experiencia</h2>
             <p>{experience.description}</p>
           </section>
+          {experience.latitude !== null && experience.longitude !== null && (
+            <section className="experience-detail__map" aria-labelledby="experience-map-title">
+              <h2 id="experience-map-title">Dónde se realiza</h2>
+              <p>{experience.location}</p>
+              <Suspense fallback={<Skeleton className="experience-detail__map-loading" />}>
+                <ExperienceMap
+                  points={[{
+                    id: experience.id,
+                    title: experience.title,
+                    latitude: experience.latitude,
+                    longitude: experience.longitude,
+                  }]}
+                  label={`Ubicación de ${experience.title}`}
+                />
+              </Suspense>
+            </section>
+          )}
         </div>
 
         <aside className="experience-detail__summary surface-panel" aria-labelledby="experience-summary-title">
