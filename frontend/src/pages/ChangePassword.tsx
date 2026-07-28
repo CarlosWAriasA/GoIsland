@@ -7,6 +7,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import { getFieldError, toApiError } from '../services/apiError';
 import { authService } from '../services/authService';
+import { getPasswordPolicyError, PASSWORD_POLICY_HINT } from '../utils/passwordPolicy';
 
 interface ChangePasswordErrors {
   currentPassword?: string;
@@ -27,9 +28,7 @@ export const ChangePassword = () => {
     const errors: ChangePasswordErrors = {};
     if (!currentPassword) errors.currentPassword = 'La contrasena actual es obligatoria.';
     if (!newPassword) errors.newPassword = 'La nueva contrasena es obligatoria.';
-    else if (newPassword.length < 6 || newPassword.length > 100) {
-      errors.newPassword = 'La nueva contrasena debe tener entre 6 y 100 caracteres.';
-    }
+    else errors.newPassword = getPasswordPolicyError(newPassword);
     if (!confirmPassword) errors.confirmPassword = 'La confirmacion de la contrasena es obligatoria.';
     else if (newPassword !== confirmPassword) {
       errors.confirmPassword = 'La confirmacion no coincide con la nueva contrasena.';
@@ -102,6 +101,7 @@ export const ChangePassword = () => {
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
             error={fieldErrors.newPassword}
+            hint={fieldErrors.newPassword ? undefined : PASSWORD_POLICY_HINT}
             icon={<LockKeyhole size={18} />}
           />
           <Input

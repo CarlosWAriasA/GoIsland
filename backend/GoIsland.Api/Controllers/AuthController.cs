@@ -2,8 +2,10 @@ using System.Security.Claims;
 using GoIsland.Api.Data;
 using GoIsland.Api.DTOs.Auth;
 using GoIsland.Api.Services.Auth;
+using GoIsland.Api.Services.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace GoIsland.Api.Controllers;
 
@@ -22,6 +24,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("register")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicyNames.Authentication)]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
         var response = await _authService.RegisterAsync(request);
@@ -35,6 +38,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicyNames.Authentication)]
     public async Task<IActionResult> Login(LoginRequest request)
     {
         var response = await _authService.LoginAsync(request);
@@ -48,6 +52,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("google")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicyNames.Authentication)]
     public async Task<IActionResult> Google(GoogleAuthRequest request)
     {
         var result = await _authService.AuthenticateWithGoogleAsync(request);
@@ -88,6 +93,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("forgot-password")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicyNames.PasswordRecovery)]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
     {
         var result = await _authService.RequestPasswordResetAsync(request);
@@ -107,6 +113,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("reset-password")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicyNames.PasswordRecovery)]
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
     {
         var result = await _authService.ResetPasswordAsync(request);

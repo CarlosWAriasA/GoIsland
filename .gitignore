@@ -5,7 +5,6 @@ obj/
 .vs/
 .idea/
 .vscode/
-backend/GoIsland.Api/appsettings.json
 *.pdf
 *.docx
 PLAN_BACKEND_GOISLAND.md

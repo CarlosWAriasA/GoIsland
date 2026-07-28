@@ -35,6 +35,7 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             .SetBasePath(configurationDirectory)
             .AddJsonFile("appsettings.json", optional: false)
             .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddUserSecrets(typeof(GoIslandDbContext).Assembly, optional: true)
             .AddEnvironmentVariables()
             .Build();
 
@@ -56,7 +57,7 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IPasswordResetTokenGenerator, PasswordResetTokenGenerator>();
-        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<IEmailSender, FakeConfiguredEmailSender>();
         services.AddSingleton<IGoogleIdentityVerifier, FakeGoogleIdentityVerifier>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IExperienceService, ExperienceService>();
@@ -141,6 +142,13 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             "Scripts",
             "009_add_experience_locations.sql"));
         await Context.Database.ExecuteSqlRawAsync(locationsScript);
+
+        var loginProtectionScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "010_add_login_protection.sql"));
+        await Context.Database.ExecuteSqlRawAsync(loginProtectionScript);
 
         // Fuerza una consulta real y falla temprano si el esquema no esta aplicado.
         await Context.Users.AsNoTracking().AnyAsync();

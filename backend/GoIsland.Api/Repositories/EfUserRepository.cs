@@ -37,6 +37,11 @@ public class EfUserRepository : IUserRepository
         return Task.CompletedTask;
     }
 
+    public Task ReloadAsync(User user)
+    {
+        return _context.Entry(user).ReloadAsync();
+    }
+
     private static string NormalizeEmail(string email)
     {
         return email.Trim().ToLowerInvariant();

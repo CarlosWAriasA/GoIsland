@@ -12,6 +12,7 @@ import GoogleSignInButton from '../components/GoogleSignInButton';
 import { useAuth } from '../hooks/useAuth';
 import { getFieldError, toApiError } from '../services/apiError';
 import { isGoogleAuthConfigured } from '../services/googleAuthConfig';
+import { getPasswordPolicyError, PASSWORD_POLICY_HINT } from '../utils/passwordPolicy';
 
 interface RegisterErrors {
   fullName?: string;
@@ -44,9 +45,7 @@ export const Register = () => {
     if (!email) errors.email = 'El correo electrónico es obligatorio.';
     else if (!/\S+@\S+\.\S+/.test(email)) errors.email = 'Introduce un correo electrónico válido.';
     if (!password) errors.password = 'La contraseña es obligatoria.';
-    else if (password.length < 6 || password.length > 100) {
-      errors.password = 'La contraseña debe tener entre 6 y 100 caracteres.';
-    }
+    else errors.password = getPasswordPolicyError(password);
     if (!confirmPassword) errors.confirmPassword = 'Confirma tu contraseña.';
     else if (password !== confirmPassword) errors.confirmPassword = 'Las contraseñas no coinciden.';
     setFieldErrors(errors);
@@ -139,7 +138,7 @@ export const Register = () => {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             error={fieldErrors.password}
-            hint={fieldErrors.password ? undefined : 'Usa entre 6 y 100 caracteres.'}
+            hint={fieldErrors.password ? undefined : PASSWORD_POLICY_HINT}
             icon={<LockKeyhole size={18} />}
           />
           <Input

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using GoIsland.Api.Services.Security;
 
 namespace GoIsland.Api.DTOs.Auth;
 
@@ -9,7 +10,7 @@ public class ResetPasswordRequest
     public string Token { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "La nueva contrasena es obligatoria.")]
-    [StringLength(100, MinimumLength = 6, ErrorMessage = "La nueva contrasena debe tener entre 6 y 100 caracteres.")]
+    [StrongPassword]
     public string NewPassword { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "La confirmacion de la contrasena es obligatoria.")]

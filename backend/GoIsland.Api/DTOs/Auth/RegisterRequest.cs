@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using GoIsland.Api.Services.Security;
 
 namespace GoIsland.Api.DTOs.Auth;
 
@@ -13,7 +14,7 @@ public class RegisterRequest
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "La contrasena es obligatoria.")]
-    [StringLength(100, MinimumLength = 6, ErrorMessage = "La contrasena debe tener entre 6 y 100 caracteres.")]
+    [StrongPassword]
     public string Password { get; set; } = string.Empty;
 
     public string? Role { get; set; }

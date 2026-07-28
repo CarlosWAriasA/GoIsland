@@ -1,4 +1,6 @@
 using System.Text;
+using System.Net;
+using System.Threading.RateLimiting;
 using GoIsland.Api.Data;
 using GoIsland.Api.Repositories;
 using GoIsland.Api.Services.Auth;
@@ -13,7 +15,9 @@ using GoIsland.Api.Services.Schedules;
 using GoIsland.Api.Services.Security;
 using GoIsland.Api.Services.Reviews;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -46,7 +50,9 @@ builder.Services
             });
         };
     });
-var frontendUrl = builder.Configuration["Cors:FrontendUrl"] ?? "http://localhost:5173";
+var frontendUrl = SecurityConfiguration.ResolveFrontendOrigin(
+    builder.Configuration,
+    builder.Environment.EnvironmentName);
 
 builder.Services.AddCors(options =>
 {
@@ -58,6 +64,77 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowCredentials();
     });
+});
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+    options.RequireHeaderSymmetry = true;
+
+    foreach (var configuredProxy in builder.Configuration
+        .GetSection("ForwardedHeaders:KnownProxies")
+        .Get<string[]>() ?? Array.Empty<string>())
+    {
+        if (!IPAddress.TryParse(configuredProxy, out var proxyAddress))
+        {
+            throw new InvalidOperationException(
+                $"ForwardedHeaders:KnownProxies contiene una direccion IP invalida: {configuredProxy}.");
+        }
+
+        options.KnownProxies.Add(proxyAddress);
+    }
+});
+
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                Math.Ceiling(retryAfter.TotalSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        context.HttpContext.Response.ContentType = "application/problem+json";
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status429TooManyRequests,
+            Title = "Demasiadas solicitudes",
+            Detail = "Espera un momento antes de intentarlo nuevamente."
+        };
+        problem.Extensions["message"] = problem.Detail;
+        await context.HttpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
+    };
+
+    options.AddPolicy(RateLimitPolicyNames.Authentication, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: GetClientPartitionKey(httpContext),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+
+    options.AddPolicy(RateLimitPolicyNames.PasswordRecovery, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: GetClientPartitionKey(httpContext),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
 });
 
 var databaseConnectionString = NormalizePostgresConnectionString(
@@ -122,7 +199,9 @@ builder.Services.AddScoped<IReservationObserver, DashboardObserver>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
 
-var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key no esta configurado.");
+var jwtKey = SecurityConfiguration.GetRequiredJwtKey(
+    builder.Configuration,
+    builder.Environment.EnvironmentName);
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 builder.Services
@@ -181,6 +260,8 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseForwardedHeaders();
+
 app.UseExceptionHandler(errorApplication =>
 {
     errorApplication.Run(async context =>
@@ -214,14 +295,26 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
 
+app.UseRouting();
 app.UseCors(FrontendCorsPolicy);
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
 app.Run();
+
+static string GetClientPartitionKey(HttpContext context)
+{
+    return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+}
 
 static string NormalizePostgresConnectionString(string connectionString)
 {

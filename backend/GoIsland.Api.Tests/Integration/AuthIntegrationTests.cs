@@ -82,6 +82,51 @@ public class AuthIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
+    public async Task Login_AfterRepeatedFailures_IsLockedAndSuccessfulLoginResetsProtection()
+    {
+        var authService = GetRequiredService<IAuthService>();
+        var email = $"lockout-{Guid.NewGuid():N}@goisland.test";
+        const string password = "GoIslandSegura2026";
+        await authService.RegisterAsync(new RegisterRequest
+        {
+            FullName = "Usuario Bloqueo",
+            Email = email,
+            Password = password
+        });
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            Assert.Null(await authService.LoginAsync(new LoginRequest
+            {
+                Email = email,
+                Password = "ContrasenaIncorrecta2026"
+            }));
+        }
+
+        var lockedUser = await Context.Users.SingleAsync(user => user.Email == email);
+        Assert.Equal(5, lockedUser.FailedLoginAttempts);
+        Assert.True(lockedUser.LockoutEnd > DateTime.UtcNow);
+        Assert.Null(await authService.LoginAsync(new LoginRequest
+        {
+            Email = email,
+            Password = password
+        }));
+
+        lockedUser.LockoutEnd = DateTime.UtcNow.AddSeconds(-1);
+        await Context.SaveChangesAsync();
+
+        var successfulLogin = await authService.LoginAsync(new LoginRequest
+        {
+            Email = email,
+            Password = password
+        });
+
+        Assert.NotNull(successfulLogin);
+        Assert.Equal(0, lockedUser.FailedLoginAttempts);
+        Assert.Null(lockedUser.LockoutEnd);
+    }
+
+    [Fact]
     public async Task PublicRegistration_CannotGrantHostOrAdminRole()
     {
         var authService = GetRequiredService<IAuthService>();

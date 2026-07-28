@@ -6,17 +6,20 @@ param(
 $ErrorActionPreference = 'Stop'
 $backendDirectory = $PSScriptRoot
 $apiDirectory = Join-Path $backendDirectory 'GoIsland.Api'
-$developmentSettingsPath = Join-Path $apiDirectory 'appsettings.Development.json'
-$settingsPath = if (Test-Path -LiteralPath $developmentSettingsPath) {
-    $developmentSettingsPath
-} else {
-    Join-Path $apiDirectory 'appsettings.json'
+$rawConnectionString = [Environment]::GetEnvironmentVariable('ConnectionStrings__DefaultConnection')
+if ([string]::IsNullOrWhiteSpace($rawConnectionString)) {
+    $secretPrefix = 'ConnectionStrings:DefaultConnection = '
+    $secretLine = & dotnet user-secrets list --project $apiDirectory 2>$null |
+        Where-Object { $_.StartsWith($secretPrefix, [StringComparison]::Ordinal) } |
+        Select-Object -First 1
+
+    if (-not [string]::IsNullOrWhiteSpace($secretLine)) {
+        $rawConnectionString = $secretLine.Substring($secretPrefix.Length)
+    }
 }
 
-$settings = Get-Content -Raw -LiteralPath $settingsPath | ConvertFrom-Json
-$rawConnectionString = $settings.ConnectionStrings.DefaultConnection
 if ([string]::IsNullOrWhiteSpace($rawConnectionString)) {
-    throw 'ConnectionStrings:DefaultConnection no esta configurado.'
+    throw 'Configura ConnectionStrings__DefaultConnection o el user-secret ConnectionStrings:DefaultConnection.'
 }
 
 $npgsqlAssembly = Get-ChildItem -Path @(

@@ -3,6 +3,7 @@ using GoIsland.Api.Data;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Email;
 using GoIsland.Api.Services.Security;
+using Microsoft.EntityFrameworkCore;
 
 namespace GoIsland.Api.Services.Auth;
 
@@ -10,6 +11,7 @@ public class AuthService : IAuthService
 {
     private const string GoogleProvider = "Google";
     private const string ExternalLoginOnlyPasswordHash = "EXTERNAL_LOGIN_ONLY";
+    private const int LockoutThreshold = 5;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
@@ -18,6 +20,7 @@ public class AuthService : IAuthService
     private readonly IGoogleIdentityVerifier _googleIdentityVerifier;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthService> _logger;
+    private readonly string _dummyPasswordHash;
 
     public AuthService(
         IUnitOfWork unitOfWork,
@@ -37,6 +40,7 @@ public class AuthService : IAuthService
         _googleIdentityVerifier = googleIdentityVerifier;
         _configuration = configuration;
         _logger = logger;
+        _dummyPasswordHash = _passwordHasher.Hash("GoIslandDummyPassword2026");
     }
 
     public async Task<AuthResponse?> RegisterAsync(RegisterRequest request)
@@ -69,9 +73,39 @@ public class AuthService : IAuthService
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
         var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
-        if (user is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
+        if (user is null)
+        {
+            _passwordHasher.Verify(request.Password, _dummyPasswordHash);
+            return null;
+        }
+
+        var now = DateTime.UtcNow;
+        var passwordIsValid = _passwordHasher.Verify(request.Password, user.PasswordHash);
+        if (user.LockoutEnd > now)
         {
             return null;
+        }
+
+        if (!passwordIsValid)
+        {
+            await UpdateLoginProtectionAsync(user, currentUser =>
+            {
+                currentUser.FailedLoginAttempts++;
+                if (currentUser.FailedLoginAttempts >= LockoutThreshold)
+                {
+                    currentUser.LockoutEnd = now.Add(GetLockoutDuration(currentUser.FailedLoginAttempts));
+                }
+            });
+            return null;
+        }
+
+        if (user.FailedLoginAttempts > 0 || user.LockoutEnd is not null)
+        {
+            await UpdateLoginProtectionAsync(user, currentUser =>
+            {
+                currentUser.FailedLoginAttempts = 0;
+                currentUser.LockoutEnd = null;
+            });
         }
 
         return CreateAuthResponse(user);
@@ -259,6 +293,37 @@ public class AuthService : IAuthService
             ExpiresAt = token.ExpiresAt,
             User = ToResponse(user)
         };
+    }
+
+    private static TimeSpan GetLockoutDuration(int failedAttempts)
+    {
+        return failedAttempts switch
+        {
+            LockoutThreshold => TimeSpan.FromMinutes(1),
+            LockoutThreshold + 1 => TimeSpan.FromMinutes(5),
+            LockoutThreshold + 2 => TimeSpan.FromMinutes(15),
+            _ => TimeSpan.FromHours(1)
+        };
+    }
+
+    private async Task UpdateLoginProtectionAsync(User user, Action<User> update)
+    {
+        const int maximumAttempts = 3;
+        for (var attempt = 1; attempt <= maximumAttempts; attempt++)
+        {
+            update(user);
+            await _unitOfWork.Users.UpdateAsync(user);
+
+            try
+            {
+                await _unitOfWork.CommitAsync();
+                return;
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < maximumAttempts)
+            {
+                await _unitOfWork.Users.ReloadAsync(user);
+            }
+        }
     }
 
     public static UserResponse ToResponse(User user)

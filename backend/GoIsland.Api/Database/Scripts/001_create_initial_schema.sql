@@ -4,8 +4,11 @@ create table if not exists users (
     email varchar(254) not null,
     password_hash text not null,
     role varchar(40) not null default 'Tourist',
+    failed_login_attempts integer not null default 0,
+    lockout_end timestamptz null,
     created_at timestamptz not null default now(),
-    constraint ck_users_role check (role in ('Tourist', 'Host', 'Admin'))
+    constraint ck_users_role check (role in ('Tourist', 'Host', 'Admin')),
+    constraint ck_users_failed_login_attempts_non_negative check (failed_login_attempts >= 0)
 );
 
 create unique index if not exists ux_users_email_lower

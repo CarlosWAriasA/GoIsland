@@ -9,6 +9,7 @@ import AuthMosaic from '../components/AuthMosaic';
 import Logo from '../components/Logo';
 import { getFieldError, toApiError } from '../services/apiError';
 import { authService } from '../services/authService';
+import { getPasswordPolicyError, PASSWORD_POLICY_HINT } from '../utils/passwordPolicy';
 
 interface ResetErrors {
   token?: string;
@@ -30,9 +31,7 @@ export const ResetPassword = () => {
     const errors: ResetErrors = {};
     if (!token) errors.token = 'El enlace de recuperación está incompleto.';
     if (!newPassword) errors.newPassword = 'La nueva contrasena es obligatoria.';
-    else if (newPassword.length < 6 || newPassword.length > 100) {
-      errors.newPassword = 'La nueva contrasena debe tener entre 6 y 100 caracteres.';
-    }
+    else errors.newPassword = getPasswordPolicyError(newPassword);
     if (!confirmPassword) errors.confirmPassword = 'La confirmacion de la contrasena es obligatoria.';
     else if (newPassword !== confirmPassword) {
       errors.confirmPassword = 'La confirmacion no coincide con la nueva contrasena.';
@@ -93,6 +92,7 @@ export const ResetPassword = () => {
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
               error={fieldErrors.newPassword}
+              hint={fieldErrors.newPassword ? undefined : PASSWORD_POLICY_HINT}
               icon={<LockKeyhole size={18} />}
             />
             <Input
