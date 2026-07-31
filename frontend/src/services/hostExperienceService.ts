@@ -38,12 +38,32 @@ export const hostExperienceService = {
     await api.delete(`/host/experiences/${id}`);
   },
 
-  uploadImages: async (id: number, files: File[]): Promise<ExperienceImage[]> => {
+  uploadImages: async (
+    id: number,
+    images: Array<{ file: File; altText: string; isCover: boolean }>,
+  ): Promise<ExperienceImage[]> => {
     const data = new FormData();
-    files.forEach((file) => data.append('files', file));
+    images.forEach(({ file, altText }) => {
+      data.append('files', file);
+      data.append('altTexts', altText);
+    });
+    const coverIndex = images.findIndex((image) => image.isCover);
+    if (coverIndex >= 0) data.append('coverIndex', String(coverIndex));
     const response = await api.post<ExperienceImage[]>(`/host/experiences/${id}/images`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    return response.data;
+  },
+
+  updateImage: async (
+    experienceId: number,
+    imageId: number,
+    data: { altText: string; isCover: boolean },
+  ): Promise<ExperienceImage[]> => {
+    const response = await api.patch<ExperienceImage[]>(
+      `/host/experiences/${experienceId}/images/${imageId}`,
+      data,
+    );
     return response.data;
   },
 

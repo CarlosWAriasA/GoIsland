@@ -30,7 +30,23 @@ export type ExperienceApprovalStatus =
 
 export interface ManagedExperienceRequest {
   title: string;
+  shortDescription: string;
   description: string;
+  durationMinutes: number | null;
+  timeZoneId: string;
+  meetingPointInstructions: string;
+  pickupInformation: string | null;
+  whatIsIncluded: string[];
+  whatIsNotIncluded: string[];
+  whatToBring: string[];
+  guestRequirements: string;
+  minimumAge: number | null;
+  difficulty: string;
+  accessibilityInformation: string;
+  languages: string[];
+  cancellationPolicy: string;
+  tags: string[];
+  itinerary: import('./experience').ExperienceItineraryItem[];
   location: string;
   latitude: number | null;
   longitude: number | null;
@@ -42,6 +58,7 @@ export interface ManagedExperienceRequest {
 
 export interface ManagedExperience extends ManagedExperienceRequest {
   id: number;
+  slug: string;
   hostId: number;
   hostName: string;
   availableSpots: number;

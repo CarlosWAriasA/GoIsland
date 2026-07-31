@@ -4,6 +4,7 @@ using GoIsland.Api.Services.Auth;
 using GoIsland.Api.Services.Email;
 using GoIsland.Api.Services.Experiences;
 using GoIsland.Api.Services.Hosts;
+using GoIsland.Api.Services.Images;
 using GoIsland.Api.Services.Payments;
 using GoIsland.Api.Services.Notifications;
 using GoIsland.Api.Services.Reservations;
@@ -62,6 +63,7 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IExperienceService, ExperienceService>();
         services.AddScoped<IExperienceManagementService, ExperienceManagementService>();
+        services.AddSingleton<IImageStorage, FakeImageStorage>();
         services.AddScoped<IHostService, HostService>();
         services.AddScoped<IHostDashboardService, HostDashboardService>();
         services.AddScoped<NotificationService>();
@@ -156,6 +158,20 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             "Scripts",
             "011_add_experience_media_and_unlimited_capacity.sql"));
         await Context.Database.ExecuteSqlRawAsync(experienceMediaScript);
+
+        var cloudinaryMediaScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "012_migrate_experience_images_to_cloudinary.sql"));
+        await Context.Database.ExecuteSqlRawAsync(cloudinaryMediaScript);
+
+        var catalogScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "013_complete_experience_catalog.sql"));
+        await Context.Database.ExecuteSqlRawAsync(catalogScript.Replace("{}", "{{}}"));
 
         // Fuerza una consulta real y falla temprano si el esquema no esta aplicado.
         await Context.Users.AsNoTracking().AnyAsync();

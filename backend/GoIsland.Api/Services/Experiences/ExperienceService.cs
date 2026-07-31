@@ -56,6 +56,7 @@ public class ExperienceService : IExperienceService
 
         var candidates = await _context.Experiences.AsNoTracking()
             .Include(item => item.Images)
+            .Include(item => item.Itinerary)
             .Where(item => item.IsApproved
                 && item.ApprovalStatus == ExperienceApprovalStatuses.Approved
                 && item.Latitude.HasValue
@@ -116,8 +117,35 @@ public class ExperienceService : IExperienceService
         return new ExperienceResponse
         {
             Id = experience.Id,
+            Slug = experience.Slug,
             Title = experience.Title,
+            ShortDescription = experience.ShortDescription,
             Description = experience.Description,
+            DurationMinutes = experience.DurationMinutes,
+            TimeZoneId = experience.TimeZoneId,
+            MeetingPointInstructions = experience.MeetingPointInstructions,
+            PickupInformation = experience.PickupInformation,
+            WhatIsIncluded = experience.WhatIsIncluded,
+            WhatIsNotIncluded = experience.WhatIsNotIncluded,
+            WhatToBring = experience.WhatToBring,
+            GuestRequirements = experience.GuestRequirements,
+            MinimumAge = experience.MinimumAge,
+            Difficulty = experience.Difficulty,
+            AccessibilityInformation = experience.AccessibilityInformation,
+            Languages = experience.Languages,
+            CancellationPolicy = experience.CancellationPolicy,
+            Tags = experience.Tags,
+            Itinerary = experience.Itinerary
+                .OrderBy(item => item.SortOrder)
+                .Select(item => new ExperienceItineraryItemResponse
+                {
+                    Id = item.Id,
+                    Title = item.Title,
+                    Description = item.Description,
+                    DurationMinutes = item.DurationMinutes,
+                    Location = item.Location,
+                    SortOrder = item.SortOrder
+                }).ToArray(),
             Location = experience.Location,
             Latitude = experience.Latitude,
             Longitude = experience.Longitude,
@@ -131,7 +159,10 @@ public class ExperienceService : IExperienceService
                 .Select(image => new ExperienceImageResponse
                 {
                     Id = image.Id,
-                    Url = $"/uploads/experiences/{experience.Id}/{image.FileName}",
+                    SourceUrl = image.SecureUrl
+                        ?? $"/uploads/experiences/{experience.Id}/{image.FileName}",
+                    AltText = image.AltText,
+                    IsCover = image.IsCover,
                     SortOrder = image.SortOrder
                 })
                 .ToArray(),

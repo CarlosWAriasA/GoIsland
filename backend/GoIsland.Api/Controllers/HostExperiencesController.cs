@@ -87,7 +87,6 @@ public class HostExperiencesController : ControllerBase
         var result = await _service.DeleteAsync(userId, id);
         if (result.Status == ExperienceManagementStatus.Success)
         {
-            await _imageService.CleanupDirectoryAsync(id);
             return NoContent();
         }
 
@@ -97,14 +96,41 @@ public class HostExperiencesController : ControllerBase
     [HttpPost("{id:int}/images")]
     [RequestSizeLimit(52_428_800)]
     [RequestFormLimits(MultipartBodyLengthLimit = 52_428_800)]
-    public async Task<IActionResult> UploadImages(int id, [FromForm] List<IFormFile> files)
+    public async Task<IActionResult> UploadImages(
+        int id,
+        [FromForm] List<IFormFile> files,
+        [FromForm] List<string>? altTexts,
+        [FromForm] int? coverIndex)
     {
         if (!TryGetUserId(out var userId))
         {
             return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
-        return ToImageActionResult(await _imageService.UploadAsync(userId, id, files));
+        return ToImageActionResult(await _imageService.UploadAsync(
+            userId,
+            id,
+            files,
+            altTexts,
+            coverIndex));
+    }
+
+    [HttpPatch("{id:int}/images/{imageId:int}")]
+    public async Task<IActionResult> UpdateImage(
+        int id,
+        int imageId,
+        UpdateExperienceImageRequest request)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        }
+
+        return ToImageActionResult(await _imageService.UpdateAsync(
+            userId,
+            id,
+            imageId,
+            request));
     }
 
     [HttpDelete("{id:int}/images/{imageId:int}")]
@@ -146,6 +172,10 @@ public class HostExperiencesController : ControllerBase
             ExperienceManagementStatus.InvalidTransition => Conflict(new
             {
                 message = "La experiencia no admite esa operacion en su estado actual."
+            }),
+            ExperienceManagementStatus.Incomplete => BadRequest(new
+            {
+                message = result.Message
             }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };

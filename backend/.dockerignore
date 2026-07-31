@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/*.user
+**/*.log
+.vs/
+.idea/
+.vscode/
+GoIsland.Api.Tests/

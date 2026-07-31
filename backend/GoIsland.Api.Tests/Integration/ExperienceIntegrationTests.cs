@@ -20,6 +20,7 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
 
         var approved = await service.CreateAsync(host.Id, CreateRequest(
             $"Experiencia aprobada {marker}", location, category, 75m));
+        await AddCoverAsync(approved.Experience!.Id, marker);
         await service.SubmitAsync(host.Id, approved.Experience!.Id);
         await service.ReviewAsync(
             approved.Experience.Id,
@@ -53,8 +54,22 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         var otherHost = await CreateApprovedHostAsync($"other-{marker}");
         var admin = await CreateUserAsync($"admin-{marker}@goisland.test", UserRoles.Admin);
 
+        var incomplete = await service.CreateAsync(owner.Id, new CreateExperienceRequest
+        {
+            Title = $"Borrador incompleto {marker}",
+            Description = "Este borrador todavía no está listo para revisión.",
+            Location = $"Lugar-{marker}",
+            Category = $"Tipo-{marker}",
+            Price = 10m,
+            Capacity = 2
+        });
+        var blockedSubmission = await service.SubmitAsync(owner.Id, incomplete.Experience!.Id);
+        Assert.Equal(ExperienceManagementStatus.Incomplete, blockedSubmission.Status);
+        Assert.Contains("Completa antes de enviar", blockedSubmission.Message);
+
         var created = await service.CreateAsync(owner.Id, CreateRequest(
             $"Propiedad {marker}", $"Lugar-{marker}", $"Tipo-{marker}", 50m, 8));
+        await AddCoverAsync(created.Experience!.Id, marker);
 
         Assert.Equal(ExperienceApprovalStatuses.Draft, created.Experience!.ApprovalStatus);
         Assert.Equal(8, created.Experience.AvailableSpots);
@@ -93,6 +108,26 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         return user;
     }
 
+    private async Task AddCoverAsync(int experienceId, string marker)
+    {
+        Context.ExperienceImages.Add(new ExperienceImage
+        {
+            ExperienceId = experienceId,
+            Provider = ImageStorageProviders.Cloudinary,
+            PublicId = $"tests/{marker}",
+            SecureUrl = $"https://res.cloudinary.com/test/image/upload/tests/{marker}.jpg",
+            Width = 1200,
+            Height = 800,
+            Format = "jpg",
+            FileName = $"{marker}.jpg",
+            ContentType = "image/jpeg",
+            AltText = "Vista de la experiencia",
+            IsCover = true,
+            SortOrder = 0
+        });
+        await Context.SaveChangesAsync();
+    }
+
     private async Task<User> CreateUserAsync(string email, string role)
     {
         var user = new User
@@ -117,7 +152,25 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         return new CreateExperienceRequest
         {
             Title = title,
+            ShortDescription = "Una experiencia preparada para pruebas.",
             Description = "Descripcion creada por una prueba de integracion real.",
+            DurationMinutes = 120,
+            MeetingPointInstructions = "Encuentro en la entrada principal.",
+            WhatIsIncluded = ["Guía local"],
+            WhatToBring = ["Agua"],
+            GuestRequirements = "Llegar diez minutos antes.",
+            Difficulty = ExperienceDifficulties.Easy,
+            Languages = ["Español"],
+            CancellationPolicy = CancellationPolicies.Flexible,
+            Itinerary =
+            [
+                new ExperienceItineraryItemRequest
+                {
+                    Title = "Bienvenida",
+                    Description = "Presentación y recorrido inicial.",
+                    DurationMinutes = 30
+                }
+            ],
             Location = location,
             Category = category,
             Price = price,

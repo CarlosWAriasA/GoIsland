@@ -295,8 +295,12 @@ export const AdminModeration = () => {
                   </div>
                 </div>
                 <details className="operations-row__details">
-                  <summary>Ver descripción</summary>
+                  <summary>Ver información completa</summary>
+                  <p><strong>{experience.shortDescription}</strong></p>
                   <p>{experience.description}</p>
+                  <p>Duración: {experience.durationMinutes ?? 0} minutos · Idiomas: {experience.languages.join(', ')}</p>
+                  <p>Punto de encuentro: {experience.meetingPointInstructions}</p>
+                  <p>Itinerario: {experience.itinerary.length} etapas · Fotos: {experience.images.length}</p>
                   {experience.rejectionReason && <Alert tone="error">{experience.rejectionReason}</Alert>}
                 </details>
               </article>

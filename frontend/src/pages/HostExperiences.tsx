@@ -42,10 +42,27 @@ const ExperienceMap = lazy(() => import('../components/ExperienceMap'));
 const MAX_IMAGES = 10;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const parseList = (value: string) => value.split(',').map((item) => item.trimStart());
 
 const createEmptyForm = (): ManagedExperienceRequest => ({
   title: '',
+  shortDescription: '',
   description: '',
+  durationMinutes: null,
+  timeZoneId: 'America/Santo_Domingo',
+  meetingPointInstructions: '',
+  pickupInformation: null,
+  whatIsIncluded: [],
+  whatIsNotIncluded: [],
+  whatToBring: [],
+  guestRequirements: '',
+  minimumAge: null,
+  difficulty: '',
+  accessibilityInformation: '',
+  languages: [],
+  cancellationPolicy: '',
+  tags: [],
+  itinerary: [],
   location: '',
   latitude: null,
   longitude: null,
@@ -136,12 +153,15 @@ const LocationPicker = ({ location, latitude, longitude, onChange, error }: Loca
 interface PendingImage {
   file: File;
   previewUrl: string;
+  altText: string;
+  isCover: boolean;
 }
 
 interface ImagePickerProps {
   existing: ExperienceImage[];
   pending: PendingImage[];
   onExistingRemove: (image: ExperienceImage) => void;
+  onExistingChange: (images: ExperienceImage[]) => void;
   onPendingChange: (images: PendingImage[]) => void;
   error: string | null;
   onError: (message: string | null) => void;
@@ -151,6 +171,7 @@ const ImagePicker = ({
   existing,
   pending,
   onExistingRemove,
+  onExistingChange,
   onPendingChange,
   error,
   onError,
@@ -176,15 +197,37 @@ const ImagePicker = ({
       return;
     }
     onError(null);
+    const alreadyHasCover = existing.some((image) => image.isCover)
+      || pending.some((image) => image.isCover);
     onPendingChange([
       ...pending,
-      ...selected.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })),
+      ...selected.map((file, index) => ({
+        file,
+        previewUrl: URL.createObjectURL(file),
+        altText: '',
+        isCover: !alreadyHasCover && index === 0,
+      })),
     ]);
   };
 
   const removePending = (index: number) => {
     URL.revokeObjectURL(pending[index].previewUrl);
-    onPendingChange(pending.filter((_, currentIndex) => currentIndex !== index));
+    const wasCover = pending[index].isCover;
+    const remaining = pending.filter((_, currentIndex) => currentIndex !== index);
+    if (wasCover && !existing.some((image) => image.isCover) && remaining.length > 0) {
+      remaining[0] = { ...remaining[0], isCover: true };
+    }
+    onPendingChange(remaining);
+  };
+
+  const selectExistingCover = (imageId: number) => {
+    onExistingChange(existing.map((image) => ({ ...image, isCover: image.id === imageId })));
+    onPendingChange(pending.map((image) => ({ ...image, isCover: false })));
+  };
+
+  const selectPendingCover = (pendingIndex: number) => {
+    onExistingChange(existing.map((image) => ({ ...image, isCover: false })));
+    onPendingChange(pending.map((image, index) => ({ ...image, isCover: index === pendingIndex })));
   };
 
   return (
@@ -195,22 +238,62 @@ const ImagePicker = ({
       {error && <Alert tone="error">{error}</Alert>}
       <div className="experience-images__grid">
         {existing.map((image, index) => (
-          <figure className="experience-image-preview" key={image.id}>
-            <img src={resolveApiAssetUrl(image.url)} alt={`Imagen ${index + 1} de la experiencia`} />
-            {index === 0 && <figcaption>Portada</figcaption>}
-            <button type="button" onClick={() => onExistingRemove(image)} aria-label={`Quitar imagen ${index + 1}`}>
-              <X size={16} aria-hidden="true" />
-            </button>
-          </figure>
+          <div className="experience-image-editor" key={image.id}>
+            <figure className="experience-image-preview">
+              <img src={resolveApiAssetUrl(image.thumbnailUrl)} alt={image.altText || `Imagen ${index + 1}`} />
+              {image.isCover && <figcaption>Portada</figcaption>}
+              <button type="button" onClick={() => onExistingRemove(image)} aria-label={`Quitar imagen ${index + 1}`}>
+                <X size={16} aria-hidden="true" />
+              </button>
+            </figure>
+            <input
+              aria-label={`Descripción de la imagen ${index + 1}`}
+              maxLength={180}
+              placeholder="Describe la foto"
+              value={image.altText}
+              onChange={(event) => onExistingChange(existing.map((candidate) => (
+                candidate.id === image.id ? { ...candidate, altText: event.target.value } : candidate
+              )))}
+            />
+            <label className="experience-image-cover">
+              <input
+                type="radio"
+                name="experience-cover"
+                checked={image.isCover}
+                onChange={() => selectExistingCover(image.id)}
+              />
+              Usar como portada
+            </label>
+          </div>
         ))}
         {pending.map((image, index) => (
-          <figure className="experience-image-preview experience-image-preview--pending" key={image.previewUrl}>
-            <img src={image.previewUrl} alt={`Nueva imagen ${index + 1}`} />
-            <figcaption>Nueva</figcaption>
-            <button type="button" onClick={() => removePending(index)} aria-label={`Quitar nueva imagen ${index + 1}`}>
-              <X size={16} aria-hidden="true" />
-            </button>
-          </figure>
+          <div className="experience-image-editor" key={image.previewUrl}>
+            <figure className="experience-image-preview experience-image-preview--pending">
+              <img src={image.previewUrl} alt={image.altText || `Nueva imagen ${index + 1}`} />
+              <figcaption>{image.isCover ? 'Portada' : 'Nueva'}</figcaption>
+              <button type="button" onClick={() => removePending(index)} aria-label={`Quitar nueva imagen ${index + 1}`}>
+                <X size={16} aria-hidden="true" />
+              </button>
+            </figure>
+            <input
+              aria-label={`Descripción de la nueva imagen ${index + 1}`}
+              maxLength={180}
+              placeholder="Describe la foto"
+              value={image.altText}
+              onChange={(event) => onPendingChange(pending.map((candidate, candidateIndex) => (
+                candidateIndex === index ? { ...candidate, altText: event.target.value } : candidate
+              )))}
+            />
+            <label className="experience-image-cover">
+              <input
+                type="radio"
+                name="experience-cover"
+                checked={image.isCover}
+                onChange={() => selectPendingCover(index)}
+              />
+              Usar como portada
+            </label>
+          </div>
         ))}
         {total < MAX_IMAGES && (
           <label className="experience-image-add">
@@ -320,7 +403,23 @@ export const HostExperiences = () => {
     setEditingId(experience.id);
     setForm({
       title: experience.title,
+      shortDescription: experience.shortDescription,
       description: experience.description,
+      durationMinutes: experience.durationMinutes,
+      timeZoneId: experience.timeZoneId,
+      meetingPointInstructions: experience.meetingPointInstructions,
+      pickupInformation: experience.pickupInformation,
+      whatIsIncluded: experience.whatIsIncluded,
+      whatIsNotIncluded: experience.whatIsNotIncluded,
+      whatToBring: experience.whatToBring,
+      guestRequirements: experience.guestRequirements,
+      minimumAge: experience.minimumAge,
+      difficulty: experience.difficulty,
+      accessibilityInformation: experience.accessibilityInformation,
+      languages: experience.languages,
+      cancellationPolicy: experience.cancellationPolicy,
+      tags: experience.tags,
+      itinerary: experience.itinerary,
       location: experience.location,
       latitude: experience.latitude,
       longitude: experience.longitude,
@@ -382,8 +481,21 @@ export const HostExperiences = () => {
       if (pendingImages.length > 0) {
         synchronizedImages = await hostExperienceService.uploadImages(
           saved.id,
-          pendingImages.map((image) => image.file),
+          pendingImages.map((image) => ({
+            file: image.file,
+            altText: image.altText,
+            isCover: image.isCover,
+          })),
         );
+      }
+      const remainingExisting = visibleImages
+        .filter((image) => !removedImageIds.includes(image.id))
+        .sort((first, second) => Number(first.isCover) - Number(second.isCover));
+      for (const image of remainingExisting) {
+        synchronizedImages = await hostExperienceService.updateImage(saved.id, image.id, {
+          altText: image.altText || `Foto de ${saved.title}`,
+          isCover: image.isCover,
+        });
       }
 
       const completed = { ...saved, images: synchronizedImages };
@@ -466,6 +578,15 @@ export const HostExperiences = () => {
                 required
               />
               <TextAreaField
+                label="Resumen"
+                hint="Una frase clara para las tarjetas del catálogo."
+                value={form.shortDescription}
+                onChange={(event) => setForm((current) => ({ ...current, shortDescription: event.target.value }))}
+                error={formError ? getFieldError(formError, 'ShortDescription') : undefined}
+                rows={2}
+                maxLength={300}
+              />
+              <TextAreaField
                 label="Descripción"
                 value={form.description}
                 onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
@@ -485,6 +606,16 @@ export const HostExperiences = () => {
                   <option value={category} key={category}>{category}</option>
                 ))}
               </SelectField>
+              <Input
+                label="Duración en minutos"
+                type="number"
+                min="1"
+                value={form.durationMinutes ?? ''}
+                onChange={(event) => setForm((current) => ({
+                  ...current,
+                  durationMinutes: event.target.value ? Number(event.target.value) : null,
+                }))}
+              />
             </section>
 
             <section className="experience-form-section">
@@ -562,11 +693,179 @@ export const HostExperiences = () => {
                 existing={visibleImages}
                 pending={pendingImages}
                 onExistingRemove={(image) => setRemovedImageIds((current) => [...current, image.id])}
+                onExistingChange={(images) => setExistingImages((current) => current.map((image) => (
+                  images.find((candidate) => candidate.id === image.id) ?? image
+                )))}
                 onPendingChange={setPendingImages}
                 error={imageError}
                 onError={setImageError}
               />
             </section>
+
+            <details className="experience-advanced">
+              <summary>Completar información para publicar</summary>
+              <div className="experience-advanced__content">
+                <TextAreaField
+                  label="Punto de encuentro"
+                  value={form.meetingPointInstructions}
+                  onChange={(event) => setForm((current) => ({ ...current, meetingPointInstructions: event.target.value }))}
+                  rows={3}
+                />
+                <TextAreaField
+                  label="Recogida (opcional)"
+                  value={form.pickupInformation ?? ''}
+                  onChange={(event) => setForm((current) => ({
+                    ...current,
+                    pickupInformation: event.target.value || null,
+                  }))}
+                  rows={3}
+                />
+                <Input
+                  label="Qué incluye"
+                  hint="Separa cada elemento con una coma."
+                  value={form.whatIsIncluded.join(', ')}
+                  onChange={(event) => setForm((current) => ({ ...current, whatIsIncluded: parseList(event.target.value) }))}
+                />
+                <Input
+                  label="Qué no incluye"
+                  hint="Separa cada elemento con una coma."
+                  value={form.whatIsNotIncluded.join(', ')}
+                  onChange={(event) => setForm((current) => ({ ...current, whatIsNotIncluded: parseList(event.target.value) }))}
+                />
+                <Input
+                  label="Qué llevar"
+                  hint="Separa cada elemento con una coma."
+                  value={form.whatToBring.join(', ')}
+                  onChange={(event) => setForm((current) => ({ ...current, whatToBring: parseList(event.target.value) }))}
+                />
+                <TextAreaField
+                  label="Requisitos para participar"
+                  value={form.guestRequirements}
+                  onChange={(event) => setForm((current) => ({ ...current, guestRequirements: event.target.value }))}
+                  rows={3}
+                />
+                <Input
+                  label="Edad mínima (opcional)"
+                  type="number"
+                  min="0"
+                  value={form.minimumAge ?? ''}
+                  onChange={(event) => setForm((current) => ({
+                    ...current,
+                    minimumAge: event.target.value ? Number(event.target.value) : null,
+                  }))}
+                />
+                <SelectField
+                  label="Dificultad"
+                  value={form.difficulty}
+                  onChange={(event) => setForm((current) => ({ ...current, difficulty: event.target.value }))}
+                >
+                  <option value="">Selecciona una opción</option>
+                  <option value="Easy">Fácil</option>
+                  <option value="Moderate">Moderada</option>
+                  <option value="Demanding">Exigente</option>
+                </SelectField>
+                <TextAreaField
+                  label="Accesibilidad"
+                  value={form.accessibilityInformation}
+                  onChange={(event) => setForm((current) => ({
+                    ...current,
+                    accessibilityInformation: event.target.value,
+                  }))}
+                  rows={3}
+                />
+                <Input
+                  label="Idiomas"
+                  hint="Separa cada idioma con una coma."
+                  value={form.languages.join(', ')}
+                  onChange={(event) => setForm((current) => ({ ...current, languages: parseList(event.target.value) }))}
+                />
+                <SelectField
+                  label="Cancelación"
+                  value={form.cancellationPolicy}
+                  onChange={(event) => setForm((current) => ({ ...current, cancellationPolicy: event.target.value }))}
+                >
+                  <option value="">Selecciona una política</option>
+                  <option value="Flexible">Flexible</option>
+                  <option value="Moderate">Moderada</option>
+                  <option value="Strict">Estricta</option>
+                </SelectField>
+                <Input
+                  label="Etiquetas"
+                  hint="Separa cada etiqueta con una coma."
+                  value={form.tags.join(', ')}
+                  onChange={(event) => setForm((current) => ({ ...current, tags: parseList(event.target.value) }))}
+                />
+
+                <div className="itinerary-editor">
+                  <div className="itinerary-editor__heading">
+                    <strong>Itinerario</strong>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setForm((current) => ({
+                        ...current,
+                        itinerary: [...current.itinerary, {
+                          title: '',
+                          description: '',
+                          durationMinutes: 30,
+                          location: null,
+                        }],
+                      }))}
+                    ><Plus size={16} aria-hidden="true" />Agregar etapa</Button>
+                  </div>
+                  {form.itinerary.map((item, index) => (
+                    <div className="itinerary-editor__item" key={index}>
+                      <strong>Etapa {index + 1}</strong>
+                      <Input
+                        label="Título"
+                        value={item.title}
+                        onChange={(event) => setForm((current) => ({
+                          ...current,
+                          itinerary: current.itinerary.map((candidate, candidateIndex) => (
+                            candidateIndex === index ? { ...candidate, title: event.target.value } : candidate
+                          )),
+                        }))}
+                      />
+                      <TextAreaField
+                        label="Descripción"
+                        value={item.description}
+                        onChange={(event) => setForm((current) => ({
+                          ...current,
+                          itinerary: current.itinerary.map((candidate, candidateIndex) => (
+                            candidateIndex === index ? { ...candidate, description: event.target.value } : candidate
+                          )),
+                        }))}
+                        rows={2}
+                      />
+                      <Input
+                        label="Duración en minutos"
+                        type="number"
+                        min="1"
+                        value={item.durationMinutes}
+                        onChange={(event) => setForm((current) => ({
+                          ...current,
+                          itinerary: current.itinerary.map((candidate, candidateIndex) => (
+                            candidateIndex === index
+                              ? { ...candidate, durationMinutes: Number(event.target.value) }
+                              : candidate
+                          )),
+                        }))}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setForm((current) => ({
+                          ...current,
+                          itinerary: current.itinerary.filter((_, candidateIndex) => candidateIndex !== index),
+                        }))}
+                      ><Trash2 size={16} aria-hidden="true" />Quitar etapa</Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </details>
           </div>
           <footer className="experience-drawer__footer">
             <Button type="button" variant="outline" onClick={closeForm} disabled={submitting}>Cancelar</Button>
@@ -609,11 +908,13 @@ export const HostExperiences = () => {
         <div className="management-list" aria-live="polite">
           {experiences.map((experience) => (
             <article className="management-card management-card--experience surface-panel" key={experience.id}>
-              {experience.images[0] && (
+              {(experience.images.find((image) => image.isCover) ?? experience.images[0]) && (
                 <img
                   className="management-card__cover"
-                  src={resolveApiAssetUrl(experience.images[0].url)}
-                  alt=""
+                  src={resolveApiAssetUrl(
+                    (experience.images.find((image) => image.isCover) ?? experience.images[0]).cardUrl,
+                  )}
+                  alt={(experience.images.find((image) => image.isCover) ?? experience.images[0]).altText}
                 />
               )}
               <div className="management-card__content">

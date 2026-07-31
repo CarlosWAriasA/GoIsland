@@ -176,7 +176,8 @@ export const ExperienceDetail = () => {
   }
 
   const nextSchedule = schedules[0];
-  const coverImage = experience.images[0];
+  const coverImage = experience.images.find((image) => image.isCover) ?? experience.images[0];
+  const galleryImages = experience.images.filter((image) => image.id !== coverImage?.id);
   const availabilityTone = nextSchedule ? 'info' : 'warning';
   const handleReserve = () => {
     if (!isAuthenticated) {
@@ -209,7 +210,7 @@ export const ExperienceDetail = () => {
             <div
               className={`experience-detail__placeholder experience-detail__placeholder--${coverImage ? 'image' : getCategorySlug(experience.category)}`}
               role="img"
-              aria-label={`Imagen de ambiente de la categoría ${experience.category}`}
+              aria-label={coverImage?.altText || `Imagen de ambiente de la categoría ${experience.category}`}
               style={coverImage
                 ? { backgroundImage: `url("${resolveApiAssetUrl(coverImage.url)}")` }
                 : undefined}
@@ -217,13 +218,13 @@ export const ExperienceDetail = () => {
               {!coverImage && getCategoryIcon(experience.category)}
               <span>{experience.category}</span>
             </div>
-            {experience.images.length > 1 && (
+            {galleryImages.length > 0 && (
               <div className="experience-detail__thumbnails" aria-label="Galería de la experiencia">
-                {experience.images.slice(1).map((image, index) => (
+                {galleryImages.map((image) => (
                   <img
                     key={image.id}
                     src={resolveApiAssetUrl(image.url)}
-                    alt={`Imagen ${index + 2} de ${experience.title}`}
+                    alt={image.altText || `Foto de ${experience.title}`}
                   />
                 ))}
               </div>
@@ -241,8 +242,54 @@ export const ExperienceDetail = () => {
 
           <section className="experience-detail__description" aria-labelledby="experience-description-title">
             <h2 id="experience-description-title">Sobre esta experiencia</h2>
+            {experience.shortDescription && <p><strong>{experience.shortDescription}</strong></p>}
             <p>{experience.description}</p>
           </section>
+          <div className="experience-detail__catalog-grid">
+            <section>
+              <h2>Antes de ir</h2>
+              <p><strong>Punto de encuentro:</strong> {experience.meetingPointInstructions}</p>
+              {experience.pickupInformation && <p><strong>Recogida:</strong> {experience.pickupInformation}</p>}
+              <p>{experience.guestRequirements}</p>
+              {experience.minimumAge !== null && <p>Edad mínima: {experience.minimumAge} años</p>}
+            </section>
+            <section>
+              <h2>Qué llevar</h2>
+              <ul>{experience.whatToBring.map((item) => <li key={item}>{item}</li>)}</ul>
+            </section>
+            <section>
+              <h2>Incluido</h2>
+              <ul>{experience.whatIsIncluded.map((item) => <li key={item}>{item}</li>)}</ul>
+              {experience.whatIsNotIncluded.length > 0 && (
+                <>
+                  <h3>No incluido</h3>
+                  <ul>{experience.whatIsNotIncluded.map((item) => <li key={item}>{item}</li>)}</ul>
+                </>
+              )}
+            </section>
+            <section>
+              <h2>Información útil</h2>
+              <p>Idiomas: {experience.languages.join(', ')}</p>
+              <p>Dificultad: {experience.difficulty === 'Easy'
+                ? 'Fácil'
+                : experience.difficulty === 'Moderate' ? 'Moderada' : 'Exigente'}</p>
+              {experience.accessibilityInformation && <p>{experience.accessibilityInformation}</p>}
+            </section>
+          </div>
+          {experience.itinerary.length > 0 && (
+            <section aria-labelledby="experience-itinerary-title">
+              <h2 id="experience-itinerary-title">Itinerario</h2>
+              <ol className="experience-detail__itinerary">
+                {experience.itinerary.map((item) => (
+                  <li key={item.id ?? item.sortOrder}>
+                    <strong>{item.title}</strong>
+                    <p>{item.description}</p>
+                    <small>{item.durationMinutes} minutos{item.location ? ` · ${item.location}` : ''}</small>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
           {experience.latitude !== null && experience.longitude !== null && (
             <section className="experience-detail__map" aria-labelledby="experience-map-title">
               <h2 id="experience-map-title">Dónde se realiza</h2>

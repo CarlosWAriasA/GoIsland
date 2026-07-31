@@ -9,6 +9,7 @@ public enum ExperienceManagementStatus
     Forbidden,
     Conflict,
     InvalidTransition,
+    Incomplete,
     ReasonRequired
 }
 
@@ -21,7 +22,8 @@ public enum ExperienceReviewAction
 
 public record ExperienceManagementResult(
     ExperienceManagementStatus Status,
-    HostExperienceResponse? Experience = null);
+    HostExperienceResponse? Experience = null,
+    string? Message = null);
 
 public interface IExperienceManagementService
 {

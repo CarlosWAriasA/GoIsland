@@ -1,17 +1,25 @@
 using GoIsland.Api.Data;
 using GoIsland.Api.DTOs.Experiences;
 using GoIsland.Api.Models;
+using GoIsland.Api.Services.Images;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace GoIsland.Api.Services.Experiences;
 
 public class ExperienceManagementService : IExperienceManagementService
 {
     private readonly GoIslandDbContext _context;
+    private readonly IImageStorage _imageStorage;
 
-    public ExperienceManagementService(GoIslandDbContext context)
+    public ExperienceManagementService(
+        GoIslandDbContext context,
+        IImageStorage imageStorage)
     {
         _context = context;
+        _imageStorage = imageStorage;
     }
 
     public async Task<ExperienceManagementResult> CreateAsync(
@@ -30,13 +38,7 @@ public class ExperienceManagementService : IExperienceManagementService
         var experience = new Experience
         {
             HostId = hostUserId,
-            Title = request.Title.Trim(),
-            Description = request.Description.Trim(),
-            Location = request.Location.Trim(),
-            Latitude = request.Latitude,
-            Longitude = request.Longitude,
-            Category = request.Category.Trim(),
-            Price = request.Price,
+            Slug = await CreateUniqueSlugAsync(request.Title),
             Capacity = capacity,
             AvailableSpots = capacity,
             IsUnlimitedCapacity = request.IsUnlimitedCapacity,
@@ -45,6 +47,8 @@ public class ExperienceManagementService : IExperienceManagementService
             CreatedAt = now,
             UpdatedAt = now
         };
+        ApplyRequest(experience, request);
+        ReplaceItinerary(experience, request.Itinerary);
 
         await _context.Experiences.AddAsync(experience);
         await _context.SaveChangesAsync();
@@ -75,8 +79,10 @@ public class ExperienceManagementService : IExperienceManagementService
             return new(ExperienceManagementStatus.Forbidden);
         }
 
-        var experience = await _context.Experiences.SingleOrDefaultAsync(
-            item => item.Id == id && item.HostId == hostUserId);
+        var experience = await _context.Experiences
+            .Include(item => item.Images)
+            .Include(item => item.Itinerary)
+            .SingleOrDefaultAsync(item => item.Id == id && item.HostId == hostUserId);
         if (experience is null)
         {
             return new(ExperienceManagementStatus.NotFound);
@@ -106,13 +112,8 @@ public class ExperienceManagementService : IExperienceManagementService
             return new(ExperienceManagementStatus.Conflict, await ToResponseAsync(id));
         }
 
-        experience.Title = request.Title.Trim();
-        experience.Description = request.Description.Trim();
-        experience.Location = request.Location.Trim();
-        experience.Latitude = request.Latitude;
-        experience.Longitude = request.Longitude;
-        experience.Category = request.Category.Trim();
-        experience.Price = request.Price;
+        ApplyRequest(experience, request);
+        ReplaceItinerary(experience, request.Itinerary);
         experience.Capacity = capacity;
         experience.AvailableSpots = capacity;
         experience.IsUnlimitedCapacity = request.IsUnlimitedCapacity;
@@ -142,8 +143,9 @@ public class ExperienceManagementService : IExperienceManagementService
             return new(ExperienceManagementStatus.Forbidden);
         }
 
-        var experience = await _context.Experiences.SingleOrDefaultAsync(
-            item => item.Id == id && item.HostId == hostUserId);
+        var experience = await _context.Experiences
+            .Include(item => item.Images)
+            .SingleOrDefaultAsync(item => item.Id == id && item.HostId == hostUserId);
         if (experience is null)
         {
             return new(ExperienceManagementStatus.NotFound);
@@ -152,6 +154,13 @@ public class ExperienceManagementService : IExperienceManagementService
         if (await _context.Reservations.AnyAsync(reservation => reservation.ExperienceId == id))
         {
             return new(ExperienceManagementStatus.Conflict, await ToResponseAsync(id));
+        }
+
+        foreach (var image in experience.Images.Where(image =>
+            image.Provider == ImageStorageProviders.Cloudinary
+            && !string.IsNullOrWhiteSpace(image.PublicId)))
+        {
+            await _imageStorage.DeleteAsync(image.PublicId!);
         }
 
         _context.Experiences.Remove(experience);
@@ -166,8 +175,10 @@ public class ExperienceManagementService : IExperienceManagementService
             return new(ExperienceManagementStatus.Forbidden);
         }
 
-        var experience = await _context.Experiences.SingleOrDefaultAsync(
-            item => item.Id == id && item.HostId == hostUserId);
+        var experience = await _context.Experiences
+            .Include(item => item.Images)
+            .Include(item => item.Itinerary)
+            .SingleOrDefaultAsync(item => item.Id == id && item.HostId == hostUserId);
         if (experience is null)
         {
             return new(ExperienceManagementStatus.NotFound);
@@ -176,6 +187,15 @@ public class ExperienceManagementService : IExperienceManagementService
         if (experience.ApprovalStatus is not (ExperienceApprovalStatuses.Draft or ExperienceApprovalStatuses.Rejected))
         {
             return new(ExperienceManagementStatus.InvalidTransition, await ToResponseAsync(id));
+        }
+
+        var missing = GetMissingPublicInformation(experience);
+        if (missing.Count > 0)
+        {
+            return new(
+                ExperienceManagementStatus.Incomplete,
+                await ToResponseAsync(id),
+                $"Completa antes de enviar: {string.Join(", ", missing)}.");
         }
 
         experience.ApprovalStatus = ExperienceApprovalStatuses.PendingReview;
@@ -271,10 +291,37 @@ public class ExperienceManagementService : IExperienceManagementService
                select new HostExperienceResponse
                {
                    Id = experience.Id,
+                   Slug = experience.Slug,
                    HostId = experience.HostId,
                    HostName = user.FullName,
                    Title = experience.Title,
+                   ShortDescription = experience.ShortDescription,
                    Description = experience.Description,
+                   DurationMinutes = experience.DurationMinutes,
+                   TimeZoneId = experience.TimeZoneId,
+                   MeetingPointInstructions = experience.MeetingPointInstructions,
+                   PickupInformation = experience.PickupInformation,
+                   WhatIsIncluded = experience.WhatIsIncluded,
+                   WhatIsNotIncluded = experience.WhatIsNotIncluded,
+                   WhatToBring = experience.WhatToBring,
+                   GuestRequirements = experience.GuestRequirements,
+                   MinimumAge = experience.MinimumAge,
+                   Difficulty = experience.Difficulty,
+                   AccessibilityInformation = experience.AccessibilityInformation,
+                   Languages = experience.Languages,
+                   CancellationPolicy = experience.CancellationPolicy,
+                   Tags = experience.Tags,
+                   Itinerary = experience.Itinerary
+                       .OrderBy(item => item.SortOrder)
+                       .Select(item => new ExperienceItineraryItemResponse
+                       {
+                           Id = item.Id,
+                           Title = item.Title,
+                           Description = item.Description,
+                           DurationMinutes = item.DurationMinutes,
+                           Location = item.Location,
+                           SortOrder = item.SortOrder
+                       }).ToArray(),
                    Location = experience.Location,
                    Latitude = experience.Latitude,
                    Longitude = experience.Longitude,
@@ -288,7 +335,10 @@ public class ExperienceManagementService : IExperienceManagementService
                        .Select(image => new ExperienceImageResponse
                        {
                            Id = image.Id,
-                           Url = $"/uploads/experiences/{experience.Id}/{image.FileName}",
+                           SourceUrl = image.SecureUrl
+                               ?? $"/uploads/experiences/{experience.Id}/{image.FileName}",
+                           AltText = image.AltText,
+                           IsCover = image.IsCover,
                            SortOrder = image.SortOrder
                        })
                        .ToArray(),
@@ -305,4 +355,94 @@ public class ExperienceManagementService : IExperienceManagementService
     {
         return QueryResponses().SingleOrDefaultAsync(experience => experience.Id == id);
     }
+
+    private static void ApplyRequest(Experience experience, ExperienceRequestBase request)
+    {
+        experience.Title = request.Title.Trim();
+        experience.ShortDescription = request.ShortDescription.Trim();
+        experience.Description = request.Description.Trim();
+        experience.DurationMinutes = request.DurationMinutes;
+        experience.TimeZoneId = string.IsNullOrWhiteSpace(request.TimeZoneId)
+            ? "America/Santo_Domingo"
+            : request.TimeZoneId.Trim();
+        experience.MeetingPointInstructions = request.MeetingPointInstructions.Trim();
+        experience.PickupInformation = NormalizeOptional(request.PickupInformation);
+        experience.WhatIsIncluded = NormalizeList(request.WhatIsIncluded);
+        experience.WhatIsNotIncluded = NormalizeList(request.WhatIsNotIncluded);
+        experience.WhatToBring = NormalizeList(request.WhatToBring);
+        experience.GuestRequirements = request.GuestRequirements.Trim();
+        experience.MinimumAge = request.MinimumAge;
+        experience.Difficulty = request.Difficulty.Trim();
+        experience.AccessibilityInformation = request.AccessibilityInformation.Trim();
+        experience.Languages = NormalizeList(request.Languages);
+        experience.CancellationPolicy = request.CancellationPolicy.Trim();
+        experience.Tags = NormalizeList(request.Tags);
+        experience.Location = request.Location.Trim();
+        experience.Latitude = request.Latitude;
+        experience.Longitude = request.Longitude;
+        experience.Category = request.Category.Trim();
+        experience.Price = request.Price;
+    }
+
+    private static void ReplaceItinerary(
+        Experience experience,
+        IReadOnlyCollection<ExperienceItineraryItemRequest> items)
+    {
+        experience.Itinerary.Clear();
+        var order = 0;
+        foreach (var item in items)
+        {
+            experience.Itinerary.Add(new ExperienceItineraryItem
+            {
+                Title = item.Title.Trim(),
+                Description = item.Description.Trim(),
+                DurationMinutes = item.DurationMinutes,
+                Location = NormalizeOptional(item.Location),
+                SortOrder = order++
+            });
+        }
+    }
+
+    private async Task<string> CreateUniqueSlugAsync(string title)
+    {
+        var normalized = title.Trim().Normalize(NormalizationForm.FormD);
+        var withoutMarks = string.Concat(normalized.Where(character =>
+            CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark));
+        var basis = Regex.Replace(withoutMarks.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+        if (string.IsNullOrWhiteSpace(basis)) basis = "experiencia";
+        basis = basis[..Math.Min(basis.Length, 150)];
+        var candidate = basis;
+        var suffix = 2;
+        while (await _context.Experiences.AnyAsync(item => item.Slug == candidate))
+        {
+            candidate = $"{basis}-{suffix++}";
+        }
+        return candidate;
+    }
+
+    private static IReadOnlyCollection<string> GetMissingPublicInformation(Experience experience)
+    {
+        var missing = new List<string>();
+        if (string.IsNullOrWhiteSpace(experience.ShortDescription)) missing.Add("resumen");
+        if (experience.DurationMinutes is null) missing.Add("duración");
+        if (string.IsNullOrWhiteSpace(experience.MeetingPointInstructions)) missing.Add("punto de encuentro");
+        if (experience.WhatIsIncluded.Length == 0) missing.Add("qué incluye");
+        if (experience.WhatToBring.Length == 0) missing.Add("qué llevar");
+        if (string.IsNullOrWhiteSpace(experience.GuestRequirements)) missing.Add("requisitos");
+        if (!ExperienceDifficulties.All.Contains(experience.Difficulty)) missing.Add("dificultad");
+        if (experience.Languages.Length == 0) missing.Add("idiomas");
+        if (!CancellationPolicies.All.Contains(experience.CancellationPolicy)) missing.Add("cancelación");
+        if (experience.Itinerary.Count == 0) missing.Add("itinerario");
+        if (!experience.Images.Any(image => image.IsCover)) missing.Add("foto de portada");
+        return missing;
+    }
+
+    private static string[] NormalizeList(IEnumerable<string> values) => values
+        .Select(value => value.Trim())
+        .Where(value => value.Length > 0)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+    private static string? NormalizeOptional(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

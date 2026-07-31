@@ -13,6 +13,7 @@ public class GoIslandDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Experience> Experiences => Set<Experience>();
     public DbSet<ExperienceImage> ExperienceImages => Set<ExperienceImage>();
+    public DbSet<ExperienceItineraryItem> ExperienceItineraryItems => Set<ExperienceItineraryItem>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<ExperienceSchedule> ExperienceSchedules => Set<ExperienceSchedule>();
     public DbSet<ReservationStatusHistory> ReservationStatusHistories => Set<ReservationStatusHistory>();
@@ -80,8 +81,24 @@ public class GoIslandDbContext : DbContext
             entity.HasKey(experience => experience.Id);
             entity.Property(experience => experience.Id).HasColumnName("id");
             entity.Property(experience => experience.HostId).HasColumnName("host_id").IsRequired();
+            entity.Property(experience => experience.Slug).HasColumnName("slug").HasMaxLength(180).IsRequired();
             entity.Property(experience => experience.Title).HasColumnName("title").HasMaxLength(160).IsRequired();
-            entity.Property(experience => experience.Description).HasColumnName("description").HasMaxLength(2000).IsRequired();
+            entity.Property(experience => experience.ShortDescription).HasColumnName("short_description").HasMaxLength(300).IsRequired();
+            entity.Property(experience => experience.Description).HasColumnName("description").HasMaxLength(4000).IsRequired();
+            entity.Property(experience => experience.DurationMinutes).HasColumnName("duration_minutes");
+            entity.Property(experience => experience.TimeZoneId).HasColumnName("time_zone_id").HasMaxLength(80).IsRequired();
+            entity.Property(experience => experience.MeetingPointInstructions).HasColumnName("meeting_point_instructions").HasMaxLength(1000).IsRequired();
+            entity.Property(experience => experience.PickupInformation).HasColumnName("pickup_information").HasMaxLength(1000);
+            entity.Property(experience => experience.WhatIsIncluded).HasColumnName("what_is_included").HasColumnType("text[]").IsRequired();
+            entity.Property(experience => experience.WhatIsNotIncluded).HasColumnName("what_is_not_included").HasColumnType("text[]").IsRequired();
+            entity.Property(experience => experience.WhatToBring).HasColumnName("what_to_bring").HasColumnType("text[]").IsRequired();
+            entity.Property(experience => experience.GuestRequirements).HasColumnName("guest_requirements").HasMaxLength(1500).IsRequired();
+            entity.Property(experience => experience.MinimumAge).HasColumnName("minimum_age");
+            entity.Property(experience => experience.Difficulty).HasColumnName("difficulty").HasMaxLength(40).IsRequired();
+            entity.Property(experience => experience.AccessibilityInformation).HasColumnName("accessibility_information").HasMaxLength(1500).IsRequired();
+            entity.Property(experience => experience.Languages).HasColumnName("languages").HasColumnType("text[]").IsRequired();
+            entity.Property(experience => experience.CancellationPolicy).HasColumnName("cancellation_policy").HasMaxLength(40).IsRequired();
+            entity.Property(experience => experience.Tags).HasColumnName("tags").HasColumnType("text[]").IsRequired();
             entity.Property(experience => experience.Location).HasColumnName("location").HasMaxLength(160).IsRequired();
             entity.Property(experience => experience.Latitude).HasColumnName("latitude").HasPrecision(9, 6);
             entity.Property(experience => experience.Longitude).HasColumnName("longitude").HasPrecision(9, 6);
@@ -104,6 +121,7 @@ public class GoIslandDbContext : DbContext
             entity.Property(experience => experience.UpdatedAt).HasColumnName("updated_at").IsRequired();
             entity.HasIndex(experience => experience.HostId);
             entity.HasIndex(experience => experience.ApprovalStatus);
+            entity.HasIndex(experience => experience.Slug).IsUnique();
         });
 
         modelBuilder.Entity<ExperienceImage>(entity =>
@@ -112,14 +130,44 @@ public class GoIslandDbContext : DbContext
             entity.HasKey(image => image.Id);
             entity.Property(image => image.Id).HasColumnName("id");
             entity.Property(image => image.ExperienceId).HasColumnName("experience_id").IsRequired();
+            entity.Property(image => image.Provider).HasColumnName("provider").HasMaxLength(40).IsRequired();
+            entity.Property(image => image.PublicId).HasColumnName("public_id").HasMaxLength(255);
+            entity.Property(image => image.SecureUrl).HasColumnName("secure_url").HasMaxLength(1000);
+            entity.Property(image => image.Width).HasColumnName("width");
+            entity.Property(image => image.Height).HasColumnName("height");
+            entity.Property(image => image.Format).HasColumnName("format").HasMaxLength(20);
+            entity.Property(image => image.AltText).HasColumnName("alt_text").HasMaxLength(180).IsRequired();
+            entity.Property(image => image.IsCover).HasColumnName("is_cover").IsRequired();
             entity.Property(image => image.FileName).HasColumnName("file_name").HasMaxLength(120).IsRequired();
             entity.Property(image => image.ContentType).HasColumnName("content_type").HasMaxLength(80).IsRequired();
             entity.Property(image => image.SortOrder).HasColumnName("sort_order").IsRequired();
             entity.Property(image => image.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.HasIndex(image => new { image.ExperienceId, image.SortOrder }).IsUnique();
+            entity.HasIndex(image => image.PublicId).IsUnique();
+            entity.HasIndex(image => image.ExperienceId)
+                .HasFilter("is_cover")
+                .IsUnique();
             entity.HasOne(image => image.Experience)
                 .WithMany(experience => experience.Images)
                 .HasForeignKey(image => image.ExperienceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ExperienceItineraryItem>(entity =>
+        {
+            entity.ToTable("experience_itinerary_items");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.ExperienceId).HasColumnName("experience_id").IsRequired();
+            entity.Property(item => item.Title).HasColumnName("title").HasMaxLength(120).IsRequired();
+            entity.Property(item => item.Description).HasColumnName("description").HasMaxLength(800).IsRequired();
+            entity.Property(item => item.DurationMinutes).HasColumnName("duration_minutes").IsRequired();
+            entity.Property(item => item.Location).HasColumnName("location").HasMaxLength(160);
+            entity.Property(item => item.SortOrder).HasColumnName("sort_order").IsRequired();
+            entity.HasIndex(item => new { item.ExperienceId, item.SortOrder }).IsUnique();
+            entity.HasOne(item => item.Experience)
+                .WithMany(experience => experience.Itinerary)
+                .HasForeignKey(item => item.ExperienceId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

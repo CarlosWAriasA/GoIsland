@@ -1,6 +1,7 @@
 using GoIsland.Api.Data;
 using GoIsland.Api.DTOs.Experiences;
 using GoIsland.Api.Models;
+using GoIsland.Api.Services.Images;
 using Microsoft.EntityFrameworkCore;
 
 namespace GoIsland.Api.Services.Experiences;
@@ -9,6 +10,8 @@ public class ExperienceImageService : IExperienceImageService
 {
     public const int MaximumImages = 10;
     public const long MaximumFileBytes = 5 * 1024 * 1024;
+    public const int MaximumDimension = 12_000;
+    public const long MaximumPixels = 40_000_000;
 
     private static readonly IReadOnlyDictionary<string, string> AllowedExtensions =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -19,18 +22,25 @@ public class ExperienceImageService : IExperienceImageService
         };
 
     private readonly GoIslandDbContext _context;
-    private readonly IWebHostEnvironment _environment;
+    private readonly IImageStorage _storage;
+    private readonly ILogger<ExperienceImageService> _logger;
 
-    public ExperienceImageService(GoIslandDbContext context, IWebHostEnvironment environment)
+    public ExperienceImageService(
+        GoIslandDbContext context,
+        IImageStorage storage,
+        ILogger<ExperienceImageService> logger)
     {
         _context = context;
-        _environment = environment;
+        _storage = storage;
+        _logger = logger;
     }
 
     public async Task<ExperienceImageResult> UploadAsync(
         int hostUserId,
         int experienceId,
-        IReadOnlyCollection<IFormFile> files)
+        IReadOnlyCollection<IFormFile> files,
+        IReadOnlyCollection<string>? altTexts = null,
+        int? coverIndex = null)
     {
         var experience = await _context.Experiences
             .Include(item => item.Images)
@@ -54,6 +64,32 @@ public class ExperienceImageService : IExperienceImageService
                 Message: $"Cada experiencia admite un máximo de {MaximumImages} imágenes.");
         }
 
+        if (altTexts is not null && altTexts.Count != files.Count)
+        {
+            return new(
+                ExperienceImageStatus.InvalidFile,
+                Message: "Describe brevemente cada imagen seleccionada.");
+        }
+
+        if (coverIndex is < 0 || coverIndex >= files.Count)
+        {
+            return new(
+                ExperienceImageStatus.InvalidFile,
+                Message: "Selecciona una portada válida.");
+        }
+
+        var normalizedAltTexts = (altTexts ?? files.Select(_ => string.Empty))
+            .Select((altText, index) => string.IsNullOrWhiteSpace(altText)
+                ? $"Foto de {experience.Title}"
+                : altText.Trim())
+            .ToArray();
+        if (normalizedAltTexts.Any(altText => altText.Length is < 3 or > 180))
+        {
+            return new(
+                ExperienceImageStatus.InvalidFile,
+                Message: "Cada descripción debe tener entre 3 y 180 caracteres.");
+        }
+
         foreach (var file in files)
         {
             var validationMessage = await ValidateAsync(file);
@@ -63,38 +99,60 @@ public class ExperienceImageService : IExperienceImageService
             }
         }
 
-        var directory = GetExperienceDirectory(experienceId);
-        Directory.CreateDirectory(directory);
         var nextSortOrder = experience.Images.Count == 0
             ? 0
             : experience.Images.Max(image => image.SortOrder) + 1;
-        var writtenPaths = new List<string>();
+        var uploaded = new List<StoredImage>();
+        var fileList = files.ToArray();
+        var selectedCoverIndex = coverIndex
+            ?? (experience.Images.Any(image => image.IsCover) ? null : 0);
 
         try
         {
-            foreach (var file in files)
+            if (selectedCoverIndex is not null)
             {
-                var fileName = $"{Guid.NewGuid():N}{AllowedExtensions[file.ContentType]}";
-                var targetPath = Path.Combine(directory, fileName);
-                await using (var target = new FileStream(
-                    targetPath,
-                    FileMode.CreateNew,
-                    FileAccess.Write,
-                    FileShare.None,
-                    bufferSize: 81920,
-                    useAsync: true))
+                foreach (var currentCover in experience.Images.Where(image => image.IsCover))
                 {
-                    await file.CopyToAsync(target);
+                    currentCover.IsCover = false;
+                }
+            }
+
+            for (var index = 0; index < fileList.Length; index++)
+            {
+                var file = fileList[index];
+                await using var content = file.OpenReadStream();
+                var stored = await _storage.UploadAsync(
+                    content,
+                    file.FileName,
+                    experienceId);
+                uploaded.Add(stored);
+                var pixels = (long)stored.Width * stored.Height;
+                if (stored.Width <= 0
+                    || stored.Height <= 0
+                    || stored.Width > MaximumDimension
+                    || stored.Height > MaximumDimension
+                    || pixels > MaximumPixels)
+                {
+                    throw new InvalidOperationException(
+                        "La imagen tiene dimensiones demasiado grandes o no se pudo leer.");
                 }
 
-                writtenPaths.Add(targetPath);
-                experience.Images.Add(new ExperienceImage
+                var image = new ExperienceImage
                 {
-                    FileName = fileName,
+                    Provider = stored.Provider,
+                    PublicId = stored.PublicId,
+                    SecureUrl = stored.SecureUrl,
+                    Width = stored.Width,
+                    Height = stored.Height,
+                    Format = stored.Format,
+                    AltText = normalizedAltTexts[index],
+                    IsCover = selectedCoverIndex == index,
+                    FileName = Path.GetFileName(stored.PublicId),
                     ContentType = file.ContentType,
                     SortOrder = nextSortOrder++,
                     CreatedAt = DateTime.UtcNow
-                });
+                };
+                experience.Images.Add(image);
             }
 
             experience.UpdatedAt = DateTime.UtcNow;
@@ -103,13 +161,73 @@ public class ExperienceImageService : IExperienceImageService
         }
         catch
         {
-            foreach (var path in writtenPaths)
+            foreach (var stored in uploaded)
             {
-                if (File.Exists(path)) File.Delete(path);
+                await TryCompensateUploadAsync(stored.PublicId);
             }
 
             throw;
         }
+    }
+
+    public async Task<ExperienceImageResult> UpdateAsync(
+        int hostUserId,
+        int experienceId,
+        int imageId,
+        UpdateExperienceImageRequest request)
+    {
+        var image = await _context.ExperienceImages
+            .Include(candidate => candidate.Experience)
+            .SingleOrDefaultAsync(candidate =>
+                candidate.Id == imageId
+                && candidate.ExperienceId == experienceId
+                && candidate.Experience.HostId == hostUserId);
+        if (image is null)
+        {
+            return new(ExperienceImageStatus.NotFound);
+        }
+
+        var normalizedAltText = request.AltText.Trim();
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        image.AltText = normalizedAltText;
+        if (request.IsCover && !image.IsCover)
+        {
+            var currentCovers = await _context.ExperienceImages
+                .Where(candidate => candidate.ExperienceId == experienceId && candidate.IsCover)
+                .ToArrayAsync();
+            foreach (var currentCover in currentCovers)
+            {
+                currentCover.IsCover = false;
+            }
+
+            await _context.SaveChangesAsync();
+            image.IsCover = true;
+        }
+        else if (!request.IsCover && image.IsCover)
+        {
+            image.IsCover = false;
+            await _context.SaveChangesAsync();
+
+            var replacement = await _context.ExperienceImages
+                .Where(candidate =>
+                    candidate.ExperienceId == experienceId
+                    && candidate.Id != imageId)
+                .OrderBy(candidate => candidate.SortOrder)
+                .FirstOrDefaultAsync();
+            if (replacement is not null)
+            {
+                replacement.IsCover = true;
+            }
+        }
+
+        image.Experience.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return new(
+            ExperienceImageStatus.Success,
+            await ToResponsesAsync(experienceId));
     }
 
     public async Task<ExperienceImageResult> DeleteAsync(
@@ -117,54 +235,79 @@ public class ExperienceImageService : IExperienceImageService
         int experienceId,
         int imageId)
     {
-        var image = await (from candidate in _context.ExperienceImages
-                           join experience in _context.Experiences
-                               on candidate.ExperienceId equals experience.Id
-                           where candidate.Id == imageId
-                               && candidate.ExperienceId == experienceId
-                               && experience.HostId == hostUserId
-                           select candidate)
-            .SingleOrDefaultAsync();
+        var image = await _context.ExperienceImages
+            .Include(candidate => candidate.Experience)
+            .SingleOrDefaultAsync(candidate =>
+                candidate.Id == imageId
+                && candidate.ExperienceId == experienceId
+                && candidate.Experience.HostId == hostUserId);
         if (image is null)
         {
             return new(ExperienceImageStatus.NotFound);
         }
 
+        if (image.Provider == ImageStorageProviders.Cloudinary
+            && !string.IsNullOrWhiteSpace(image.PublicId))
+        {
+            await _storage.DeleteAsync(image.PublicId);
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        var wasCover = image.IsCover;
         _context.ExperienceImages.Remove(image);
+        image.Experience.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        var path = Path.Combine(GetExperienceDirectory(experienceId), image.FileName);
-        if (File.Exists(path)) File.Delete(path);
+        if (wasCover)
+        {
+            var replacement = await _context.ExperienceImages
+                .Where(candidate => candidate.ExperienceId == experienceId)
+                .OrderBy(candidate => candidate.SortOrder)
+                .FirstOrDefaultAsync();
+            if (replacement is not null)
+            {
+                replacement.IsCover = true;
+                await _context.SaveChangesAsync();
+            }
+        }
 
-        var remaining = await _context.ExperienceImages.AsNoTracking()
+        await transaction.CommitAsync();
+        return new(
+            ExperienceImageStatus.Success,
+            await ToResponsesAsync(experienceId));
+    }
+
+    private async Task TryCompensateUploadAsync(string publicId)
+    {
+        try
+        {
+            await _storage.DeleteAsync(publicId);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Could not compensate Cloudinary upload {PublicId}.",
+                publicId);
+        }
+    }
+
+    private async Task<IReadOnlyCollection<ExperienceImageResponse>> ToResponsesAsync(int experienceId)
+    {
+        return await _context.ExperienceImages.AsNoTracking()
             .Where(candidate => candidate.ExperienceId == experienceId)
-            .OrderBy(candidate => candidate.SortOrder)
+            .OrderByDescending(candidate => candidate.IsCover)
+            .ThenBy(candidate => candidate.SortOrder)
             .Select(candidate => new ExperienceImageResponse
             {
                 Id = candidate.Id,
-                Url = $"/uploads/experiences/{experienceId}/{candidate.FileName}",
+                SourceUrl = candidate.SecureUrl
+                    ?? $"/uploads/experiences/{experienceId}/{candidate.FileName}",
+                AltText = candidate.AltText,
+                IsCover = candidate.IsCover,
                 SortOrder = candidate.SortOrder
             })
             .ToArrayAsync();
-        return new(ExperienceImageStatus.Success, remaining);
-    }
-
-    public Task CleanupDirectoryAsync(int experienceId)
-    {
-        var directory = GetExperienceDirectory(experienceId);
-        if (Directory.Exists(directory))
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private string GetExperienceDirectory(int experienceId)
-    {
-        var webRoot = _environment.WebRootPath
-            ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
-        return Path.Combine(webRoot, "uploads", "experiences", experienceId.ToString());
     }
 
     private static async Task<string?> ValidateAsync(IFormFile file)
@@ -185,33 +328,44 @@ public class ExperienceImageService : IExperienceImageService
         }
 
         var header = new byte[12];
-        await using var stream = file.OpenReadStream();
-        var bytesRead = await stream.ReadAsync(header);
-        var signatureIsValid = file.ContentType.ToLowerInvariant() switch
+        await using (var stream = file.OpenReadStream())
         {
-            "image/jpeg" => bytesRead >= 3
-                && header[0] == 0xFF
-                && header[1] == 0xD8
-                && header[2] == 0xFF,
-            "image/png" => bytesRead >= 8
-                && header.AsSpan(0, 8).SequenceEqual(
-                    new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }),
-            "image/webp" => bytesRead >= 12
-                && header.AsSpan(0, 4).SequenceEqual("RIFF"u8)
-                && header.AsSpan(8, 4).SequenceEqual("WEBP"u8),
-            _ => false
-        };
+            var bytesRead = await stream.ReadAsync(header);
+            var signatureIsValid = file.ContentType.ToLowerInvariant() switch
+            {
+                "image/jpeg" => bytesRead >= 3
+                    && header[0] == 0xFF
+                    && header[1] == 0xD8
+                    && header[2] == 0xFF,
+                "image/png" => bytesRead >= 8
+                    && header.AsSpan(0, 8).SequenceEqual(
+                        new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }),
+                "image/webp" => bytesRead >= 12
+                    && header.AsSpan(0, 4).SequenceEqual("RIFF"u8)
+                    && header.AsSpan(8, 4).SequenceEqual("WEBP"u8),
+                _ => false
+            };
 
-        return signatureIsValid ? null : "Una de las imágenes no tiene un formato válido.";
+            if (!signatureIsValid)
+            {
+                return "Una de las imágenes no tiene un formato válido.";
+            }
+        }
+
+        return null;
     }
 
     private static IReadOnlyCollection<ExperienceImageResponse> ToResponses(Experience experience) =>
         experience.Images
-            .OrderBy(image => image.SortOrder)
+            .OrderByDescending(image => image.IsCover)
+            .ThenBy(image => image.SortOrder)
             .Select(image => new ExperienceImageResponse
             {
                 Id = image.Id,
-                Url = $"/uploads/experiences/{experience.Id}/{image.FileName}",
+                SourceUrl = image.SecureUrl
+                    ?? $"/uploads/experiences/{experience.Id}/{image.FileName}",
+                AltText = image.AltText,
+                IsCover = image.IsCover,
                 SortOrder = image.SortOrder
             })
             .ToArray();

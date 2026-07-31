@@ -1,13 +1,34 @@
 export interface ExperienceImage {
   id: number;
   url: string;
+  cardUrl: string;
+  thumbnailUrl: string;
+  altText: string;
+  isCover: boolean;
   sortOrder: number;
 }
 
 export interface Experience {
   id: number;
+  slug: string;
   title: string;
+  shortDescription: string;
   description: string;
+  durationMinutes: number | null;
+  timeZoneId: string;
+  meetingPointInstructions: string;
+  pickupInformation: string | null;
+  whatIsIncluded: string[];
+  whatIsNotIncluded: string[];
+  whatToBring: string[];
+  guestRequirements: string;
+  minimumAge: number | null;
+  difficulty: string;
+  accessibilityInformation: string;
+  languages: string[];
+  cancellationPolicy: string;
+  tags: string[];
+  itinerary: ExperienceItineraryItem[];
   location: string;
   latitude: number | null;
   longitude: number | null;
@@ -22,6 +43,15 @@ export interface Experience {
   createdAt: string;
   averageRating: number | null;
   reviewCount: number;
+}
+
+export interface ExperienceItineraryItem {
+  id?: number;
+  title: string;
+  description: string;
+  durationMinutes: number;
+  location: string | null;
+  sortOrder?: number;
 }
 
 export interface ExperienceSearchParams {

@@ -50,6 +50,7 @@ export const Card = ({ experience }: CardProps) => {
   const {
     id,
     title,
+    shortDescription,
     description,
     location,
     category,
@@ -61,15 +62,17 @@ export const Card = ({ experience }: CardProps) => {
   } = experience;
   const isLowAvailability = !isUnlimitedCapacity
     && availableSpots > 0 && capacity > 0 && availableSpots / capacity <= 0.3;
-  const coverImage = images[0];
+  const coverImage = images.find((image) => image.isCover) ?? images[0];
 
   return (
     <article className="experience-card surface-card">
       <div
         className={`experience-card__placeholder experience-card__placeholder--${coverImage ? 'image' : getCategorySlug(category)}`}
         role="img"
-        aria-label={`Imagen de ambiente de la categoría ${category}`}
-        style={coverImage ? { backgroundImage: `url("${resolveApiAssetUrl(coverImage.url)}")` } : undefined}
+        aria-label={coverImage?.altText || `Imagen de ambiente de la categoría ${category}`}
+        style={coverImage
+          ? { backgroundImage: `url("${resolveApiAssetUrl(coverImage.cardUrl)}")` }
+          : undefined}
       >
         {!coverImage && getCategoryIcon(category)}
         <Link
@@ -100,7 +103,7 @@ export const Card = ({ experience }: CardProps) => {
             {title}
           </Link>
         </h3>
-        <p>{description}</p>
+        <p>{shortDescription || description}</p>
         <Link
           className="experience-card__detail-link"
           to={`/experiences/${id}`}

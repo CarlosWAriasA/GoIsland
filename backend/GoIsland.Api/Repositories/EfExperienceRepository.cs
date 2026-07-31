@@ -18,6 +18,7 @@ public class EfExperienceRepository : IExperienceRepository
         return await _context.Experiences
             .AsNoTracking()
             .Include(experience => experience.Images)
+            .Include(experience => experience.Itinerary)
             .Where(experience => experience.ApprovalStatus == ExperienceApprovalStatuses.Approved)
             .OrderByDescending(experience => experience.CreatedAt)
             .ToListAsync();
@@ -28,6 +29,7 @@ public class EfExperienceRepository : IExperienceRepository
         return _context.Experiences
             .AsNoTracking()
             .Include(experience => experience.Images)
+            .Include(experience => experience.Itinerary)
             .FirstOrDefaultAsync(experience =>
                 experience.Id == id
                 && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
@@ -53,6 +55,7 @@ public class EfExperienceRepository : IExperienceRepository
         var query = _context.Experiences
             .AsNoTracking()
             .Include(experience => experience.Images)
+            .Include(experience => experience.Itinerary)
             .Where(experience => experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
 
         if (!string.IsNullOrWhiteSpace(location))

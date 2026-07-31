@@ -20,8 +20,14 @@ public interface IExperienceImageService
     Task<ExperienceImageResult> UploadAsync(
         int hostUserId,
         int experienceId,
-        IReadOnlyCollection<IFormFile> files);
+        IReadOnlyCollection<IFormFile> files,
+        IReadOnlyCollection<string>? altTexts = null,
+        int? coverIndex = null);
 
+    Task<ExperienceImageResult> UpdateAsync(
+        int hostUserId,
+        int experienceId,
+        int imageId,
+        UpdateExperienceImageRequest request);
     Task<ExperienceImageResult> DeleteAsync(int hostUserId, int experienceId, int imageId);
-    Task CleanupDirectoryAsync(int experienceId);
 }

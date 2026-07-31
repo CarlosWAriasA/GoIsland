@@ -7,6 +7,7 @@ using GoIsland.Api.Services.Auth;
 using GoIsland.Api.Services.Email;
 using GoIsland.Api.Services.Experiences;
 using GoIsland.Api.Services.Hosts;
+using GoIsland.Api.Services.Images;
 using GoIsland.Api.Services.Payments;
 using GoIsland.Api.Services.Notifications;
 using GoIsland.Api.Services.Reservations;
@@ -25,6 +26,17 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 const string FrontendCorsPolicy = "FrontendCorsPolicy";
+
+var platformPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(platformPort))
+{
+    if (!int.TryParse(platformPort, out var parsedPort) || parsedPort is < 1 or > 65535)
+    {
+        throw new InvalidOperationException("PORT debe ser un número entre 1 y 65535.");
+    }
+
+    builder.WebHost.UseUrls($"http://0.0.0.0:{parsedPort}");
+}
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -71,6 +83,12 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
     options.ForwardLimit = 1;
     options.RequireHeaderSymmetry = true;
+
+    if (builder.Configuration.GetValue<bool>("ForwardedHeaders:TrustManagedProxy"))
+    {
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    }
 
     foreach (var configuredProxy in builder.Configuration
         .GetSection("ForwardedHeaders:KnownProxies")
@@ -184,6 +202,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExperienceService, ExperienceService>();
 builder.Services.AddScoped<IExperienceManagementService, ExperienceManagementService>();
 builder.Services.AddScoped<IExperienceImageService, ExperienceImageService>();
+builder.Services.AddSingleton<IImageStorage, CloudinaryImageStorage>();
 builder.Services.AddScoped<IHostService, HostService>();
 builder.Services.AddScoped<IHostDashboardService, HostDashboardService>();
 builder.Services.AddScoped<NotificationService>();

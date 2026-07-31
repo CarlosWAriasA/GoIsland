@@ -9,3 +9,9 @@ obj/
 *.docx
 PLAN_BACKEND_GOISLAND.md
 backend/GoIsland.Api/appsettings.Development.json
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
