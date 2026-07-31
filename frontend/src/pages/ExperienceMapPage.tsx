@@ -12,10 +12,9 @@ import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
 import type { Experience } from '../types';
 
-const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
-  style: 'currency',
-  currency: 'USD',
-}).format(price);
+const formatPrice = (price: number) => price === 0
+  ? 'Gratis'
+  : new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'USD' }).format(price);
 
 export const ExperienceMapPage = () => {
   const navigate = useNavigate();

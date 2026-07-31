@@ -1,5 +1,13 @@
 import axios from 'axios';
-import { ArrowLeft, CalendarPlus, Clock, Pencil, Trash2, UsersRound } from 'lucide-react';
+import {
+  ArrowLeft,
+  CalendarPlus,
+  Clock,
+  Infinity as InfinityIcon,
+  Pencil,
+  Trash2,
+  UsersRound,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -14,7 +22,7 @@ import StatusBadge from '../components/StatusBadge';
 import { getFieldError, toApiError } from '../services/apiError';
 import type { ApiError } from '../services/apiError';
 import { hostExperienceService } from '../services/hostExperienceService';
-import type { ExperienceSchedule } from '../types';
+import type { ExperienceSchedule, ManagedExperience } from '../types';
 
 interface ScheduleForm { startsAt: string; endsAt: string; capacity: number; status: 'Scheduled' | 'Closed' }
 const emptyForm: ScheduleForm = { startsAt: '', endsAt: '', capacity: 1, status: 'Scheduled' };
@@ -31,6 +39,7 @@ export const HostSchedules = () => {
   const experienceId = Number(useParams().id);
   const validExperienceId = Number.isInteger(experienceId) && experienceId > 0;
   const [schedules, setSchedules] = useState<ExperienceSchedule[]>([]);
+  const [experience, setExperience] = useState<ManagedExperience | null>(null);
   const [form, setForm] = useState<ScheduleForm>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(validExperienceId);
@@ -44,8 +53,14 @@ export const HostSchedules = () => {
   useEffect(() => {
     if (!validExperienceId) return;
     const controller = new AbortController();
-    hostExperienceService.getSchedules(experienceId, controller.signal)
-      .then(setSchedules)
+    Promise.all([
+      hostExperienceService.getOne(experienceId, controller.signal),
+      hostExperienceService.getSchedules(experienceId, controller.signal),
+    ])
+      .then(([loadedExperience, loadedSchedules]) => {
+        setExperience(loadedExperience);
+        setSchedules(loadedSchedules);
+      })
       .catch((requestError: unknown) => {
         if (!axios.isCancel(requestError)) setError(toApiError(requestError).message);
       })
@@ -59,7 +74,7 @@ export const HostSchedules = () => {
     const payload = {
       startsAt: new Date(form.startsAt).toISOString(),
       endsAt: new Date(form.endsAt).toISOString(),
-      capacity: form.capacity,
+      capacity: experience?.isUnlimitedCapacity ? 1 : form.capacity,
     };
     try {
       const saved = editingId
@@ -115,9 +130,13 @@ export const HostSchedules = () => {
             <Input label="Final" type="datetime-local" value={form.endsAt}
               onChange={(event) => setForm((current) => ({ ...current, endsAt: event.target.value }))}
               error={formError ? getFieldError(formError, 'EndsAt') : undefined} required />
-            <Input label="Capacidad" type="number" min="1" step="1" value={form.capacity}
-              onChange={(event) => setForm((current) => ({ ...current, capacity: Number(event.target.value) }))}
-              error={formError ? getFieldError(formError, 'Capacity') : undefined} required />
+            {experience?.isUnlimitedCapacity ? (
+              <Alert tone="info"><InfinityIcon /> Esta experiencia no tiene límite de personas.</Alert>
+            ) : (
+              <Input label="Capacidad" type="number" min="1" step="1" value={form.capacity}
+                onChange={(event) => setForm((current) => ({ ...current, capacity: Number(event.target.value) }))}
+                error={formError ? getFieldError(formError, 'Capacity') : undefined} required />
+            )}
             {editingId && <SelectField label="Estado" value={form.status}
               onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as ScheduleForm['status'] }))}>
               <option value="Scheduled">Abierto</option><option value="Closed">Cerrado</option>
@@ -146,7 +165,10 @@ export const HostSchedules = () => {
                 <StatusBadge tone={schedule.status === 'Scheduled' ? 'success' : 'warning'}>{schedule.status === 'Scheduled' ? 'Abierto' : 'Cerrado'}</StatusBadge></div>
               <dl className="management-card__facts">
                 <div><dt><Clock size={16} /> Finaliza</dt><dd>{formatDate(schedule.endsAt)}</dd></div>
-                <div><dt><UsersRound size={16} /> Disponibles</dt><dd>{schedule.availableSpots} de {schedule.capacity}</dd></div>
+                <div>
+                  <dt><UsersRound size={16} /> Disponibles</dt>
+                  <dd>{schedule.isUnlimitedCapacity ? 'Sin límite' : `${schedule.availableSpots} de ${schedule.capacity}`}</dd>
+                </div>
               </dl>
               <div className="management-actions"><Button variant="outline" onClick={() => edit(schedule)}><Pencil size={17} /> Editar</Button>
                 <Button variant="danger" onClick={() => void remove(schedule)} disabled={busyId === schedule.id}><Trash2 size={17} /> Eliminar</Button></div>

@@ -1,12 +1,13 @@
 import { KeyRound, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import { getFieldError, toApiError } from '../services/apiError';
 import { authService } from '../services/authService';
+import { useAuth } from '../hooks/useAuth';
 import { getPasswordPolicyError, PASSWORD_POLICY_HINT } from '../utils/passwordPolicy';
 
 interface ChangePasswordErrors {
@@ -16,6 +17,7 @@ interface ChangePasswordErrors {
 }
 
 export const ChangePassword = () => {
+  const { user, authenticationMethod } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -23,6 +25,10 @@ export const ChangePassword = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (authenticationMethod === 'Google' || user?.hasPassword === false) {
+    return <Navigate to="/profile" replace />;
+  }
 
   const validate = () => {
     const errors: ChangePasswordErrors = {};

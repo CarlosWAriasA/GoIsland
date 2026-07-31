@@ -13,6 +13,7 @@ public class Experience
     public decimal Price { get; set; }
     public int Capacity { get; set; }
     public int AvailableSpots { get; set; }
+    public bool IsUnlimitedCapacity { get; set; }
     public bool IsApproved { get; set; }
     public string ApprovalStatus { get; set; } = ExperienceApprovalStatuses.Draft;
     public string? RejectionReason { get; set; }
@@ -20,4 +21,5 @@ public class Experience
     public int? ReviewedByAdminId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public ICollection<ExperienceImage> Images { get; set; } = new List<ExperienceImage>();
 }

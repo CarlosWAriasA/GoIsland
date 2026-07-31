@@ -164,48 +164,59 @@ export const AdminModeration = () => {
         {visibleApplications.length === 0 ? (
           <EmptyState title="No hay solicitudes en este estado" description="Cambia el filtro para consultar el historial." />
         ) : (
-          <div className="management-list">
+          <div className="operations-list" aria-label="Solicitudes de anfitrión">
             {visibleApplications.map((profile) => (
-              <article className="management-card surface-panel" key={profile.id}>
-                <div className="management-card__header">
-                  <div>
-                    <span className="management-card__reference">Solicitud #{profile.id}</span>
+              <article className="operations-row operations-row--hosts" key={profile.id}>
+                <div className="operations-row__main">
+                  <div className="operations-row__primary">
+                    <span className="operations-row__reference">Solicitud #{profile.id}</span>
                     <h3>{profile.displayName}</h3>
-                    <p>{profile.userFullName} · {profile.userEmail}</p>
+                    <small>{profile.userFullName}</small>
+                  </div>
+                  <div className="operations-row__cell">
+                    <span>Contacto</span>
+                    <strong>{profile.userEmail}</strong>
+                    <small>{profile.phoneNumber}</small>
+                  </div>
+                  <div className="operations-row__cell">
+                    <span>Enviada</span>
+                    <strong>{new Date(profile.submittedAt).toLocaleDateString('es-DO')}</strong>
+                    <small>Usuario #{profile.userId}</small>
                   </div>
                   <StatusBadge tone={getModerationTone(profile.verificationStatus)}>
                     {getModerationLabel(profile.verificationStatus)}
                   </StatusBadge>
-                </div>
-                <p className="management-card__description">{profile.description}</p>
-                <dl className="management-card__facts">
-                  <div><dt>Teléfono</dt><dd>{profile.phoneNumber}</dd></div>
-                  <div><dt>Usuario</dt><dd>#{profile.userId}</dd></div>
-                  <div><dt>Enviada</dt><dd>{new Date(profile.submittedAt).toLocaleDateString('es-DO')}</dd></div>
-                </dl>
-                {profile.rejectionReason && <Alert tone="error">{profile.rejectionReason}</Alert>}
-                <div className="management-actions">
-                  {profile.verificationStatus === 'Pending' && (
-                    <>
+                  <div className="operations-row__actions">
+                    {profile.verificationStatus === 'Pending' && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => void decideHost(profile, 'approve')}
+                          isLoading={busyKey === `host-${profile.id}`}
+                        ><BadgeCheck size={16} aria-hidden="true" />Aprobar</Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => void decideHost(profile, 'reject')}
+                          disabled={busyKey === `host-${profile.id}`}
+                        ><UserRoundX size={16} aria-hidden="true" />Rechazar</Button>
+                      </>
+                    )}
+                    {profile.verificationStatus === 'Approved' && (
                       <Button
-                        onClick={() => void decideHost(profile, 'approve')}
-                        isLoading={busyKey === `host-${profile.id}`}
-                      ><BadgeCheck size={17} aria-hidden="true" />Aprobar</Button>
-                      <Button
+                        size="sm"
                         variant="danger"
-                        onClick={() => void decideHost(profile, 'reject')}
-                        disabled={busyKey === `host-${profile.id}`}
-                      ><UserRoundX size={17} aria-hidden="true" />Rechazar</Button>
-                    </>
-                  )}
-                  {profile.verificationStatus === 'Approved' && (
-                    <Button
-                      variant="danger"
-                      onClick={() => void decideHost(profile, 'suspend')}
-                      isLoading={busyKey === `host-${profile.id}`}
-                    ><UserRoundX size={17} aria-hidden="true" />Suspender</Button>
-                  )}
+                        onClick={() => void decideHost(profile, 'suspend')}
+                        isLoading={busyKey === `host-${profile.id}`}
+                      ><UserRoundX size={16} aria-hidden="true" />Suspender</Button>
+                    )}
+                  </div>
                 </div>
+                <details className="operations-row__details">
+                  <summary>Ver presentación</summary>
+                  <p>{profile.description}</p>
+                  {profile.rejectionReason && <Alert tone="error">{profile.rejectionReason}</Alert>}
+                </details>
               </article>
             ))}
           </div>
@@ -235,48 +246,59 @@ export const AdminModeration = () => {
         {visibleExperiences.length === 0 ? (
           <EmptyState title="No hay experiencias en este estado" description="Cambia el filtro para consultar el historial." />
         ) : (
-          <div className="management-list">
+          <div className="operations-list" aria-label="Experiencias en moderación">
             {visibleExperiences.map((experience) => (
-              <article className="management-card surface-panel" key={experience.id}>
-                <div className="management-card__header">
-                  <div>
-                    <span className="management-card__reference">Experiencia #{experience.id}</span>
+              <article className="operations-row operations-row--experiences" key={experience.id}>
+                <div className="operations-row__main">
+                  <div className="operations-row__primary">
+                    <span className="operations-row__reference">Experiencia #{experience.id}</span>
                     <h3>{experience.title}</h3>
-                    <p><MapPin size={16} aria-hidden="true" />{experience.location} · {experience.hostName}</p>
+                    <small><MapPin size={14} aria-hidden="true" />{experience.location}</small>
+                  </div>
+                  <div className="operations-row__cell">
+                    <span>Anfitrión</span>
+                    <strong>{experience.hostName}</strong>
+                    <small>{experience.category}</small>
+                  </div>
+                  <div className="operations-row__cell">
+                    <span>Precio y cupos</span>
+                    <strong>USD {experience.price.toFixed(2)}</strong>
+                    <small>{experience.isUnlimitedCapacity ? 'Sin límite' : `${experience.capacity} personas`}</small>
                   </div>
                   <StatusBadge tone={getModerationTone(experience.approvalStatus)}>
                     {getModerationLabel(experience.approvalStatus)}
                   </StatusBadge>
-                </div>
-                <p className="management-card__description">{experience.description}</p>
-                <dl className="management-card__facts">
-                  <div><dt>Categoría</dt><dd>{experience.category}</dd></div>
-                  <div><dt>Precio</dt><dd>USD {experience.price.toFixed(2)}</dd></div>
-                  <div><dt>Capacidad</dt><dd>{experience.capacity}</dd></div>
-                </dl>
-                {experience.rejectionReason && <Alert tone="error">{experience.rejectionReason}</Alert>}
-                <div className="management-actions">
-                  {experience.approvalStatus === 'PendingReview' && (
-                    <>
+                  <div className="operations-row__actions">
+                    {experience.approvalStatus === 'PendingReview' && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => void decideExperience(experience, 'approve')}
+                          isLoading={busyKey === `experience-${experience.id}`}
+                        ><ShieldCheck size={16} aria-hidden="true" />Aprobar</Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => void decideExperience(experience, 'reject')}
+                          disabled={busyKey === `experience-${experience.id}`}
+                        ><BriefcaseBusiness size={16} aria-hidden="true" />Rechazar</Button>
+                      </>
+                    )}
+                    {experience.approvalStatus === 'Approved' && (
                       <Button
-                        onClick={() => void decideExperience(experience, 'approve')}
-                        isLoading={busyKey === `experience-${experience.id}`}
-                      ><ShieldCheck size={17} aria-hidden="true" />Aprobar</Button>
-                      <Button
+                        size="sm"
                         variant="danger"
-                        onClick={() => void decideExperience(experience, 'reject')}
-                        disabled={busyKey === `experience-${experience.id}`}
-                      ><BriefcaseBusiness size={17} aria-hidden="true" />Rechazar</Button>
-                    </>
-                  )}
-                  {experience.approvalStatus === 'Approved' && (
-                    <Button
-                      variant="danger"
-                      onClick={() => void decideExperience(experience, 'suspend')}
-                      isLoading={busyKey === `experience-${experience.id}`}
-                    >Suspender publicación</Button>
-                  )}
+                        onClick={() => void decideExperience(experience, 'suspend')}
+                        isLoading={busyKey === `experience-${experience.id}`}
+                      >Suspender</Button>
+                    )}
+                  </div>
                 </div>
+                <details className="operations-row__details">
+                  <summary>Ver descripción</summary>
+                  <p>{experience.description}</p>
+                  {experience.rejectionReason && <Alert tone="error">{experience.rejectionReason}</Alert>}
+                </details>
               </article>
             ))}
           </div>

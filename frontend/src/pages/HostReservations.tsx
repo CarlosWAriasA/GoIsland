@@ -15,6 +15,10 @@ const formatDate = (value: string) => new Intl.DateTimeFormat('es-DO', {
   dateStyle: 'medium', timeStyle: 'short',
 }).format(new Date(value));
 
+const formatCurrency = (value: number) => new Intl.NumberFormat('es-DO', {
+  style: 'currency', currency: 'USD',
+}).format(value);
+
 export const HostReservations = () => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,23 +51,39 @@ export const HostReservations = () => {
       <p>Consulta únicamente reservas de tus experiencias y gestiona cancelaciones.</p></header>
     {success && <Alert tone="success">{success}</Alert>}{error && <Alert tone="error">{error}</Alert>}
     {loading ? (
-      <div className="management-list" role="status">
-        {[1, 2].map((item) => <Skeleton key={item} className="management-card management-card--loading" />)}
+      <div className="operations-list" role="status">
+        {[1, 2, 3].map((item) => <Skeleton key={item} className="operations-row operations-row--loading" />)}
         <span className="visually-hidden">Cargando reservas recibidas…</span>
       </div>
     ) : error && reservations.length === 0
       ? <ErrorState description={error} onRetry={() => { setLoading(true); setRetry((value) => value + 1); }} />
       : reservations.length === 0 ? <EmptyState title="Sin reservas recibidas" description="Las nuevas reservas aparecerán aquí." />
-        : <div className="management-list">{reservations.map((reservation) => {
+        : <div className="operations-list" aria-label="Reservas recibidas">{reservations.map((reservation) => {
           const active = reservation.status === 'PendingPayment' || reservation.status === 'Confirmed';
-          return <article className="management-card surface-panel" key={reservation.id}>
-            <div className="management-card__header"><div><span className="management-card__reference">Reserva #{reservation.id}</span>
-              <h2>{reservation.experienceTitle}</h2><p><MapPin size={16} /> {reservation.experienceLocation}</p></div>
-              <StatusBadge tone={getReservationStatusTone(reservation.status)}>{getReservationStatusLabel(reservation.status)}</StatusBadge></div>
-            <dl className="management-card__facts"><div><dt><CalendarDays size={16} /> Horario</dt><dd>{formatDate(reservation.startsAt)}</dd></div>
-              <div><dt><UsersRound size={16} /> Personas</dt><dd>{reservation.quantity}</dd></div></dl>
-            {active && <div className="management-actions"><Button variant="danger" onClick={() => void cancel(reservation)}
-              isLoading={busyId === reservation.id}>Cancelar por anfitrión</Button></div>}
+          return <article className="operations-row operations-row--reservations" key={reservation.id}>
+            <div className="operations-row__main">
+              <div className="operations-row__primary">
+                <span className="operations-row__reference">Reserva #{reservation.id} · Turista #{reservation.userId}</span>
+                <h2>{reservation.experienceTitle}</h2>
+                <small><MapPin size={14} aria-hidden="true" />{reservation.experienceLocation}</small>
+              </div>
+              <div className="operations-row__cell">
+                <span><CalendarDays size={14} aria-hidden="true" />Horario</span>
+                <strong>{formatDate(reservation.startsAt)}</strong>
+              </div>
+              <div className="operations-row__cell">
+                <span><UsersRound size={14} aria-hidden="true" />Personas</span>
+                <strong>{reservation.quantity}</strong>
+                <small>{formatCurrency(reservation.totalAmount)}</small>
+              </div>
+              <StatusBadge tone={getReservationStatusTone(reservation.status)}>
+                {getReservationStatusLabel(reservation.status)}
+              </StatusBadge>
+              <div className="operations-row__actions">
+                {active && <Button size="sm" variant="danger" onClick={() => void cancel(reservation)}
+                  isLoading={busyId === reservation.id}>Cancelar</Button>}
+              </div>
+            </div>
           </article>;
         })}</div>}
   </div>;

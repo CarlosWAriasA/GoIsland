@@ -55,6 +55,7 @@ public class ExperienceService : IExperienceService
         var maximumLongitude = (decimal)Math.Min(180d, longitude + longitudeDelta);
 
         var candidates = await _context.Experiences.AsNoTracking()
+            .Include(item => item.Images)
             .Where(item => item.IsApproved
                 && item.ApprovalStatus == ExperienceApprovalStatuses.Approved
                 && item.Latitude.HasValue
@@ -124,6 +125,16 @@ public class ExperienceService : IExperienceService
             Price = experience.Price,
             Capacity = experience.Capacity,
             AvailableSpots = experience.AvailableSpots,
+            IsUnlimitedCapacity = experience.IsUnlimitedCapacity,
+            Images = experience.Images
+                .OrderBy(image => image.SortOrder)
+                .Select(image => new ExperienceImageResponse
+                {
+                    Id = image.Id,
+                    Url = $"/uploads/experiences/{experience.Id}/{image.FileName}",
+                    SortOrder = image.SortOrder
+                })
+                .ToArray(),
             IsApproved = experience.IsApproved,
             CreatedAt = experience.CreatedAt
         };

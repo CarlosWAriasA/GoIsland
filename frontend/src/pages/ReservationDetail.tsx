@@ -21,9 +21,9 @@ import { getReservationStatusLabel, getReservationStatusTone } from '../utils/re
 import { reviewService } from '../services/reviewService';
 import type { ExperienceSchedule, Payment, Reservation, Review } from '../types';
 
-const formatPrice = (price: number, currency = 'USD') => new Intl.NumberFormat('es-DO', {
-  style: 'currency', currency,
-}).format(price);
+const formatPrice = (price: number, currency = 'USD') => price === 0
+  ? 'Gratis'
+  : new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(price);
 
 const formatDate = (date: string) => new Intl.DateTimeFormat('es-DO', {
   dateStyle: 'long', timeStyle: 'short',

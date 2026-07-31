@@ -1,5 +1,6 @@
 import { AlertCircle, ArrowRight, Compass, MapPin, Ship, TreePine, Utensils, Waves } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { resolveApiAssetUrl } from '../services/api';
 import type { Experience } from '../types';
 
 interface CardProps {
@@ -40,10 +41,9 @@ const getCategoryIcon = (category: string) => {
   }
 };
 
-const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
-  style: 'currency',
-  currency: 'USD',
-}).format(price);
+const formatPrice = (price: number) => price === 0
+  ? 'Gratis'
+  : new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'USD' }).format(price);
 
 export const Card = ({ experience }: CardProps) => {
   const currentLocation = useLocation();
@@ -56,17 +56,28 @@ export const Card = ({ experience }: CardProps) => {
     price,
     availableSpots,
     capacity,
+    isUnlimitedCapacity,
+    images,
   } = experience;
-  const isLowAvailability = availableSpots > 0 && capacity > 0 && availableSpots / capacity <= 0.3;
+  const isLowAvailability = !isUnlimitedCapacity
+    && availableSpots > 0 && capacity > 0 && availableSpots / capacity <= 0.3;
+  const coverImage = images[0];
 
   return (
     <article className="experience-card surface-card">
       <div
-        className={`experience-card__placeholder experience-card__placeholder--${getCategorySlug(category)}`}
+        className={`experience-card__placeholder experience-card__placeholder--${coverImage ? 'image' : getCategorySlug(category)}`}
         role="img"
         aria-label={`Imagen de ambiente de la categoría ${category}`}
+        style={coverImage ? { backgroundImage: `url("${resolveApiAssetUrl(coverImage.url)}")` } : undefined}
       >
-        {getCategoryIcon(category)}
+        {!coverImage && getCategoryIcon(category)}
+        <Link
+          className="experience-card__image-link"
+          to={`/experiences/${id}`}
+          state={{ from: `${currentLocation.pathname}${currentLocation.search}` }}
+          aria-label={`Ver detalles de ${title}`}
+        />
         <Link
           className="experience-card__category"
           to={`/experiences?category=${encodeURIComponent(category)}`}
@@ -108,7 +119,9 @@ export const Card = ({ experience }: CardProps) => {
         <div className="experience-card__availability">
           {(availableSpots === 0 || isLowAvailability) && <AlertCircle size={16} aria-hidden="true" />}
           <span>
-            {availableSpots === 0
+            {isUnlimitedCapacity
+              ? 'Sin límite de cupos'
+              : availableSpots === 0
               ? 'Sin cupos'
               : `${availableSpots} de ${capacity} cupos`}
           </span>

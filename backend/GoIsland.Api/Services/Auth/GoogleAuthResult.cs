@@ -7,6 +7,7 @@ public enum GoogleAuthStatus
     Success,
     NotConfigured,
     InvalidCredential,
+    LocalAccountExists,
     AccountConflict
 }
 

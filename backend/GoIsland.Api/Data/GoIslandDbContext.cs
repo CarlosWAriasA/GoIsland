@@ -12,6 +12,7 @@ public class GoIslandDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Experience> Experiences => Set<Experience>();
+    public DbSet<ExperienceImage> ExperienceImages => Set<ExperienceImage>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<ExperienceSchedule> ExperienceSchedules => Set<ExperienceSchedule>();
     public DbSet<ReservationStatusHistory> ReservationStatusHistories => Set<ReservationStatusHistory>();
@@ -91,6 +92,9 @@ public class GoIslandDbContext : DbContext
                 .HasColumnName("available_spots")
                 .IsRequired()
                 .IsConcurrencyToken();
+            entity.Property(experience => experience.IsUnlimitedCapacity)
+                .HasColumnName("is_unlimited_capacity")
+                .IsRequired();
             entity.Property(experience => experience.IsApproved).HasColumnName("is_approved").IsRequired();
             entity.Property(experience => experience.ApprovalStatus).HasColumnName("approval_status").HasMaxLength(40).IsRequired();
             entity.Property(experience => experience.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
@@ -100,6 +104,23 @@ public class GoIslandDbContext : DbContext
             entity.Property(experience => experience.UpdatedAt).HasColumnName("updated_at").IsRequired();
             entity.HasIndex(experience => experience.HostId);
             entity.HasIndex(experience => experience.ApprovalStatus);
+        });
+
+        modelBuilder.Entity<ExperienceImage>(entity =>
+        {
+            entity.ToTable("experience_images");
+            entity.HasKey(image => image.Id);
+            entity.Property(image => image.Id).HasColumnName("id");
+            entity.Property(image => image.ExperienceId).HasColumnName("experience_id").IsRequired();
+            entity.Property(image => image.FileName).HasColumnName("file_name").HasMaxLength(120).IsRequired();
+            entity.Property(image => image.ContentType).HasColumnName("content_type").HasMaxLength(80).IsRequired();
+            entity.Property(image => image.SortOrder).HasColumnName("sort_order").IsRequired();
+            entity.Property(image => image.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.HasIndex(image => new { image.ExperienceId, image.SortOrder }).IsUnique();
+            entity.HasOne(image => image.Experience)
+                .WithMany(experience => experience.Images)
+                .HasForeignKey(image => image.ExperienceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Reservation>(entity =>

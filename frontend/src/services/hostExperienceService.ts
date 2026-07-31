@@ -1,6 +1,7 @@
 import type {
   CreateScheduleRequest,
   ExperienceSchedule,
+  ExperienceImage,
   ManagedExperience,
   ManagedExperienceRequest,
   UpdateScheduleRequest,
@@ -10,6 +11,11 @@ import { api } from './api';
 export const hostExperienceService = {
   getMine: async (signal?: AbortSignal): Promise<ManagedExperience[]> => {
     const response = await api.get<ManagedExperience[]>('/host/experiences', { signal });
+    return response.data;
+  },
+
+  getOne: async (id: number, signal?: AbortSignal): Promise<ManagedExperience> => {
+    const response = await api.get<ManagedExperience>(`/host/experiences/${id}`, { signal });
     return response.data;
   },
 
@@ -30,6 +36,22 @@ export const hostExperienceService = {
 
   remove: async (id: number): Promise<void> => {
     await api.delete(`/host/experiences/${id}`);
+  },
+
+  uploadImages: async (id: number, files: File[]): Promise<ExperienceImage[]> => {
+    const data = new FormData();
+    files.forEach((file) => data.append('files', file));
+    const response = await api.post<ExperienceImage[]>(`/host/experiences/${id}/images`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  deleteImage: async (experienceId: number, imageId: number): Promise<ExperienceImage[]> => {
+    const response = await api.delete<ExperienceImage[]>(
+      `/host/experiences/${experienceId}/images/${imageId}`,
+    );
+    return response.data;
   },
 
   getSchedules: async (experienceId: number, signal?: AbortSignal): Promise<ExperienceSchedule[]> => {

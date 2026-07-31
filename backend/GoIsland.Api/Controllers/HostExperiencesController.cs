@@ -13,10 +13,14 @@ namespace GoIsland.Api.Controllers;
 public class HostExperiencesController : ControllerBase
 {
     private readonly IExperienceManagementService _service;
+    private readonly IExperienceImageService _imageService;
 
-    public HostExperiencesController(IExperienceManagementService service)
+    public HostExperiencesController(
+        IExperienceManagementService service,
+        IExperienceImageService imageService)
     {
         _service = service;
+        _imageService = imageService;
     }
 
     [HttpPost]
@@ -83,10 +87,35 @@ public class HostExperiencesController : ControllerBase
         var result = await _service.DeleteAsync(userId, id);
         if (result.Status == ExperienceManagementStatus.Success)
         {
+            await _imageService.CleanupDirectoryAsync(id);
             return NoContent();
         }
 
         return ToActionResult(result);
+    }
+
+    [HttpPost("{id:int}/images")]
+    [RequestSizeLimit(52_428_800)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 52_428_800)]
+    public async Task<IActionResult> UploadImages(int id, [FromForm] List<IFormFile> files)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        }
+
+        return ToImageActionResult(await _imageService.UploadAsync(userId, id, files));
+    }
+
+    [HttpDelete("{id:int}/images/{imageId:int}")]
+    public async Task<IActionResult> DeleteImage(int id, int imageId)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        }
+
+        return ToImageActionResult(await _imageService.DeleteAsync(userId, id, imageId));
     }
 
     [HttpPost("{id:int}/submit")]
@@ -118,6 +147,21 @@ public class HostExperiencesController : ControllerBase
             {
                 message = "La experiencia no admite esa operacion en su estado actual."
             }),
+            _ => StatusCode(StatusCodes.Status500InternalServerError)
+        };
+    }
+
+    private IActionResult ToImageActionResult(ExperienceImageResult result)
+    {
+        return result.Status switch
+        {
+            ExperienceImageStatus.Success => Ok(result.Images),
+            ExperienceImageStatus.NotFound => NotFound(new
+            {
+                message = "No se encontró la experiencia o la imagen."
+            }),
+            ExperienceImageStatus.LimitExceeded => Conflict(new { message = result.Message }),
+            ExperienceImageStatus.InvalidFile => BadRequest(new { message = result.Message }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };
     }

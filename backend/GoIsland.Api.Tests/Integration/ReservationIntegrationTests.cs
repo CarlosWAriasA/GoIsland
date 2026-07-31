@@ -26,6 +26,26 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
+    public async Task Create_ForFreeExperience_ConfirmsReservationWithoutPayment()
+    {
+        var (user, _, schedule, _) = await SeedScenarioAsync(price: 0m);
+
+        var result = await GetRequiredService<IReservationService>().CreateAsync(user.Id,
+            new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 2 }, "free-create");
+
+        Assert.Equal(ReservationCreationStatus.Success, result.Status);
+        Assert.Equal(0m, result.Reservation!.TotalAmount);
+        Assert.Equal(ReservationStatuses.Confirmed, result.Reservation.Status);
+        Assert.Equal(
+            ReservationStatuses.Confirmed,
+            await Context.Reservations
+                .Where(item => item.Id == result.Reservation.Id)
+                .Select(item => item.Status)
+                .SingleAsync());
+        Assert.False(await Context.Payments.AnyAsync(item => item.ReservationId == result.Reservation.Id));
+    }
+
+    [Fact]
     public async Task Create_RepeatedIdempotencyKey_ReturnsSameReservationWithoutDoubleDiscount()
     {
         var (user, _, schedule, _) = await SeedScenarioAsync();

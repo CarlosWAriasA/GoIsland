@@ -24,11 +24,11 @@ public class ScheduleService : IScheduleService
             return new(ScheduleOperationStatus.Forbidden);
         }
 
-        var ownsApprovedExperience = await _context.Experiences.AnyAsync(experience =>
+        var experience = await _context.Experiences.SingleOrDefaultAsync(experience =>
             experience.Id == experienceId
             && experience.HostId == hostUserId
             && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
-        if (!ownsApprovedExperience)
+        if (experience is null)
         {
             return new(ScheduleOperationStatus.NotFound);
         }
@@ -39,27 +39,36 @@ public class ScheduleService : IScheduleService
         }
 
         var now = DateTime.UtcNow;
+        var capacity = experience.IsUnlimitedCapacity
+            ? ExperienceCapacity.UnlimitedValue
+            : request.Capacity;
         var schedule = new ExperienceSchedule
         {
             ExperienceId = experienceId,
             StartsAt = startsAt,
             EndsAt = endsAt,
-            Capacity = request.Capacity,
-            AvailableSpots = request.Capacity,
+            Capacity = capacity,
+            AvailableSpots = capacity,
             Status = ScheduleStatuses.Scheduled,
             CreatedAt = now,
             UpdatedAt = now
         };
         await _context.ExperienceSchedules.AddAsync(schedule);
         await _context.SaveChangesAsync();
-        return new(ScheduleOperationStatus.Success, ToResponse(schedule));
+        return new(
+            ScheduleOperationStatus.Success,
+            ToResponse(schedule, experience.IsUnlimitedCapacity));
     }
 
     public async Task<IReadOnlyCollection<ScheduleResponse>?> GetForHostAsync(
         int hostUserId,
         int experienceId)
     {
-        if (!await OwnsExperienceAsync(hostUserId, experienceId))
+        var isUnlimitedCapacity = await _context.Experiences
+            .Where(experience => experience.Id == experienceId && experience.HostId == hostUserId)
+            .Select(experience => (bool?)experience.IsUnlimitedCapacity)
+            .SingleOrDefaultAsync();
+        if (!isUnlimitedCapacity.HasValue)
         {
             return null;
         }
@@ -68,7 +77,7 @@ public class ScheduleService : IScheduleService
             .Where(schedule => schedule.ExperienceId == experienceId)
             .OrderBy(schedule => schedule.StartsAt)
             .ToArrayAsync();
-        return schedules.Select(ToResponse).ToArray();
+        return schedules.Select(schedule => ToResponse(schedule, isUnlimitedCapacity.Value)).ToArray();
     }
 
     public async Task<ScheduleOperationResult> UpdateAsync(
@@ -86,31 +95,46 @@ public class ScheduleService : IScheduleService
         {
             return new(ScheduleOperationStatus.NotFound);
         }
+        var isUnlimitedCapacity = await _context.Experiences
+            .Where(experience => experience.Id == schedule.ExperienceId)
+            .Select(experience => experience.IsUnlimitedCapacity)
+            .SingleAsync();
 
         if (request.Status is not (ScheduleStatuses.Scheduled or ScheduleStatuses.Closed))
         {
-            return new(ScheduleOperationStatus.InvalidStatus, ToResponse(schedule));
+            return new(
+                ScheduleOperationStatus.InvalidStatus,
+                ToResponse(schedule, isUnlimitedCapacity));
         }
 
         if (!TryNormalizeDates(request.StartsAt, request.EndsAt, out var startsAt, out var endsAt))
         {
-            return new(ScheduleOperationStatus.InvalidDates, ToResponse(schedule));
+            return new(
+                ScheduleOperationStatus.InvalidDates,
+                ToResponse(schedule, isUnlimitedCapacity));
         }
 
         var reservedSpots = schedule.Capacity - schedule.AvailableSpots;
-        if (request.Capacity < reservedSpots)
+        var capacity = isUnlimitedCapacity
+            ? ExperienceCapacity.UnlimitedValue
+            : request.Capacity;
+        if (capacity < reservedSpots)
         {
-            return new(ScheduleOperationStatus.CapacityConflict, ToResponse(schedule));
+            return new(
+                ScheduleOperationStatus.CapacityConflict,
+                ToResponse(schedule, isUnlimitedCapacity));
         }
 
         schedule.StartsAt = startsAt;
         schedule.EndsAt = endsAt;
-        schedule.AvailableSpots = request.Capacity - reservedSpots;
-        schedule.Capacity = request.Capacity;
+        schedule.AvailableSpots = capacity - reservedSpots;
+        schedule.Capacity = capacity;
         schedule.Status = request.Status;
         schedule.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-        return new(ScheduleOperationStatus.Success, ToResponse(schedule));
+        return new(
+            ScheduleOperationStatus.Success,
+            ToResponse(schedule, isUnlimitedCapacity));
     }
 
     public async Task<ScheduleOperationResult> DeleteAsync(int hostUserId, int id)
@@ -125,10 +149,16 @@ public class ScheduleService : IScheduleService
         {
             return new(ScheduleOperationStatus.NotFound);
         }
+        var isUnlimitedCapacity = await _context.Experiences
+            .Where(experience => experience.Id == schedule.ExperienceId)
+            .Select(experience => experience.IsUnlimitedCapacity)
+            .SingleAsync();
 
         if (await _context.Reservations.AnyAsync(reservation => reservation.ScheduleId == id))
         {
-            return new(ScheduleOperationStatus.HasReservations, ToResponse(schedule));
+            return new(
+                ScheduleOperationStatus.HasReservations,
+                ToResponse(schedule, isUnlimitedCapacity));
         }
 
         _context.ExperienceSchedules.Remove(schedule);
@@ -142,10 +172,12 @@ public class ScheduleService : IScheduleService
         DateTime? to,
         int quantity)
     {
-        var exists = await _context.Experiences.AsNoTracking().AnyAsync(experience =>
-            experience.Id == experienceId
-            && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
-        if (!exists)
+        var isUnlimitedCapacity = await _context.Experiences.AsNoTracking()
+            .Where(experience => experience.Id == experienceId
+                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved)
+            .Select(experience => (bool?)experience.IsUnlimitedCapacity)
+            .SingleOrDefaultAsync();
+        if (!isUnlimitedCapacity.HasValue)
         {
             return null;
         }
@@ -163,17 +195,13 @@ public class ScheduleService : IScheduleService
         }
 
         var schedules = await query.OrderBy(schedule => schedule.StartsAt).ToArrayAsync();
-        return schedules.Select(ToResponse).ToArray();
+        return schedules.Select(schedule => ToResponse(schedule, isUnlimitedCapacity.Value)).ToArray();
     }
 
     private Task<bool> IsApprovedHostAsync(int userId) =>
         _context.HostProfiles.AnyAsync(profile =>
             profile.UserId == userId
             && profile.VerificationStatus == HostVerificationStatuses.Approved);
-
-    private Task<bool> OwnsExperienceAsync(int userId, int experienceId) =>
-        _context.Experiences.AnyAsync(experience =>
-            experience.Id == experienceId && experience.HostId == userId);
 
     private Task<ExperienceSchedule?> FindOwnedScheduleAsync(int userId, int scheduleId) =>
         (from schedule in _context.ExperienceSchedules
@@ -199,7 +227,9 @@ public class ScheduleService : IScheduleService
         ? value.Value.ToUniversalTime()
         : null;
 
-    private static ScheduleResponse ToResponse(ExperienceSchedule schedule) => new()
+    private static ScheduleResponse ToResponse(
+        ExperienceSchedule schedule,
+        bool isUnlimitedCapacity = false) => new()
     {
         Id = schedule.Id,
         ExperienceId = schedule.ExperienceId,
@@ -207,6 +237,7 @@ public class ScheduleService : IScheduleService
         EndsAt = schedule.EndsAt,
         Capacity = schedule.Capacity,
         AvailableSpots = schedule.AvailableSpots,
+        IsUnlimitedCapacity = isUnlimitedCapacity,
         Status = schedule.Status,
         CreatedAt = schedule.CreatedAt,
         UpdatedAt = schedule.UpdatedAt

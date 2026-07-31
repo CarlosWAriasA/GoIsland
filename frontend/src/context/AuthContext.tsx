@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import type { UserResponse, AuthResponse, LoginRequest, RegisterRequest } from '../types';
+import type {
+  AuthenticationMethod,
+  UserResponse,
+  AuthResponse,
+  LoginRequest,
+  RegisterRequest,
+} from '../types';
 import { authService } from '../services/authService';
 import { setAuthToken, setUnauthorizedHandler } from '../services/api';
 import { clearAuthSession, loadAuthSession, saveAuthSession } from '../services/authSession';
@@ -9,12 +15,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserResponse | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [authenticationMethod, setAuthenticationMethod] = useState<AuthenticationMethod | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
 
   const clearAuthentication = useCallback((expired: boolean) => {
     setToken(null);
     setExpiresAt(null);
+    setAuthenticationMethod(null);
     setUser(null);
     setSessionExpired(expired);
     setAuthToken(null);
@@ -40,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!cancelled) {
         setToken(session.token);
         setExpiresAt(session.expiresAt);
+        setAuthenticationMethod(session.authenticationMethod);
         setUser(session.user);
       }
 
@@ -80,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthToken(response.token);
     setToken(response.token);
     setExpiresAt(response.expiresAt);
+    setAuthenticationMethod(response.authenticationMethod);
     setUser(response.user);
     setSessionExpired(false);
     saveAuthSession(response);
@@ -134,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updatedUser = await authService.updateProfile(fullName);
       setUser(updatedUser);
       if (token && expiresAt) {
-        saveAuthSession({ token, expiresAt, user: updatedUser });
+        saveAuthSession({ token, expiresAt, authenticationMethod, user: updatedUser });
       }
     } finally {
       setIsLoading(false);
@@ -145,16 +155,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const currentUser = await authService.getMe();
     setUser(currentUser);
     if (token && expiresAt) {
-      saveAuthSession({ token, expiresAt, user: currentUser });
+      saveAuthSession({ token, expiresAt, authenticationMethod, user: currentUser });
     }
     return currentUser;
-  }, [expiresAt, token]);
+  }, [authenticationMethod, expiresAt, token]);
 
   return (
     <AuthContext.Provider
       value={{
         user,
         token,
+        authenticationMethod,
         isAuthenticated: !!token,
         isLoading,
         sessionExpired,

@@ -19,9 +19,9 @@ interface ReservationDialogProps {
   onSchedulesUpdate: (schedules: ExperienceSchedule[]) => void;
 }
 
-const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
-  style: 'currency', currency: 'USD',
-}).format(price);
+const formatPrice = (price: number) => price === 0
+  ? 'Gratis'
+  : new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'USD' }).format(price);
 
 const formatSchedule = (startsAt: string, endsAt: string) => {
   const start = new Date(startsAt);
@@ -59,7 +59,7 @@ export const ReservationDialog = ({
       setFieldError('La cantidad debe ser mayor que cero.');
       return false;
     }
-    if (parsedQuantity > selectedSchedule.availableSpots) {
+    if (!selectedSchedule.isUnlimitedCapacity && parsedQuantity > selectedSchedule.availableSpots) {
       setFieldError('El horario no tiene suficientes cupos disponibles.');
       return false;
     }
@@ -110,7 +110,7 @@ export const ReservationDialog = ({
         <>
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Volver</Button>
           <Button type="submit" variant="primary" form="reservation-form" isLoading={isSubmitting} disabled={!selectedSchedule}>
-            Crear reserva pendiente de pago
+            {experience.price === 0 ? 'Confirmar reserva gratis' : 'Crear reserva pendiente de pago'}
           </Button>
         </>
       )}
@@ -127,16 +127,23 @@ export const ReservationDialog = ({
         >
           {schedules.map((schedule) => (
             <option key={schedule.id} value={schedule.id}>
-              {formatSchedule(schedule.startsAt, schedule.endsAt)} · {schedule.availableSpots} cupos
+              {formatSchedule(schedule.startsAt, schedule.endsAt)} · {schedule.isUnlimitedCapacity ? 'Sin límite' : `${schedule.availableSpots} cupos`}
             </option>
           ))}
         </SelectField>
         <Input
           label="Cantidad de personas" type="number" min="1"
-          max={selectedSchedule?.availableSpots ?? 1} step="1" inputMode="numeric"
+          max={selectedSchedule && !selectedSchedule.isUnlimitedCapacity
+            ? selectedSchedule.availableSpots
+            : undefined}
+          step="1" inputMode="numeric"
           value={quantity} onChange={(event) => setQuantity(event.target.value)}
           error={selectedSchedule ? fieldError : undefined}
-          hint={selectedSchedule ? `${selectedSchedule.availableSpots} cupos en este horario` : undefined}
+          hint={selectedSchedule
+            ? selectedSchedule.isUnlimitedCapacity
+              ? 'Este horario no tiene límite de personas'
+              : `${selectedSchedule.availableSpots} cupos en este horario`
+            : undefined}
           disabled={!selectedSchedule}
         />
         <dl className="reservation-form__summary">
@@ -145,7 +152,9 @@ export const ReservationDialog = ({
           <div className="reservation-form__total"><dt>Total</dt><dd>{formatPrice(total)}</dd></div>
         </dl>
         <Alert tone="info">
-          La reserva quedará <strong>Pendiente de pago</strong>. Todavía no implica pago ni confirmación.
+          {experience.price === 0
+            ? <>Esta experiencia es gratis; la reserva quedará <strong>confirmada inmediatamente</strong>.</>
+            : <>La reserva quedará <strong>Pendiente de pago</strong>. Todavía no implica pago ni confirmación.</>}
         </Alert>
       </form>
     </Dialog>

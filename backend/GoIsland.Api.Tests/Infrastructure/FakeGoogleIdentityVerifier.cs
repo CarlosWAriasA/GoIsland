@@ -10,7 +10,7 @@ public class FakeGoogleIdentityVerifier : IGoogleIdentityVerifier
     {
         var parts = credential.Split('|', 4);
         VerifiedGoogleIdentity? identity = parts.Length == 4 && parts[0] == "valid"
-            ? new VerifiedGoogleIdentity(parts[1], parts[2], parts[3], true)
+            ? new VerifiedGoogleIdentity(parts[1], parts[2], parts[3])
             : null;
         return Task.FromResult(identity);
     }

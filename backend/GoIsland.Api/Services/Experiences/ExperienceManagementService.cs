@@ -24,6 +24,9 @@ public class ExperienceManagementService : IExperienceManagementService
         }
 
         var now = DateTime.UtcNow;
+        var capacity = request.IsUnlimitedCapacity
+            ? ExperienceCapacity.UnlimitedValue
+            : request.Capacity;
         var experience = new Experience
         {
             HostId = hostUserId,
@@ -34,8 +37,9 @@ public class ExperienceManagementService : IExperienceManagementService
             Longitude = request.Longitude,
             Category = request.Category.Trim(),
             Price = request.Price,
-            Capacity = request.Capacity,
-            AvailableSpots = request.Capacity,
+            Capacity = capacity,
+            AvailableSpots = capacity,
+            IsUnlimitedCapacity = request.IsUnlimitedCapacity,
             IsApproved = false,
             ApprovalStatus = ExperienceApprovalStatuses.Draft,
             CreatedAt = now,
@@ -83,12 +87,21 @@ public class ExperienceManagementService : IExperienceManagementService
             return new(ExperienceManagementStatus.InvalidTransition, await ToResponseAsync(id));
         }
 
-        var reservedSpots = await _context.Reservations
+        var capacity = request.IsUnlimitedCapacity
+            ? ExperienceCapacity.UnlimitedValue
+            : request.Capacity;
+        var schedules = await _context.ExperienceSchedules
+            .Where(schedule => schedule.ExperienceId == id)
+            .ToArrayAsync();
+        var reservedBySchedule = await _context.Reservations
             .Where(reservation => reservation.ExperienceId == id
                 && (reservation.Status == ReservationStatuses.PendingPayment
                     || reservation.Status == ReservationStatuses.Confirmed))
-            .SumAsync(reservation => (int?)reservation.Quantity) ?? 0;
-        if (request.Capacity < reservedSpots)
+            .GroupBy(reservation => reservation.ScheduleId)
+            .Select(group => new { ScheduleId = group.Key, Reserved = group.Sum(item => item.Quantity) })
+            .ToDictionaryAsync(item => item.ScheduleId, item => item.Reserved);
+        if (!request.IsUnlimitedCapacity
+            && reservedBySchedule.Values.Any(reserved => reserved > capacity))
         {
             return new(ExperienceManagementStatus.Conflict, await ToResponseAsync(id));
         }
@@ -100,14 +113,23 @@ public class ExperienceManagementService : IExperienceManagementService
         experience.Longitude = request.Longitude;
         experience.Category = request.Category.Trim();
         experience.Price = request.Price;
-        experience.Capacity = request.Capacity;
-        experience.AvailableSpots = request.Capacity - reservedSpots;
+        experience.Capacity = capacity;
+        experience.AvailableSpots = capacity;
+        experience.IsUnlimitedCapacity = request.IsUnlimitedCapacity;
         experience.IsApproved = false;
         experience.ApprovalStatus = ExperienceApprovalStatuses.Draft;
         experience.RejectionReason = null;
         experience.ReviewedAt = null;
         experience.ReviewedByAdminId = null;
         experience.UpdatedAt = DateTime.UtcNow;
+
+        foreach (var schedule in schedules)
+        {
+            var reservedSpots = reservedBySchedule.GetValueOrDefault(schedule.Id);
+            schedule.Capacity = capacity;
+            schedule.AvailableSpots = capacity - reservedSpots;
+            schedule.UpdatedAt = DateTime.UtcNow;
+        }
 
         await _context.SaveChangesAsync();
         return new(ExperienceManagementStatus.Success, await ToResponseAsync(id));
@@ -260,6 +282,16 @@ public class ExperienceManagementService : IExperienceManagementService
                    Price = experience.Price,
                    Capacity = experience.Capacity,
                    AvailableSpots = experience.AvailableSpots,
+                   IsUnlimitedCapacity = experience.IsUnlimitedCapacity,
+                   Images = experience.Images
+                       .OrderBy(image => image.SortOrder)
+                       .Select(image => new ExperienceImageResponse
+                       {
+                           Id = image.Id,
+                           Url = $"/uploads/experiences/{experience.Id}/{image.FileName}",
+                           SortOrder = image.SortOrder
+                       })
+                       .ToArray(),
                    ApprovalStatus = experience.ApprovalStatus,
                    RejectionReason = experience.RejectionReason,
                    ReviewedAt = experience.ReviewedAt,

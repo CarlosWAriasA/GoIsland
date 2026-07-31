@@ -1,10 +1,8 @@
 import axios from 'axios';
-import { Bell, Check, Mail, Smartphone } from 'lucide-react';
+import { Bell, Mail, Smartphone } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
-import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import Skeleton from '../components/Skeleton';
 import { toApiError } from '../services/apiError';
@@ -15,14 +13,9 @@ import {
   getWebPushStatus,
   type WebPushStatus,
 } from '../services/webPushService';
-import type { NotificationItem, NotificationPreferences } from '../types';
-
-const formatDate = (date: string) => new Intl.DateTimeFormat('es-DO', {
-  dateStyle: 'medium', timeStyle: 'short',
-}).format(new Date(date));
+import type { NotificationPreferences } from '../types';
 
 export const Notifications = () => {
-  const [items, setItems] = useState<NotificationItem[] | null>(null);
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -34,28 +27,21 @@ export const Notifications = () => {
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([
-      notificationService.getAll(controller.signal),
-      notificationService.getPreferences(controller.signal),
-    ]).then(([notifications, currentPreferences]) => {
-      setItems(notifications);
-      setPreferences(currentPreferences);
-      setError(null);
-    }).catch((requestError: unknown) => {
-      if (!axios.isCancel(requestError)) setError(toApiError(requestError, 'No fue posible cargar las notificaciones.').message);
-    });
+    notificationService.getPreferences(controller.signal)
+      .then((currentPreferences) => {
+        setPreferences(currentPreferences);
+        setError(null);
+      }).catch((requestError: unknown) => {
+        if (!axios.isCancel(requestError)) {
+          setError(toApiError(
+            requestError,
+            'No fue posible cargar la configuración de notificaciones.',
+          ).message);
+        }
+      });
     void getWebPushStatus().then(setPushStatus, () => setPushStatus('unsupported'));
     return () => controller.abort();
   }, [reloadCount]);
-
-  const markRead = async (id: number) => {
-    try {
-      const updated = await notificationService.markRead(id);
-      setItems((current) => current?.map((item) => item.id === id ? updated : item) ?? current);
-    } catch (requestError: unknown) {
-      setError(toApiError(requestError, 'No fue posible marcar la notificación.').message);
-    }
-  };
 
   const savePreferences = async () => {
     if (!preferences) return;
@@ -106,7 +92,7 @@ export const Notifications = () => {
     }
   };
 
-  if (error && !items) {
+  if (error && !preferences) {
     return (
       <div className="container management-page">
         <ErrorState description={error} onRetry={() => setReloadCount((current) => current + 1)} />
@@ -114,7 +100,7 @@ export const Notifications = () => {
     );
   }
 
-  if (!items || !preferences) {
+  if (!preferences) {
     return (
       <div className="container management-page" role="status" aria-busy="true">
         <Skeleton className="management-skeleton" />
@@ -126,8 +112,8 @@ export const Notifications = () => {
 
   return (
     <div className="container management-page animate-fade-in">
-      <header className="page-heading"><span className="page-heading__eyebrow">Tu actividad</span><h1>Notificaciones</h1>
-        <p>Aquí encontrarás novedades sobre tus reservas, pagos y experiencias.</p></header>
+      <header className="page-heading"><span className="page-heading__eyebrow">Notificaciones</span><h1>Configuración de avisos</h1>
+        <p>Elige dónde quieres recibir las novedades sobre tus reservas, pagos y experiencias.</p></header>
       {error && <Alert tone="error">{error}</Alert>}
       {saved && <Alert tone="success">Preferencias guardadas.</Alert>}
       {pushFeedback && <Alert tone={pushStatus === 'active' ? 'success' : 'warning'}>{pushFeedback}</Alert>}
@@ -135,7 +121,7 @@ export const Notifications = () => {
       <section className="surface-panel notification-preferences" aria-labelledby="notification-preferences-title">
         <h2 id="notification-preferences-title">Preferencias</h2>
         {([
-          ['dashboardEnabled', Bell, 'En la aplicación', 'Mostrar tus avisos en esta página.'],
+          ['dashboardEnabled', Bell, 'En la aplicación', 'Mostrar tus avisos en el panel lateral de tu cuenta.'],
           ['emailEnabled', Mail, 'Por correo electrónico', 'Enviar tus avisos al correo de tu cuenta.'],
           ['pushEnabled', Smartphone, 'En tus dispositivos', 'Recibir avisos aunque no tengas GoIsland abierto.'],
         ] as const).map(([key, Icon, label, description]) => (
@@ -168,19 +154,6 @@ export const Notifications = () => {
           )}
         </div>
         <Button onClick={() => void savePreferences()} isLoading={saving}>Guardar preferencias</Button>
-      </section>
-
-      <section className="notification-list" aria-labelledby="notification-list-title">
-        <h2 id="notification-list-title">Actividad reciente</h2>
-        {items.length === 0 ? <EmptyState title="Aún no hay notificaciones" description="Aquí verás los avisos de tus reservas, pagos y experiencias." /> : (
-          <ol>{items.map((item) => (
-            <li className={`surface-card notification-item${item.readAt ? '' : ' notification-item--unread'}`} key={item.id}>
-              <div><span className="notification-item__date">{formatDate(item.createdAt)}</span><h3>{item.title}</h3><p>{item.message}</p>
-                {item.actionUrl && <Link to={item.actionUrl}>Ver detalle</Link>}</div>
-              {!item.readAt && <Button variant="ghost" size="sm" onClick={() => void markRead(item.id)}><Check size={17} /> Marcar leída</Button>}
-            </li>
-          ))}</ol>
-        )}
       </section>
     </div>
   );

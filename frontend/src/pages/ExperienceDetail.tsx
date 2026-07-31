@@ -24,14 +24,14 @@ import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
 import RatingStars from '../components/RatingStars';
 import { reviewService } from '../services/reviewService';
+import { resolveApiAssetUrl } from '../services/api';
 import type { Experience, ExperienceSchedule, Review } from '../types';
 
 const ExperienceMap = lazy(() => import('../components/ExperienceMap'));
 
-const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
-  style: 'currency',
-  currency: 'USD',
-}).format(price);
+const formatPrice = (price: number) => price === 0
+  ? 'Gratis'
+  : new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'USD' }).format(price);
 
 const formatDate = (date: string) => new Intl.DateTimeFormat('es-DO', {
   day: 'numeric',
@@ -176,6 +176,7 @@ export const ExperienceDetail = () => {
   }
 
   const nextSchedule = schedules[0];
+  const coverImage = experience.images[0];
   const availabilityTone = nextSchedule ? 'info' : 'warning';
   const handleReserve = () => {
     if (!isAuthenticated) {
@@ -204,13 +205,29 @@ export const ExperienceDetail = () => {
 
       <div className="experience-detail__layout">
         <div className="experience-detail__main">
-          <div
-            className={`experience-detail__placeholder experience-detail__placeholder--${getCategorySlug(experience.category)}`}
-            role="img"
-            aria-label={`Imagen de ambiente de la categoría ${experience.category}`}
-          >
-            {getCategoryIcon(experience.category)}
-            <span>{experience.category}</span>
+          <div className="experience-detail__gallery">
+            <div
+              className={`experience-detail__placeholder experience-detail__placeholder--${coverImage ? 'image' : getCategorySlug(experience.category)}`}
+              role="img"
+              aria-label={`Imagen de ambiente de la categoría ${experience.category}`}
+              style={coverImage
+                ? { backgroundImage: `url("${resolveApiAssetUrl(coverImage.url)}")` }
+                : undefined}
+            >
+              {!coverImage && getCategoryIcon(experience.category)}
+              <span>{experience.category}</span>
+            </div>
+            {experience.images.length > 1 && (
+              <div className="experience-detail__thumbnails" aria-label="Galería de la experiencia">
+                {experience.images.slice(1).map((image, index) => (
+                  <img
+                    key={image.id}
+                    src={resolveApiAssetUrl(image.url)}
+                    alt={`Imagen ${index + 2} de ${experience.title}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           <header className="experience-detail__header">
@@ -258,7 +275,9 @@ export const ExperienceDetail = () => {
             </div>
             <div>
               <dt><UsersRound size={18} aria-hidden="true" /> Cupos próximos</dt>
-              <dd>{nextSchedule?.availableSpots ?? 0}</dd>
+              <dd>{nextSchedule
+                ? nextSchedule.isUnlimitedCapacity ? 'Sin límite' : nextSchedule.availableSpots
+                : 0}</dd>
             </div>
             <div>
               <dt><CalendarDays size={18} aria-hidden="true" /> Fechas disponibles</dt>
@@ -269,7 +288,9 @@ export const ExperienceDetail = () => {
             {!nextSchedule ? (
               <>Actualmente no hay horarios futuros disponibles.</>
             ) : (
-              `${nextSchedule.availableSpots} cupos en la próxima fecha; puedes elegir entre ${schedules.length}.`
+              nextSchedule.isUnlimitedCapacity
+                ? `La próxima fecha no tiene límite de cupos; puedes elegir entre ${schedules.length}.`
+                : `${nextSchedule.availableSpots} cupos en la próxima fecha; puedes elegir entre ${schedules.length}.`
             )}
           </Alert>
           <Button
@@ -282,7 +303,9 @@ export const ExperienceDetail = () => {
             <TicketCheck size={18} aria-hidden="true" /> Reservar
           </Button>
           <p className="experience-detail__reservation-note">
-            La reserva se crea como <strong>Pendiente de pago</strong>; el pago todavía no está confirmado.
+            {experience.price === 0
+              ? <>La reserva es gratis y quedará <strong>confirmada inmediatamente</strong>.</>
+              : <>La reserva se crea como <strong>Pendiente de pago</strong>; el pago todavía no está confirmado.</>}
           </p>
         </aside>
       </div>

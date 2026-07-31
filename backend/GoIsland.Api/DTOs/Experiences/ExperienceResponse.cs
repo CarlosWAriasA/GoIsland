@@ -13,6 +13,8 @@ public class ExperienceResponse
     public decimal Price { get; set; }
     public int Capacity { get; set; }
     public int AvailableSpots { get; set; }
+    public bool IsUnlimitedCapacity { get; set; }
+    public IReadOnlyCollection<ExperienceImageResponse> Images { get; set; } = [];
     public bool IsApproved { get; set; }
     public DateTime CreatedAt { get; set; }
     public decimal? AverageRating { get; set; }

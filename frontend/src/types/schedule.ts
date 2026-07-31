@@ -7,6 +7,7 @@ export interface ExperienceSchedule {
   endsAt: string;
   capacity: number;
   availableSpots: number;
+  isUnlimitedCapacity: boolean;
   status: ScheduleStatus;
   createdAt: string;
   updatedAt: string;

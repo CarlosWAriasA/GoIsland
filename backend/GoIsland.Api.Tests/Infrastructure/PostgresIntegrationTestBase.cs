@@ -150,6 +150,13 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             "010_add_login_protection.sql"));
         await Context.Database.ExecuteSqlRawAsync(loginProtectionScript);
 
+        var experienceMediaScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "011_add_experience_media_and_unlimited_capacity.sql"));
+        await Context.Database.ExecuteSqlRawAsync(experienceMediaScript);
+
         // Fuerza una consulta real y falla temprano si el esquema no esta aplicado.
         await Context.Users.AsNoTracking().AnyAsync();
     }

@@ -1,9 +1,10 @@
 import { createContext } from 'react';
-import type { LoginRequest, RegisterRequest, UserResponse } from '../types';
+import type { AuthenticationMethod, LoginRequest, RegisterRequest, UserResponse } from '../types';
 
 export interface AuthContextValue {
   user: UserResponse | null;
   token: string | null;
+  authenticationMethod: AuthenticationMethod | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   sessionExpired: boolean;

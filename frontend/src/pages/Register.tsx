@@ -80,7 +80,7 @@ export const Register = () => {
     setFormError(null);
     try {
       await loginWithGoogle(credential);
-      toast.success('Cuenta de Google vinculada. Bienvenido a GoIsland.');
+      toast.success('Cuenta creada con Google. Bienvenido a GoIsland.');
       navigate('/experiences');
     } catch (error: unknown) {
       setFormError(toApiError(error, 'No fue posible continuar con Google.').message);

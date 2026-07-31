@@ -183,6 +183,7 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExperienceService, ExperienceService>();
 builder.Services.AddScoped<IExperienceManagementService, ExperienceManagementService>();
+builder.Services.AddScoped<IExperienceImageService, ExperienceImageService>();
 builder.Services.AddScoped<IHostService, HostService>();
 builder.Services.AddScoped<IHostDashboardService, HostDashboardService>();
 builder.Services.AddScoped<NotificationService>();
@@ -261,6 +262,15 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseForwardedHeaders();
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        context.Context.Response.Headers.XContentTypeOptions = "nosniff";
+        context.Context.Response.Headers.CacheControl = "public,max-age=31536000,immutable";
+    }
+});
 
 app.UseExceptionHandler(errorApplication =>
 {

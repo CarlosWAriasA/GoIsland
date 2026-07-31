@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Button from './Button';
 import Logo from './Logo';
-import NotificationBell from './NotificationBell';
 import UserMenu from './UserMenu';
 
 const getNavLinkClass = ({ isActive }: { isActive: boolean }) => (
@@ -14,7 +13,10 @@ const getNavLinkClass = ({ isActive }: { isActive: boolean }) => (
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
   const navigate = useNavigate();
+  const experiencesActive = location.pathname === '/experiences'
+    || (location.pathname.startsWith('/experiences/') && !location.pathname.startsWith('/experiences/map'));
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -32,7 +34,6 @@ export const Navbar = () => {
         </Link>
 
         <div className="site-header__actions">
-          {isAuthenticated && <NotificationBell />}
           <Button
             variant="ghost"
             className="site-header__menu-button"
@@ -54,7 +55,11 @@ export const Navbar = () => {
             Inicio
           </NavLink>
 
-          <NavLink to="/experiences" className={getNavLinkClass} onClick={closeMenu}>
+          <NavLink
+            to="/experiences"
+            className={() => getNavLinkClass({ isActive: experiencesActive })}
+            onClick={closeMenu}
+          >
             Experiencias
           </NavLink>
           <NavLink to="/experiences/map" className={getNavLinkClass} onClick={closeMenu}>
@@ -94,13 +99,6 @@ export const Navbar = () => {
               )}
 
               <div className="site-nav__session">
-                <NavLink
-                  to="/notifications"
-                  className={({ isActive }) => `${getNavLinkClass({ isActive })} site-nav__link--mobile-only`}
-                  onClick={closeMenu}
-                >
-                  Notificaciones
-                </NavLink>
                 {user && <UserMenu user={user} onLogout={handleLogout} />}
               </div>
             </>

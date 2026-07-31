@@ -25,7 +25,7 @@ const formatDate = (dateString?: string) => {
 };
 
 export const Profile = () => {
-  const { user, updateUser, isLoading } = useAuth();
+  const { user, authenticationMethod, updateUser, isLoading } = useAuth();
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -82,9 +82,16 @@ export const Profile = () => {
               <dd>{formatDate(user?.createdAt)}</dd>
             </div>
           </dl>
-          <Link className="profile-password-link" to="/account/password">
-            Cambiar contraseña
-          </Link>
+          {authenticationMethod === 'Google' || user?.hasPassword === false ? (
+            <div className="profile-login-method">
+              <span aria-hidden="true">G</span>
+              <strong>Acceso con Google</strong>
+            </div>
+          ) : (
+            <Link className="profile-password-link" to="/account/password">
+              Cambiar contraseña
+            </Link>
+          )}
         </section>
 
         <section className="profile-form surface-panel" aria-labelledby="profile-form-title">

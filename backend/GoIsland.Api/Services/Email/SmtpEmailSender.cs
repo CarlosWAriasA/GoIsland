@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Mail;
+using System.Net.Mime;
+using System.Text;
 
 namespace GoIsland.Api.Services.Email;
 
@@ -35,14 +37,7 @@ public class SmtpEmailSender : IEmailSender
 
         var content = PasswordResetEmailContentBuilder.Build(resetPasswordUrl, fullName, resetToken);
 
-        using var message = new MailMessage
-        {
-            From = new MailAddress(fromEmail, fromName),
-            Subject = content.Subject,
-            Body = content.HtmlBody,
-            IsBodyHtml = true
-        };
-        message.To.Add(new MailAddress(email));
+        using var message = BuildMessage(fromEmail, fromName, email, content);
 
         using var client = new SmtpClient(host, port)
         {
@@ -63,16 +58,33 @@ public class SmtpEmailSender : IEmailSender
         var host = GetRequiredSetting("Smtp:Host");
         var fromEmail = GetRequiredSetting("Email:FromEmail");
         var fromName = _configuration["Email:FromName"] ?? "GoIsland";
-        using var message = new MailMessage
+        var content = NotificationEmailContent.Build(fullName, subject, body, actionUrl);
+        using var message = BuildMessage(fromEmail, fromName, email, content);
+        using var client = BuildClient(host);
+        await client.SendMailAsync(message);
+    }
+
+    private static MailMessage BuildMessage(
+        string fromEmail,
+        string fromName,
+        string email,
+        EmailContent content)
+    {
+        var message = new MailMessage
         {
             From = new MailAddress(fromEmail, fromName),
-            Subject = subject,
-            Body = NotificationEmailContent.Build(fullName, body, actionUrl),
+            Subject = content.Subject,
+            SubjectEncoding = Encoding.UTF8,
+            Body = content.HtmlBody,
+            BodyEncoding = Encoding.UTF8,
             IsBodyHtml = true
         };
         message.To.Add(new MailAddress(email));
-        using var client = BuildClient(host);
-        await client.SendMailAsync(message);
+        message.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(
+            content.TextBody, Encoding.UTF8, MediaTypeNames.Text.Plain));
+        message.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(
+            content.HtmlBody, Encoding.UTF8, MediaTypeNames.Text.Html));
+        return message;
     }
 
     private SmtpClient BuildClient(string host)

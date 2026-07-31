@@ -94,6 +94,7 @@ public class ReservationService : IReservationService
         }
 
         var now = DateTime.UtcNow;
+        var isFree = match.Experience.Price == 0;
         var previousSpots = match.Schedule.AvailableSpots;
         match.Schedule.AvailableSpots -= request.Quantity;
         match.Schedule.UpdatedAt = now;
@@ -103,7 +104,7 @@ public class ReservationService : IReservationService
             ExperienceId = match.Experience.Id,
             ScheduleId = match.Schedule.Id,
             Quantity = request.Quantity,
-            Status = ReservationStatuses.PendingPayment,
+            Status = isFree ? ReservationStatuses.Confirmed : ReservationStatuses.PendingPayment,
             TotalAmount = match.Experience.Price * request.Quantity,
             ReservationDate = now,
             UpdatedAt = now
@@ -112,8 +113,14 @@ public class ReservationService : IReservationService
         await AddHistoryAsync(reservation, null, reservation.Status, userId, "Reserva creada.", now);
         await AddIdempotencyAsync(reservation, userId, "Create", key, requestHash, now);
         await AddCapacityAuditAsync(reservation, match.Schedule, previousSpots, "ReservationCreated", now);
-        await _outbox.EnqueueAsync(userId, "ReservationCreated", "Reserva pendiente de pago",
-            $"Tu reserva para {match.Experience.Title} fue creada y espera el pago.", reservation);
+        await _outbox.EnqueueAsync(
+            userId,
+            "ReservationCreated",
+            isFree ? "Reserva confirmada" : "Reserva pendiente de pago",
+            isFree
+                ? $"Tu reserva gratuita para {match.Experience.Title} quedó confirmada."
+                : $"Tu reserva para {match.Experience.Title} fue creada y espera el pago.",
+            reservation);
         await _outbox.EnqueueAsync(match.Experience.HostId, "ReservationReceived", "Nueva reserva recibida",
             $"Recibiste una reserva de {request.Quantity} cupos para {match.Experience.Title}.", reservation,
             "/host/reservations");

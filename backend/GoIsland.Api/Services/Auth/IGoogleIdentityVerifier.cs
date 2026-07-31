@@ -3,8 +3,7 @@ namespace GoIsland.Api.Services.Auth;
 public record VerifiedGoogleIdentity(
     string Subject,
     string Email,
-    string FullName,
-    bool CanLinkExistingAccountByEmail);
+    string FullName);
 
 public interface IGoogleIdentityVerifier
 {

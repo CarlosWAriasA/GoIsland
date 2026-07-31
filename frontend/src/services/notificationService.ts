@@ -7,11 +7,22 @@ import type {
   WebPushPublicKeyResponse,
 } from '../types';
 
+export const NOTIFICATIONS_CHANGED_EVENT = 'goisland:notifications-changed';
+
+const announceNotificationsChanged = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+  }
+};
+
 export const notificationService = {
   getAll: async (signal?: AbortSignal): Promise<NotificationItem[]> =>
     (await api.get<NotificationItem[]>('/notifications', { signal })).data,
-  markRead: async (id: number): Promise<NotificationItem> =>
-    (await api.patch<NotificationItem>(`/notifications/${id}/read`)).data,
+  markRead: async (id: number): Promise<NotificationItem> => {
+    const item = (await api.patch<NotificationItem>(`/notifications/${id}/read`)).data;
+    announceNotificationsChanged();
+    return item;
+  },
   getPreferences: async (signal?: AbortSignal): Promise<NotificationPreferences> =>
     (await api.get<NotificationPreferences>('/notifications/preferences', { signal })).data,
   updatePreferences: async (preferences: NotificationPreferences): Promise<NotificationPreferences> =>

@@ -1,3 +1,9 @@
+export interface ExperienceImage {
+  id: number;
+  url: string;
+  sortOrder: number;
+}
+
 export interface Experience {
   id: number;
   title: string;
@@ -10,6 +16,8 @@ export interface Experience {
   price: number;
   capacity: number;
   availableSpots: number;
+  isUnlimitedCapacity: boolean;
+  images: ExperienceImage[];
   isApproved: boolean;
   createdAt: string;
   averageRating: number | null;

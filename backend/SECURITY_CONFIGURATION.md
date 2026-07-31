@@ -22,6 +22,7 @@ de variables de ambiente como:
 - `Smtp__Username` y `Smtp__Password`, o `Resend__ApiKey`
 - `WebPush__PrivateKey`
 - `GoogleAuth__ClientId`
+- `GoogleMaps__ApiKey`
 
 La conexion PostgreSQL y la clave JWT que existieron en el historial deben considerarse
 comprometidas. Se deben rotar en el proveedor y en todos los ambientes antes de desplegar.

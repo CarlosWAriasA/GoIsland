@@ -1,10 +1,11 @@
-import type { AuthResponse, UserResponse } from '../types';
+import type { AuthenticationMethod, AuthResponse, UserResponse } from '../types';
 
 const storageKey = 'goisland.auth-session';
 
 export interface StoredAuthSession {
   token: string;
   expiresAt: string;
+  authenticationMethod: AuthenticationMethod | null;
   user: UserResponse;
 }
 
@@ -20,6 +21,7 @@ const isUserResponse = (value: unknown): value is UserResponse => {
     && typeof user.fullName === 'string'
     && typeof user.email === 'string'
     && typeof user.role === 'string'
+    && (typeof user.hasPassword === 'boolean' || user.hasPassword === undefined)
     && typeof user.createdAt === 'string';
 };
 
@@ -40,7 +42,19 @@ export const loadAuthSession = (): StoredAuthSessionResult => {
       return { session: null, expired: true };
     }
 
-    return { session: session as StoredAuthSession, expired: false };
+    const authenticationMethod = session.authenticationMethod === 'Google'
+      || session.authenticationMethod === 'Password'
+      ? session.authenticationMethod
+      : null;
+    return {
+      session: {
+        token: session.token!,
+        expiresAt: session.expiresAt!,
+        authenticationMethod,
+        user: session.user!,
+      },
+      expired: false,
+    };
   } catch {
     clearAuthSession();
     return { session: null, expired: true };

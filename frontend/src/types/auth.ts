@@ -1,14 +1,18 @@
+export type AuthenticationMethod = 'Password' | 'Google';
+
 export interface UserResponse {
   id: number;
   fullName: string;
   email: string;
   role: string;
+  hasPassword: boolean;
   createdAt: string;
 }
 
 export interface AuthResponse {
   token: string;
   expiresAt: string;
+  authenticationMethod: AuthenticationMethod;
   user: UserResponse;
 }
 

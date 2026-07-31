@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using GoIsland.Api.Models;
 
 namespace GoIsland.Api.DTOs.Experiences;
 
@@ -29,8 +30,9 @@ public class CreateExperienceRequest : IValidatableObject
     [Range(typeof(decimal), "0", "99999999.99", ErrorMessage = "El precio debe ser mayor o igual a cero.")]
     public decimal Price { get; set; }
 
-    [Range(1, int.MaxValue, ErrorMessage = "La capacidad debe ser mayor que cero.")]
-    public int Capacity { get; set; }
+    public int Capacity { get; set; } = 1;
+
+    public bool IsUnlimitedCapacity { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -39,6 +41,20 @@ public class CreateExperienceRequest : IValidatableObject
             yield return new ValidationResult(
                 "Selecciona un punto completo en el mapa.",
                 [nameof(Latitude), nameof(Longitude)]);
+        }
+
+        if (!ExperienceCategories.All.Contains(Category.Trim()))
+        {
+            yield return new ValidationResult(
+                "Selecciona una categoría válida.",
+                [nameof(Category)]);
+        }
+
+        if (!IsUnlimitedCapacity && Capacity < 1)
+        {
+            yield return new ValidationResult(
+                "La capacidad debe ser mayor que cero.",
+                [nameof(Capacity)]);
         }
     }
 }

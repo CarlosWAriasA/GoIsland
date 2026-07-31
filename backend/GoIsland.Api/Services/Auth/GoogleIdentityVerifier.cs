@@ -43,9 +43,7 @@ public class GoogleIdentityVerifier : IGoogleIdentityVerifier
             return new VerifiedGoogleIdentity(
                 payload.Subject,
                 payload.Email.Trim().ToLowerInvariant(),
-                fullName,
-                payload.Email.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase)
-                    || !string.IsNullOrWhiteSpace(payload.HostedDomain));
+                fullName);
         }
         catch (InvalidJwtException)
         {

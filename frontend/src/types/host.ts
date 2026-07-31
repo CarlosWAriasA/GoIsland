@@ -37,6 +37,7 @@ export interface ManagedExperienceRequest {
   category: string;
   price: number;
   capacity: number;
+  isUnlimitedCapacity: boolean;
 }
 
 export interface ManagedExperience extends ManagedExperienceRequest {
@@ -44,6 +45,7 @@ export interface ManagedExperience extends ManagedExperienceRequest {
   hostId: number;
   hostName: string;
   availableSpots: number;
+  images: import('./experience').ExperienceImage[];
   approvalStatus: ExperienceApprovalStatus;
   rejectionReason: string | null;
   reviewedAt: string | null;

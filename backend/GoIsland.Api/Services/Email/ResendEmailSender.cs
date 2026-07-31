@@ -34,7 +34,8 @@ public class ResendEmailSender : IEmailSender
                 from = $"{fromName} <{fromEmail}>",
                 to = new[] { email },
                 subject = content.Subject,
-                html = content.HtmlBody
+                html = content.HtmlBody,
+                text = content.TextBody
             })
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -48,14 +49,16 @@ public class ResendEmailSender : IEmailSender
         var apiKey = GetRequiredSetting("Resend:ApiKey");
         var fromEmail = GetRequiredSetting("Email:FromEmail");
         var fromName = _configuration["Email:FromName"] ?? "GoIsland";
+        var content = NotificationEmailContent.Build(fullName, subject, message, actionUrl);
         using var request = new HttpRequestMessage(HttpMethod.Post, "emails")
         {
             Content = JsonContent.Create(new
             {
                 from = $"{fromName} <{fromEmail}>",
                 to = new[] { email },
-                subject,
-                html = NotificationEmailContent.Build(fullName, message, actionUrl)
+                subject = content.Subject,
+                html = content.HtmlBody,
+                text = content.TextBody
             })
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);

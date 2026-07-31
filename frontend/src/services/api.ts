@@ -2,6 +2,12 @@ import axios from 'axios';
 
 // URL base de la API, tomada de las variables de entorno de Vite
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5057/api';
+const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
+
+export const resolveApiAssetUrl = (url: string) => {
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${API_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 export const api = axios.create({
   baseURL: API_URL,

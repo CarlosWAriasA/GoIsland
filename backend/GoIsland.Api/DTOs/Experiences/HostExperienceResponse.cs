@@ -14,6 +14,8 @@ public class HostExperienceResponse
     public decimal Price { get; set; }
     public int Capacity { get; set; }
     public int AvailableSpots { get; set; }
+    public bool IsUnlimitedCapacity { get; set; }
+    public IReadOnlyCollection<ExperienceImageResponse> Images { get; set; } = [];
     public string ApprovalStatus { get; set; } = string.Empty;
     public string? RejectionReason { get; set; }
     public DateTime? ReviewedAt { get; set; }

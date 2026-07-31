@@ -10,6 +10,8 @@ namespace GoIsland.Api.Services.Auth;
 public class AuthService : IAuthService
 {
     private const string GoogleProvider = "Google";
+    private const string PasswordAuthenticationMethod = "Password";
+    private const string GoogleAuthenticationMethod = "Google";
     private const string ExternalLoginOnlyPasswordHash = "EXTERNAL_LOGIN_ONLY";
     private const int LockoutThreshold = 5;
     private readonly IUnitOfWork _unitOfWork;
@@ -67,7 +69,7 @@ public class AuthService : IAuthService
 
         await _unitOfWork.Users.AddAsync(user);
         await _unitOfWork.CommitAsync();
-        return CreateAuthResponse(user);
+        return CreateAuthResponse(user, PasswordAuthenticationMethod);
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
@@ -108,7 +110,7 @@ public class AuthService : IAuthService
             });
         }
 
-        return CreateAuthResponse(user);
+        return CreateAuthResponse(user, PasswordAuthenticationMethod);
     }
 
     public async Task<GoogleAuthResult> AuthenticateWithGoogleAsync(GoogleAuthRequest request)
@@ -133,38 +135,30 @@ public class AuthService : IAuthService
             var linkedUser = await _unitOfWork.Users.GetByIdAsync(externalLogin.UserId);
             return linkedUser is null
                 ? new GoogleAuthResult(GoogleAuthStatus.AccountConflict)
-                : new GoogleAuthResult(GoogleAuthStatus.Success, CreateAuthResponse(linkedUser));
+                : new GoogleAuthResult(
+                    GoogleAuthStatus.Success,
+                    CreateAuthResponse(linkedUser, GoogleAuthenticationMethod));
         }
 
         var user = await _unitOfWork.Users.GetByEmailAsync(identity.Email);
-        var isNewUser = user is null;
-        if (user is not null && !identity.CanLinkExistingAccountByEmail)
-        {
-            return new GoogleAuthResult(GoogleAuthStatus.AccountConflict);
-        }
-
-        if (user is null)
-        {
-            user = new User
-            {
-                FullName = identity.FullName,
-                Email = identity.Email,
-                PasswordHash = ExternalLoginOnlyPasswordHash,
-                Role = UserRoles.Tourist
-            };
-            await _unitOfWork.Users.AddAsync(user);
-        }
-
-        if (!isNewUser)
+        if (user is not null)
         {
             var existingProviderLogin = await _unitOfWork.UserExternalLogins.GetByUserAndProviderAsync(
                 user.Id,
                 GoogleProvider);
-            if (existingProviderLogin is not null)
-            {
-                return new GoogleAuthResult(GoogleAuthStatus.AccountConflict);
-            }
+            return new GoogleAuthResult(existingProviderLogin is null
+                ? GoogleAuthStatus.LocalAccountExists
+                : GoogleAuthStatus.AccountConflict);
         }
+
+        user = new User
+        {
+            FullName = identity.FullName,
+            Email = identity.Email,
+            PasswordHash = ExternalLoginOnlyPasswordHash,
+            Role = UserRoles.Tourist
+        };
+        await _unitOfWork.Users.AddAsync(user);
 
         await _unitOfWork.UserExternalLogins.AddAsync(new UserExternalLogin
         {
@@ -175,7 +169,9 @@ public class AuthService : IAuthService
         });
         await _unitOfWork.CommitAsync();
 
-        return new GoogleAuthResult(GoogleAuthStatus.Success, CreateAuthResponse(user));
+        return new GoogleAuthResult(
+            GoogleAuthStatus.Success,
+            CreateAuthResponse(user, GoogleAuthenticationMethod));
     }
 
     public async Task<ChangePasswordStatus> ChangePasswordAsync(int userId, ChangePasswordRequest request)
@@ -184,6 +180,11 @@ public class AuthService : IAuthService
         if (user is null)
         {
             return ChangePasswordStatus.UserNotFound;
+        }
+
+        if (!HasLocalPassword(user))
+        {
+            return ChangePasswordStatus.PasswordNotAvailable;
         }
 
         if (!_passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
@@ -283,7 +284,7 @@ public class AuthService : IAuthService
         return ResetPasswordStatus.Success;
     }
 
-    private AuthResponse CreateAuthResponse(User user)
+    private AuthResponse CreateAuthResponse(User user, string authenticationMethod)
     {
         var token = _jwtTokenService.CreateToken(user);
 
@@ -291,6 +292,7 @@ public class AuthService : IAuthService
         {
             Token = token.Token,
             ExpiresAt = token.ExpiresAt,
+            AuthenticationMethod = authenticationMethod,
             User = ToResponse(user)
         };
     }
@@ -334,7 +336,11 @@ public class AuthService : IAuthService
             FullName = user.FullName,
             Email = user.Email,
             Role = user.Role,
+            HasPassword = HasLocalPassword(user),
             CreatedAt = user.CreatedAt
         };
     }
+
+    private static bool HasLocalPassword(User user) =>
+        !string.Equals(user.PasswordHash, ExternalLoginOnlyPasswordHash, StringComparison.Ordinal);
 }

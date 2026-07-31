@@ -4,6 +4,7 @@ public enum ChangePasswordStatus
 {
     Success,
     UserNotFound,
+    PasswordNotAvailable,
     InvalidCurrentPassword,
     NewPasswordMatchesCurrent
 }

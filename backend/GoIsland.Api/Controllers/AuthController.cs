@@ -62,6 +62,11 @@ public class AuthController : ControllerBase
             GoogleAuthStatus.NotConfigured => StatusCode(
                 StatusCodes.Status503ServiceUnavailable,
                 new { message = "El acceso con Google no está disponible en este momento." }),
+            GoogleAuthStatus.LocalAccountExists => Conflict(new
+            {
+                code = "LOCAL_ACCOUNT_EXISTS",
+                message = "Ya existe una cuenta con este correo. Inicia sesión con tu correo y contraseña."
+            }),
             GoogleAuthStatus.AccountConflict => Conflict(new
             {
                 message = "Esta cuenta local ya esta vinculada a otra cuenta de Google."
@@ -83,6 +88,8 @@ public class AuthController : ControllerBase
         return result switch
         {
             ChangePasswordStatus.Success => NoContent(),
+            ChangePasswordStatus.PasswordNotAvailable => BadRequest(
+                new { message = "Esta cuenta utiliza Google para iniciar sesión y no tiene una contraseña de GoIsland." }),
             ChangePasswordStatus.InvalidCurrentPassword => BadRequest(
                 new { message = "La contrasena actual no es correcta." }),
             ChangePasswordStatus.NewPasswordMatchesCurrent => BadRequest(

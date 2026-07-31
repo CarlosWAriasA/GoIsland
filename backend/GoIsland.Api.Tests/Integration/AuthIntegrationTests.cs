@@ -140,6 +140,7 @@ public class AuthIntegrationTests : PostgresIntegrationTestBase
         });
 
         Assert.NotNull(result);
+        Assert.Equal("Password", result.AuthenticationMethod);
         Assert.Equal(UserRoles.Tourist, result.User.Role);
     }
 
@@ -160,6 +161,15 @@ public class AuthIntegrationTests : PostgresIntegrationTestBase
         Assert.Equal(GoogleAuthStatus.Success, first.Status);
         Assert.Equal(GoogleAuthStatus.Success, second.Status);
         Assert.NotNull(first.Response);
+        Assert.Equal("Google", first.Response.AuthenticationMethod);
+        Assert.False(first.Response.User.HasPassword);
+        var passwordChange = await authService.ChangePasswordAsync(first.Response.User.Id, new ChangePasswordRequest
+        {
+            CurrentPassword = "NoExiste123",
+            NewPassword = "NuevaPassword123",
+            ConfirmPassword = "NuevaPassword123"
+        });
+        Assert.Equal(ChangePasswordStatus.PasswordNotAvailable, passwordChange);
         Assert.Equal(first.Response.User.Id, second.Response!.User.Id);
         Assert.Equal(1, await Context.Users.CountAsync(user => user.Email == email));
         Assert.Equal(1, await Context.UserExternalLogins.CountAsync(login =>
@@ -167,7 +177,7 @@ public class AuthIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
-    public async Task GoogleAuth_LinksExistingAccountWithVerifiedEmail()
+    public async Task GoogleAuth_WithExistingLocalAccount_InformsUserWithoutLinking()
     {
         var authService = GetRequiredService<IAuthService>();
         var email = $"google-link-{Guid.NewGuid():N}@goisland.test";
@@ -184,9 +194,10 @@ public class AuthIntegrationTests : PostgresIntegrationTestBase
         });
 
         Assert.NotNull(registration);
-        Assert.Equal(GoogleAuthStatus.Success, result.Status);
-        Assert.Equal(registration.User.Id, result.Response!.User.Id);
+        Assert.Equal(GoogleAuthStatus.LocalAccountExists, result.Status);
+        Assert.Null(result.Response);
         Assert.Equal(1, await Context.Users.CountAsync(user => user.Email == email));
+        Assert.Equal(0, await Context.UserExternalLogins.CountAsync(login => login.UserId == registration.User.Id));
     }
 
     [Fact]

@@ -34,9 +34,31 @@ public class EmailSenderTests
         Assert.Equal("re_test_key", handler.AuthorizationParameter);
         using var payload = JsonDocument.Parse(handler.Content);
         var html = payload.RootElement.GetProperty("html").GetString();
+        var text = payload.RootElement.GetProperty("text").GetString();
         Assert.Equal("usuario@goisland.test", payload.RootElement.GetProperty("to")[0].GetString());
         Assert.Contains("token%20con%20espacios", html);
         Assert.Contains("Usuario &lt;Seguro&gt;", html);
+        Assert.Contains("GoIsland", html);
+        Assert.Contains(WebUtility.HtmlEncode("Crear nueva contraseña"), html);
+        Assert.Contains("token%20con%20espacios", text);
+    }
+
+    [Fact]
+    public void NotificationEmailContent_UsesBrandedTemplateAndEncodesUserContent()
+    {
+        var content = NotificationEmailContent.Build(
+            "Turista <Prueba>",
+            "Reserva confirmada",
+            "Tu reserva <especial> está lista.",
+            "https://goisland.test/reservations/42?source=email");
+
+        Assert.Equal("Reserva confirmada", content.Subject);
+        Assert.Contains("Go<span", content.HtmlBody);
+        Assert.Contains("Turista &lt;Prueba&gt;", content.HtmlBody);
+        Assert.Contains(WebUtility.HtmlEncode("Tu reserva <especial> está lista."), content.HtmlBody);
+        Assert.Contains("Ver en GoIsland", content.HtmlBody);
+        Assert.DoesNotContain("<especial>", content.HtmlBody);
+        Assert.Contains("https://goisland.test/reservations/42?source=email", content.TextBody);
     }
 
     [Fact]
