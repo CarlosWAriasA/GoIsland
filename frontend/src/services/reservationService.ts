@@ -44,4 +44,11 @@ export const reservationService = {
     });
     return response.data;
   },
+
+  completeByHost: async (id: number): Promise<Reservation> => {
+    const response = await api.post<Reservation>(`/host/reservations/${id}/complete`, null, {
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+    });
+    return response.data;
+  },
 };
