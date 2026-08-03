@@ -39,7 +39,12 @@ export const HostDashboard = () => {
   }, [retry]);
 
   if (loading) {
-    return <div className="container host-dashboard"><Skeleton className="host-dashboard__loading" /></div>;
+    return (
+      <div className="container host-dashboard" role="status" aria-busy="true">
+        <Skeleton className="host-dashboard__loading" />
+        <span className="visually-hidden">Cargando tu panel de anfitrión…</span>
+      </div>
+    );
   }
   if (error || !dashboard) {
     return <div className="container"><ErrorState description={error || 'No pudimos cargar tu panel.'}

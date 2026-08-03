@@ -4,6 +4,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Button from './Button';
 import Logo from './Logo';
+import NotificationBell from './NotificationBell';
 import UserMenu from './UserMenu';
 
 const getNavLinkClass = ({ isActive }: { isActive: boolean }) => (
@@ -34,6 +35,7 @@ export const Navbar = () => {
         </Link>
 
         <div className="site-header__actions">
+          {isAuthenticated && <NotificationBell />}
           <Button
             variant="ghost"
             className="site-header__menu-button"
@@ -99,6 +101,13 @@ export const Navbar = () => {
               )}
 
               <div className="site-nav__session">
+                <NavLink
+                  to="/notifications"
+                  className={({ isActive }) => `${getNavLinkClass({ isActive })} site-nav__link--mobile-only`}
+                  onClick={closeMenu}
+                >
+                  Notificaciones
+                </NavLink>
                 {user && <UserMenu user={user} onLogout={handleLogout} />}
               </div>
             </>

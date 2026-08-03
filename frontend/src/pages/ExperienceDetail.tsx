@@ -23,6 +23,7 @@ import { useAuth } from '../hooks/useAuth';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
 import RatingStars from '../components/RatingStars';
+import { getCancellationPolicyLabel, getDifficultyLabel } from '../utils/experienceLabels';
 import { reviewService } from '../services/reviewService';
 import { resolveApiAssetUrl } from '../services/api';
 import type { Experience, ExperienceSchedule, Review } from '../types';
@@ -179,6 +180,14 @@ export const ExperienceDetail = () => {
   const coverImage = experience.images.find((image) => image.isCover) ?? experience.images[0];
   const galleryImages = experience.images.filter((image) => image.id !== coverImage?.id);
   const availabilityTone = nextSchedule ? 'info' : 'warning';
+  const hasPreparationInfo = Boolean(experience.meetingPointInstructions)
+    || Boolean(experience.pickupInformation)
+    || Boolean(experience.guestRequirements)
+    || experience.minimumAge !== null;
+  const hasUsefulInfo = experience.languages.length > 0
+    || Boolean(experience.difficulty)
+    || Boolean(experience.accessibilityInformation)
+    || Boolean(experience.cancellationPolicy);
   const handleReserve = () => {
     if (!isAuthenticated) {
       navigate('/login', {
@@ -232,7 +241,6 @@ export const ExperienceDetail = () => {
           </div>
 
           <header className="experience-detail__header">
-            <span className="experience-detail__category">{experience.category}</span>
             <h1>{experience.title}</h1>
             <div className="experience-detail__location">
               <MapPin size={18} aria-hidden="true" />
@@ -246,35 +254,48 @@ export const ExperienceDetail = () => {
             <p>{experience.description}</p>
           </section>
           <div className="experience-detail__catalog-grid">
-            <section>
-              <h2>Antes de ir</h2>
-              <p><strong>Punto de encuentro:</strong> {experience.meetingPointInstructions}</p>
-              {experience.pickupInformation && <p><strong>Recogida:</strong> {experience.pickupInformation}</p>}
-              <p>{experience.guestRequirements}</p>
-              {experience.minimumAge !== null && <p>Edad mínima: {experience.minimumAge} años</p>}
-            </section>
-            <section>
-              <h2>Qué llevar</h2>
-              <ul>{experience.whatToBring.map((item) => <li key={item}>{item}</li>)}</ul>
-            </section>
-            <section>
-              <h2>Incluido</h2>
-              <ul>{experience.whatIsIncluded.map((item) => <li key={item}>{item}</li>)}</ul>
-              {experience.whatIsNotIncluded.length > 0 && (
-                <>
-                  <h3>No incluido</h3>
-                  <ul>{experience.whatIsNotIncluded.map((item) => <li key={item}>{item}</li>)}</ul>
-                </>
-              )}
-            </section>
-            <section>
-              <h2>Información útil</h2>
-              <p>Idiomas: {experience.languages.join(', ')}</p>
-              <p>Dificultad: {experience.difficulty === 'Easy'
-                ? 'Fácil'
-                : experience.difficulty === 'Moderate' ? 'Moderada' : 'Exigente'}</p>
-              {experience.accessibilityInformation && <p>{experience.accessibilityInformation}</p>}
-            </section>
+            {hasPreparationInfo && (
+              <section>
+                <h2>Antes de ir</h2>
+                {experience.meetingPointInstructions && (
+                  <p><strong>Punto de encuentro:</strong> {experience.meetingPointInstructions}</p>
+                )}
+                {experience.pickupInformation && <p><strong>Recogida:</strong> {experience.pickupInformation}</p>}
+                {experience.guestRequirements && <p>{experience.guestRequirements}</p>}
+                {experience.minimumAge !== null && <p>Edad mínima: {experience.minimumAge} años</p>}
+              </section>
+            )}
+            {experience.whatToBring.length > 0 && (
+              <section>
+                <h2>Qué llevar</h2>
+                <ul>{experience.whatToBring.map((item) => <li key={item}>{item}</li>)}</ul>
+              </section>
+            )}
+            {(experience.whatIsIncluded.length > 0 || experience.whatIsNotIncluded.length > 0) && (
+              <section>
+                <h2>Incluido</h2>
+                {experience.whatIsIncluded.length > 0 && (
+                  <ul>{experience.whatIsIncluded.map((item) => <li key={item}>{item}</li>)}</ul>
+                )}
+                {experience.whatIsNotIncluded.length > 0 && (
+                  <>
+                    <h3>No incluido</h3>
+                    <ul>{experience.whatIsNotIncluded.map((item) => <li key={item}>{item}</li>)}</ul>
+                  </>
+                )}
+              </section>
+            )}
+            {hasUsefulInfo && (
+              <section>
+                <h2>Información útil</h2>
+                {experience.languages.length > 0 && <p>Idiomas: {experience.languages.join(', ')}</p>}
+                {experience.difficulty && <p>Dificultad: {getDifficultyLabel(experience.difficulty)}</p>}
+                {experience.accessibilityInformation && <p>{experience.accessibilityInformation}</p>}
+                {experience.cancellationPolicy && (
+                  <p>Política de cancelación: {getCancellationPolicyLabel(experience.cancellationPolicy)}</p>
+                )}
+              </section>
+            )}
           </div>
           {experience.itinerary.length > 0 && (
             <section aria-labelledby="experience-itinerary-title">
