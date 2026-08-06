@@ -21,8 +21,12 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const redirectMessage = typeof location.state?.message === 'string' ? location.state.message : null;
+
   const loggedOut = location.state?.loggedOut === true;
+  const redirectMessage = !loggedOut && typeof location.state?.message === 'string'
+    ? location.state.message
+    : null;
+
   const requestedPath = typeof location.state?.from === 'string'
     && location.state.from.startsWith('/')
     && !location.state.from.startsWith('//')
@@ -88,7 +92,7 @@ export const Login = () => {
 
         <ToastFeedback message={redirectMessage} tone="info" />
         <ToastFeedback
-          message={!redirectMessage && sessionExpired
+          message={!loggedOut && !redirectMessage && sessionExpired
             ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar.'
             : null}
           tone="warning"
@@ -118,6 +122,7 @@ export const Login = () => {
             icon={<Mail size={18} />}
             required
           />
+
           <Input
             label="Contraseña"
             type="password"
@@ -129,15 +134,23 @@ export const Login = () => {
             icon={<LockKeyhole size={18} />}
             required
           />
-          <div className="auth-form__support-link">
-            <Link to="/forgot-password">¿Olvidaste tu contraseña?</Link>
+
+          <div className="auth-form__options">
+            <Link to="/forgot-password" tabIndex={0}>
+              ¿Olvidaste tu contraseña?
+            </Link>
           </div>
-          <Button type="submit" fullWidth isLoading={isLoading}>Iniciar sesión</Button>
+
+          <Button type="submit" isLoading={isLoading} fullWidth>
+            Iniciar sesión
+          </Button>
         </form>
 
-        <p className="auth-card__footer">
-          ¿No tienes una cuenta? <Link to="/register">Crea una aquí</Link>
-        </p>
+        <footer className="auth-card__footer">
+          <p>
+            ¿No tienes una cuenta? <Link to="/register">Crear cuenta</Link>
+          </p>
+        </footer>
       </section>
     </div>
   );

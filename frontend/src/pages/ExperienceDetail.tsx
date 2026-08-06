@@ -191,6 +191,16 @@ export const ExperienceDetail = () => {
     return [...experience.images].sort((a, b) => (b.isCover ? 1 : 0) - (a.isCover ? 1 : 0));
   }, [experience]);
 
+  const detailMapPoints = useMemo(() => {
+    if (!experience || experience.latitude === null || experience.longitude === null) return [];
+    return [{
+      id: experience.id,
+      title: experience.title,
+      latitude: experience.latitude,
+      longitude: experience.longitude,
+    }];
+  }, [experience]);
+
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -647,12 +657,7 @@ export const ExperienceDetail = () => {
             </a>
             <Suspense fallback={<Skeleton className="experience-detail__map-loading" />}>
               <ExperienceMap
-                points={[{
-                  id: experience.id,
-                  title: experience.title,
-                  latitude: experience.latitude,
-                  longitude: experience.longitude,
-                }]}
+                points={detailMapPoints}
                 label={`Ubicación de ${experience.title}`}
               />
             </Suspense>

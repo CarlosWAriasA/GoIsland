@@ -7,6 +7,11 @@ export interface MapPoint {
   title: string;
   latitude: number;
   longitude: number;
+  slug?: string;
+  category?: string;
+  price?: number;
+  location?: string;
+  coverImageUrl?: string;
 }
 
 export interface MapSelection {
@@ -22,6 +27,7 @@ interface ExperienceMapProps {
   onSelect?: (point: MapSelection) => void;
   onPointClick?: (id: MapPoint['id']) => void;
   focusedPointId?: MapPoint['id'];
+  showInfoWindow?: boolean;
   searchEnabled?: boolean;
   searchValue?: string;
   label: string;
@@ -30,6 +36,43 @@ interface ExperienceMapProps {
 const defaultCenter = { lat: 18.7357, lng: -70.1627 };
 const emptyPoints: MapPoint[] = [];
 
+const createInfoWindowContent = (point: MapPoint, onPointClick?: (id: MapPoint['id']) => void): HTMLElement => {
+  const container = document.createElement('div');
+  container.className = 'map-info-window';
+
+  const priceLabel = point.price === 0
+    ? 'Gratis'
+    : point.price !== undefined
+      ? `$${point.price.toLocaleString('es-DO')} USD`
+      : '';
+
+  const imageUrl = point.coverImageUrl;
+
+  container.innerHTML = `
+    ${imageUrl ? `<div class="map-info-window__image" style="background-image: url('${imageUrl}')"></div>` : ''}
+    <div class="map-info-window__body">
+      ${point.category ? `<span class="map-info-window__badge">${point.category}</span>` : ''}
+      <h3 class="map-info-window__title">${point.title}</h3>
+      ${point.location ? `<p class="map-info-window__location">${point.location}</p>` : ''}
+      <div class="map-info-window__footer">
+        ${priceLabel ? `<span class="map-info-window__price">${priceLabel}</span>` : '<span></span>'}
+        <button type="button" class="map-info-window__button">Ver detalles</button>
+      </div>
+    </div>
+  `;
+
+  const btn = container.querySelector('.map-info-window__button');
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onPointClick?.(point.id);
+    });
+  }
+
+  return container;
+};
+
 export const ExperienceMap = ({
   points = emptyPoints,
   selectedPoint,
@@ -37,6 +80,7 @@ export const ExperienceMap = ({
   onSelect,
   onPointClick,
   focusedPointId,
+  showInfoWindow = false,
   searchEnabled = false,
   searchValue = '',
   label,
@@ -55,7 +99,7 @@ export const ExperienceMap = ({
   );
   const [suggestions, setSuggestions] = useState<google.maps.places.PlacePrediction[]>([]);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
-  const [isSearching, setIsSearching] = useState(false);
+  const [, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -141,6 +185,10 @@ export const ExperienceMap = ({
     }
   };
 
+  const pointsKey = points.map((p) => `${p.id}:${p.latitude}:${p.longitude}`).join('|');
+  const selectedPointKey = selectedPoint ? `${selectedPoint.latitude}:${selectedPoint.longitude}` : '';
+  const userPointKey = userPoint ? `${userPoint.latitude}:${userPoint.longitude}` : '';
+
   useEffect(() => {
     const mapContainer = mapContainerRef.current;
     if (!mapContainer) return undefined;
@@ -161,11 +209,17 @@ export const ExperienceMap = ({
           streetViewControl: false,
           fullscreenControl: true,
           clickableIcons: false,
+          gestureHandling: 'greedy',
         });
         mapRef.current = map;
         const bounds = new google.maps.LatLngBounds();
         let boundsCount = 0;
         let focusedPosition: google.maps.LatLngLiteral | null = null;
+
+        const infoWindow = showInfoWindow ? new maps.InfoWindow({
+          maxWidth: 290,
+          disableAutoPan: false,
+        }) : null;
 
         points.forEach((point) => {
           const position = { lat: point.latitude, lng: point.longitude };
@@ -180,8 +234,22 @@ export const ExperienceMap = ({
             animation: isFocused ? google.maps.Animation.DROP : undefined,
             zIndex: isFocused ? 10 : undefined,
           });
-          marker.addListener('click', () => onPointClickRef.current?.(point.id));
+
+          const openPopup = () => {
+            map.setCenter(position);
+            map.setZoom(15);
+            if (showInfoWindow && infoWindow) {
+              infoWindow.setContent(createInfoWindowContent(point, (id) => onPointClickRef.current?.(id)));
+              infoWindow.open(map, marker);
+            }
+          };
+
+          marker.addListener('click', openPopup);
           markers.push(marker);
+
+          if (isFocused && showInfoWindow) {
+            openPopup();
+          }
         });
 
         if (selectedPoint) {
@@ -256,117 +324,79 @@ export const ExperienceMap = ({
       userCircle?.setMap(null);
       mapRef.current = null;
     };
-  }, [focusedPointId, points, selectedPoint, setQuery, userPoint]);
+  }, [focusedPointId, pointsKey, selectedPointKey, userPointKey, showInfoWindow, setQuery]);
 
   return (
-    <div className="google-map-shell">
-      {searchEnabled && !loadError && (
-        <div className="google-map-autocomplete">
-          <div className="google-map-search">
-            <Search size={19} aria-hidden="true" />
+    <div className="experience-map">
+      {searchEnabled && (
+        <div className="experience-map__search">
+          <div className="experience-map__search-input">
+            <Search size={18} aria-hidden="true" />
             <input
               type="text"
               value={query}
-              onChange={(event) => {
-                const value = event.target.value;
-                setQuery(value);
-                setSearchError(null);
-                if (value.trim().length < 2 || value === searchValue) {
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setActiveIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setActiveIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+                } else if (e.key === 'Enter' && activeIndex >= 0 && suggestions[activeIndex]) {
+                  e.preventDefault();
+                  void selectSuggestion(suggestions[activeIndex]);
+                } else if (e.key === 'Escape') {
                   setSuggestions([]);
-                  setActiveIndex(-1);
-                  setIsSearching(false);
                 }
               }}
-              onKeyDown={(event) => {
-                if (event.key === 'ArrowDown') {
-                  event.preventDefault();
-                  if (suggestions.length > 0) {
-                    setActiveIndex((prev) => (prev + 1) % suggestions.length);
-                  }
-                } else if (event.key === 'ArrowUp') {
-                  event.preventDefault();
-                  if (suggestions.length > 0) {
-                    setActiveIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
-                  }
-                } else if (event.key === 'Enter') {
-                  event.preventDefault();
-                  if (suggestions.length > 0) {
-                    const targetIndex = activeIndex >= 0 && activeIndex < suggestions.length ? activeIndex : 0;
-                    void selectSuggestion(suggestions[targetIndex]);
-                  }
-                } else if (event.key === 'Escape') {
-                  setSuggestions([]);
-                  setActiveIndex(-1);
-                }
-              }}
-              placeholder="Buscar un lugar"
-              aria-label="Buscar un lugar"
-              aria-autocomplete="list"
-              aria-expanded={suggestions.length > 0}
-              aria-controls="google-map-suggestions"
-              autoComplete="off"
+              placeholder="Buscar un lugar en República Dominicana..."
+              aria-label="Buscar lugar en el mapa"
             />
             {query && (
               <button
                 type="button"
-                className="google-map-search__clear"
                 onClick={() => {
                   setQuery('');
                   setSuggestions([]);
-                  setActiveIndex(-1);
-                  setSearchError(null);
                 }}
                 aria-label="Limpiar búsqueda"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             )}
           </div>
-          {(suggestions.length > 0 || isSearching || searchError) && (
-            <div
-              id="google-map-suggestions"
-              className="google-map-suggestions"
-              role="listbox"
-            >
-              {isSearching && suggestions.length === 0 && (
-                <div className="google-map-suggestions__status">Buscando…</div>
-              )}
-              {searchError && (
-                <div className="google-map-suggestions__status google-map-suggestions__status--error">
-                  {searchError}
-                </div>
-              )}
-              {suggestions.map((prediction, index) => (
-                <button
-                  key={prediction.placeId}
-                  type="button"
-                  className={`google-map-suggestion${index === activeIndex ? ' google-map-suggestion--active' : ''}`}
+          {suggestions.length > 0 && (
+            <ul className="experience-map__suggestions" role="listbox">
+              {suggestions.map((suggestion, index) => (
+                <li
+                  key={suggestion.placeId}
+                  className={index === activeIndex ? 'is-active' : ''}
+                  onClick={() => void selectSuggestion(suggestion)}
                   role="option"
                   aria-selected={index === activeIndex}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onClick={() => void selectSuggestion(prediction)}
                 >
-                  <MapPin size={18} aria-hidden="true" />
-                  <span>
-                    <strong>{prediction.mainText?.text || prediction.text.text}</strong>
-                    {prediction.secondaryText?.text && (
-                      <small>{formatLocationLabel(prediction.secondaryText.text)}</small>
-                    )}
-                  </span>
-                </button>
+                  <MapPin size={16} aria-hidden="true" />
+                  <span>{suggestion.text.text}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
+          {searchError && <p className="experience-map__search-error">{searchError}</p>}
         </div>
       )}
-      {loadError && <div className="google-map-error" role="alert">{loadError}</div>}
-      <div
-        className="experience-map"
-        ref={mapContainerRef}
-        role="application"
-        aria-label={label}
-        hidden={Boolean(loadError)}
-      />
+      {loadError ? (
+        <div className="experience-map__error">
+          <p>{loadError}</p>
+        </div>
+      ) : (
+        <div
+          ref={mapContainerRef}
+          className="experience-map__canvas"
+          role="region"
+          aria-label={label}
+        />
+      )}
     </div>
   );
 };

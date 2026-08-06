@@ -22,8 +22,10 @@ export const Navbar = () => {
 
   const handleLogout = () => {
     closeMenu();
-    logout();
     navigate('/login', { replace: true, state: { loggedOut: true } });
+    window.setTimeout(() => {
+      logout();
+    }, 0);
   };
 
   return (

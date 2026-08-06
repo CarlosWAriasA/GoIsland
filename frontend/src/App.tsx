@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import OfflineBanner from './components/OfflineBanner';
+import ErrorBoundary from './components/ErrorBoundary';
 import AppRoutes from './routes/AppRoutes';
 
 const focusMainContent = (event: MouseEvent<HTMLAnchorElement>) => {
@@ -29,7 +30,9 @@ export const App: React.FC = () => {
             <OfflineBanner />
 
             <main id="main-content" tabIndex={-1} className="app-main">
-              <AppRoutes />
+              <ErrorBoundary>
+                <AppRoutes />
+              </ErrorBoundary>
             </main>
 
             <Footer />
