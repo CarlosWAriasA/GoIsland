@@ -1,8 +1,10 @@
 import type {
   HostProfile,
+  HostApplicationListParams,
   HostProfileRequest,
-  HostVerificationStatus,
   ManagedExperience,
+  ManagedExperienceListParams,
+  PagedResponse,
 } from '../types';
 import { api } from './api';
 
@@ -23,11 +25,11 @@ export const hostService = {
   },
 
   getApplications: async (
-    status?: HostVerificationStatus,
+    params: HostApplicationListParams = {},
     signal?: AbortSignal,
-  ): Promise<HostProfile[]> => {
-    const response = await api.get<HostProfile[]>('/admin/hosts', {
-      params: status ? { status } : undefined,
+  ): Promise<PagedResponse<HostProfile>> => {
+    const response = await api.get<PagedResponse<HostProfile>>('/admin/hosts', {
+      params,
       signal,
     });
     return response.data;
@@ -43,11 +45,11 @@ export const hostService = {
   },
 
   getExperiencesForAdmin: async (
-    status?: ManagedExperience['approvalStatus'],
+    params: ManagedExperienceListParams = {},
     signal?: AbortSignal,
-  ): Promise<ManagedExperience[]> => {
-    const response = await api.get<ManagedExperience[]>('/admin/experiences', {
-      params: status ? { status } : undefined,
+  ): Promise<PagedResponse<ManagedExperience>> => {
+    const response = await api.get<PagedResponse<ManagedExperience>>('/admin/experiences', {
+      params,
       signal,
     });
     return response.data;

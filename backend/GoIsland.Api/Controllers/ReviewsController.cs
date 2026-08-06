@@ -43,18 +43,16 @@ public class ReviewsController : ControllerBase
     }
 
     [HttpGet("experiences/{id:int}/reviews"), AllowAnonymous]
-    public async Task<IActionResult> ForExperience(int id) => Ok(await _service.GetForExperienceAsync(id));
+    public async Task<IActionResult> ForExperience(int id, [FromQuery] ReviewListRequest request) =>
+        Ok(await _service.GetForExperienceAsync(id, request));
 
     [HttpGet("hosts/{id:int}/reviews"), AllowAnonymous]
-    public async Task<IActionResult> ForHost(int id) => Ok(await _service.GetForHostAsync(id));
+    public async Task<IActionResult> ForHost(int id, [FromQuery] ReviewListRequest request) =>
+        Ok(await _service.GetForHostAsync(id, request));
 
     [HttpGet("admin/reviews"), Authorize(Roles = UserRoles.Admin)]
-    public async Task<IActionResult> ForAdmin([FromQuery] string? status)
-    {
-        if (!string.IsNullOrWhiteSpace(status) && !ReviewModerationStatuses.All.Contains(status))
-            return BadRequest(new { message = "El estado de moderacion no es valido." });
-        return Ok(await _service.GetForAdminAsync(status));
-    }
+    public async Task<IActionResult> ForAdmin([FromQuery] ReviewListRequest request) =>
+        Ok(await _service.GetForAdminAsync(request));
 
     [HttpPost("admin/reviews/{id:int}/hide"), Authorize(Roles = UserRoles.Admin)]
     public async Task<IActionResult> Hide(int id, ReviewModerationRequest request)

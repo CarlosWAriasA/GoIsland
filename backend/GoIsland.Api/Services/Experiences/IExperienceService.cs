@@ -1,11 +1,13 @@
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Experiences;
 
 namespace GoIsland.Api.Services.Experiences;
 
 public interface IExperienceService
 {
-    Task<IReadOnlyCollection<ExperienceResponse>> GetAllAsync();
+    Task<PagedResponse<ExperienceResponse>> GetAllAsync(SearchExperiencesRequest request);
     Task<ExperienceResponse?> GetByIdAsync(int id);
-    Task<IReadOnlyCollection<ExperienceResponse>> SearchAsync(SearchExperiencesRequest request);
-    Task<IReadOnlyCollection<ExperienceResponse>> GetNearbyAsync(NearbyExperiencesRequest request);
+    Task<ExperienceResponse?> GetBySlugAsync(string slug);
+    Task<PagedResponse<ExperienceResponse>> SearchAsync(SearchExperiencesRequest request);
+    Task<PagedResponse<ExperienceResponse>> GetNearbyAsync(NearbyExperiencesRequest request);
 }

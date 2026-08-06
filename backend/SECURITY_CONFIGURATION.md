@@ -23,9 +23,24 @@ de variables de ambiente como:
 - `WebPush__PrivateKey`
 - `GoogleAuth__ClientId`
 - `GoogleMaps__ApiKey`
+- `Cloudinary__CloudName`, `Cloudinary__ApiKey` y `Cloudinary__ApiSecret`
+- `Stripe__SecretKey` y `Stripe__WebhookSecret` exclusivamente de Sandbox
 
 La conexion PostgreSQL y la clave JWT que existieron en el historial deben considerarse
 comprometidas. Se deben rotar en el proveedor y en todos los ambientes antes de desplegar.
+
+La rotacion se realiza primero en el proveedor, despues en el gestor de secretos del ambiente y
+por ultimo se revoca la credencial anterior. `Jwt__Key` invalida las sesiones existentes. El
+inventario y la validacion posterior estan en `../docs/deployment/operations-runbook.md`.
+
+## Google
+
+- La clave de Maps debe aceptar solo el dominio publico y las previews autorizadas mediante
+  restricciones HTTP referrer, y limitarse a Maps JavaScript API.
+- El cliente OAuth web debe declarar solamente origenes JavaScript HTTPS controlados. `localhost`
+  se conserva unicamente en el cliente o ambiente de desarrollo.
+- El client ID es publico; no se debe tratar como sustituto de autenticacion del backend. La API
+  valida firma, emisor, audiencia, expiracion y correo verificado.
 
 ## Proxy, HTTPS y hosts
 
@@ -56,3 +71,5 @@ Antes de ejecutar la nueva version se debe aplicar:
 
 El script toma la conexion de `ConnectionStrings__DefaultConnection` o de `user-secrets`, nunca
 de un archivo versionado.
+
+Los scripts `011` a `016` y su orden de despliegue se documentan en `../DEPLOYMENT.md`.

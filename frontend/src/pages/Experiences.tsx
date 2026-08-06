@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import axios from 'axios';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Filter, Search, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import Button from '../components/Button';
@@ -13,7 +13,8 @@ import SelectField from '../components/SelectField';
 import Skeleton from '../components/Skeleton';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
-import type { Experience, ExperienceSearchParams } from '../types';
+import { experienceKeys, queryRefresh } from '../queries/queryKeys';
+import type { Experience, ExperienceSearchParams, PagedResponse } from '../types';
 
 interface SearchForm {
   name: string;
@@ -21,6 +22,10 @@ interface SearchForm {
   category: string;
   minPrice: string;
   maxPrice: string;
+  language: string;
+  difficulty: string;
+  accessible: string;
+  sort: ExperienceSearchParams['sort'];
 }
 
 const emptySearch: SearchForm = {
@@ -29,6 +34,10 @@ const emptySearch: SearchForm = {
   category: '',
   minPrice: '',
   maxPrice: '',
+  language: '',
+  difficulty: '',
+  accessible: '',
+  sort: 'relevance',
 };
 
 const STORAGE_KEY = 'goisland:catalog-filters';
@@ -36,13 +45,18 @@ const STORAGE_KEY = 'goisland:catalog-filters';
 const toNumber = (value: string) => (value.trim() ? Number(value) : undefined);
 
 const toSearchQuery = (form: SearchForm): ExperienceSearchParams => ({
+  query: form.name.trim() || undefined,
   location: form.location.trim() || undefined,
   category: form.category.trim() || undefined,
   minPrice: toNumber(form.minPrice),
   maxPrice: toNumber(form.maxPrice),
+  language: form.language.trim() || undefined,
+  difficulty: form.difficulty || undefined,
+  accessible: form.accessible === 'true' ? true : undefined,
+  sort: form.sort || undefined,
 });
 
-const toUrlSearchParams = (form: SearchForm) => {
+const toUrlSearchParams = (form: SearchForm, page = 1) => {
   const params = new URLSearchParams();
   const query = toSearchQuery(form);
   if (form.name.trim()) params.set('q', form.name.trim());
@@ -50,6 +64,11 @@ const toUrlSearchParams = (form: SearchForm) => {
   if (query.category) params.set('category', query.category);
   if (query.minPrice !== undefined) params.set('minPrice', String(query.minPrice));
   if (query.maxPrice !== undefined) params.set('maxPrice', String(query.maxPrice));
+  if (query.language) params.set('language', query.language);
+  if (query.difficulty) params.set('difficulty', query.difficulty);
+  if (query.accessible) params.set('accessible', 'true');
+  if (query.sort && query.sort !== 'relevance') params.set('sort', query.sort);
+  if (page > 1) params.set('page', String(page));
   return params;
 };
 
@@ -65,7 +84,20 @@ const fromUrlSearchParams = (params: URLSearchParams): SearchForm => ({
   category: params.get('category')?.slice(0, 80) || '',
   minPrice: readPrice(params, 'minPrice'),
   maxPrice: readPrice(params, 'maxPrice'),
+  language: params.get('language')?.slice(0, 80) || '',
+  difficulty: ['Easy', 'Moderate', 'Demanding'].includes(params.get('difficulty') || '')
+    ? params.get('difficulty')!
+    : '',
+  accessible: params.get('accessible') === 'true' ? 'true' : '',
+  sort: ['relevance', 'newest', 'priceAsc', 'priceDesc', 'rating'].includes(params.get('sort') || '')
+    ? params.get('sort') as ExperienceSearchParams['sort']
+    : 'relevance',
 });
+
+const readPage = (params: URLSearchParams) => {
+  const page = Number(params.get('page'));
+  return Number.isInteger(page) && page > 0 ? page : 1;
+};
 
 const readStoredForm = (): SearchForm | null => {
   try {
@@ -107,11 +139,7 @@ const getPriceChipLabel = (form: SearchForm) => {
   return `Precio: hasta ${formatPrice(max)}`;
 };
 
-const hasFilters = (params: ExperienceSearchParams) => Object.values(params).some(
-  (value) => value !== undefined,
-);
-
-type ChipKey = 'name' | 'location' | 'category' | 'price';
+type ChipKey = 'name' | 'location' | 'category' | 'price' | 'language' | 'difficulty' | 'accessible';
 
 const SkeletonLoader = () => (
   <div className="experience-grid" aria-hidden="true">
@@ -129,18 +157,17 @@ const SkeletonLoader = () => (
 );
 
 export const Experiences = () => {
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryString = searchParams.toString();
   const urlForm = useMemo(
     () => fromUrlSearchParams(new URLSearchParams(queryString)),
     [queryString],
   );
-  const query = useMemo(
-    () => toSearchQuery(urlForm),
-    [urlForm],
+  const searchFilters = useMemo(
+    () => ({ ...toSearchQuery(urlForm), page: readPage(new URLSearchParams(queryString)), pageSize: 24 }),
+    [urlForm, queryString],
   );
-  const [experiences, setExperiences] = useState<Experience[]>([]);
-  const [knownCategories, setKnownCategories] = useState<string[]>([]);
   const [draft, setDraft] = useState<{ source: string; form: SearchForm }>(() => {
     const restored = searchParams.toString() ? null : readStoredForm();
     return {
@@ -148,20 +175,29 @@ export const Experiences = () => {
       form: restored ?? fromUrlSearchParams(searchParams),
     };
   });
-  const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [completedRequestKey, setCompletedRequestKey] = useState<string | null>(null);
+  const catalogQuery = useQuery({
+    queryKey: experienceKeys.search(searchFilters),
+    queryFn: ({ signal }) => experienceService.searchExperiences(searchFilters, signal),
+    placeholderData: (previousData) => previousData,
+    refetchInterval: queryRefresh.catalog,
+    refetchOnMount: 'always',
+  });
+  const experiences = catalogQuery.data?.items ?? [];
+  const totalItems = catalogQuery.data?.totalItems ?? 0;
+  const totalPages = catalogQuery.data?.totalPages ?? 0;
+  const error = !catalogQuery.data && catalogQuery.error
+    ? toApiError(catalogQuery.error, 'No fue posible cargar las experiencias.').message
+    : null;
   const form = draft.source === queryString ? draft.form : urlForm;
-  const requestKey = `${queryString}::${retryCount}`;
-  const loading = completedRequestKey !== requestKey;
+  const loading = catalogQuery.isPending;
   const priceError = getPriceError(form);
-  const nameFilter = urlForm.name.trim().toLowerCase();
-  const visibleExperiences = useMemo(
-    () => (nameFilter
-      ? experiences.filter((experience) => experience.title.toLowerCase().includes(nameFilter))
-      : experiences),
-    [experiences, nameFilter],
-  );
+  const currentPage = searchFilters.page ?? 1;
+  const knownCategories = Array.from(new Set(
+    queryClient
+      .getQueriesData<PagedResponse<Experience>>({ queryKey: experienceKeys.searches() })
+      .flatMap(([, data]) => data?.items.map((experience) => experience.category) ?? [])
+      .filter(Boolean),
+  )).sort((a, b) => a.localeCompare(b, 'es'));
 
   const chips = useMemo(() => {
     const list: { key: ChipKey; label: string }[] = [];
@@ -171,13 +207,20 @@ export const Experiences = () => {
     if (form.minPrice.trim() || form.maxPrice.trim()) {
       list.push({ key: 'price', label: getPriceChipLabel(form) });
     }
+    if (form.language.trim()) list.push({ key: 'language', label: `Idioma: ${form.language.trim()}` });
+    if (form.difficulty) {
+      const labels = { Easy: 'Fácil', Moderate: 'Moderada', Demanding: 'Exigente' };
+      list.push({ key: 'difficulty', label: `Dificultad: ${labels[form.difficulty as keyof typeof labels]}` });
+    }
+    if (form.accessible) list.push({ key: 'accessible', label: 'Con información de accesibilidad' });
     return list;
   }, [form]);
 
   useEffect(() => {
     if (priceError) return;
+    if (draft.source !== queryString) return;
 
-    const nextParams = toUrlSearchParams(form);
+    const nextParams = toUrlSearchParams(form, 1);
     if (nextParams.toString() === queryString) return;
 
     const debounceTimer = window.setTimeout(() => {
@@ -185,7 +228,7 @@ export const Experiences = () => {
     }, 450);
 
     return () => window.clearTimeout(debounceTimer);
-  }, [form, priceError, queryString, setSearchParams]);
+  }, [draft.source, form, priceError, queryString, setSearchParams]);
 
   useEffect(() => {
     try {
@@ -194,36 +237,6 @@ export const Experiences = () => {
       void 0;
     }
   }, [queryString]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const request = hasFilters(query)
-      ? experienceService.searchExperiences(query, controller.signal)
-      : experienceService.getExperiences(controller.signal);
-
-    request
-      .then((data) => {
-        setExperiences(data);
-        setKnownCategories((current) => Array.from(new Set([
-          ...current,
-          ...data.map((experience) => experience.category).filter(Boolean),
-        ])).sort((a, b) => a.localeCompare(b, 'es')));
-        setError(null);
-      })
-      .catch((requestError: unknown) => {
-        if (!axios.isCancel(requestError)) {
-          setExperiences([]);
-          setError(toApiError(requestError, 'No fue posible cargar las experiencias.').message);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setCompletedRequestKey(requestKey);
-        }
-      });
-
-    return () => controller.abort();
-  }, [query, requestKey]);
 
   const applyForm = (nextForm: SearchForm) => {
     setDraft({ source: queryString, form: nextForm });
@@ -238,13 +251,13 @@ export const Experiences = () => {
       ? { ...form, minPrice: '', maxPrice: '' }
       : { ...form, [key]: '' };
     applyForm(next);
-    setSearchParams(toUrlSearchParams(next), { replace: true });
+    setSearchParams(toUrlSearchParams(next, 1), { replace: true });
   };
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (priceError) return;
-    setSearchParams(toUrlSearchParams(form));
+    setSearchParams(toUrlSearchParams(form, 1));
   };
 
   const clearSearch = () => {
@@ -252,8 +265,9 @@ export const Experiences = () => {
     setSearchParams(new URLSearchParams(), { replace: true });
   };
 
-  const retry = () => {
-    setRetryCount((current) => current + 1);
+  const goToPage = (page: number) => {
+    setSearchParams(toUrlSearchParams(urlForm, page));
+    document.getElementById('experience-results')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
@@ -261,8 +275,8 @@ export const Experiences = () => {
       <section className="experiences-hero" aria-labelledby="experiences-title">
         <div className="experiences-hero__content">
           <span className="experiences-hero__eyebrow">Catálogo GoIsland</span>
-          <h1 id="experiences-title">Experiencias locales con disponibilidad real</h1>
-          <p>Consulta actividades aprobadas, precios y cupos directamente desde GoIsland.</p>
+          <h1 id="experiences-title">Encuentra tu próxima experiencia</h1>
+          <p>Encuentra actividades por lugar, precio y disponibilidad.</p>
         </div>
       </section>
 
@@ -276,7 +290,7 @@ export const Experiences = () => {
             onChange={(event) => updateForm('name', event.target.value)}
             icon={<Search size={18} />}
           />
-          <Button type="submit" variant="primary" isLoading={loading}>
+          <Button type="submit" variant="primary" isLoading={catalogQuery.isFetching}>
             <Search size={18} aria-hidden="true" />
             Buscar
           </Button>
@@ -338,6 +352,42 @@ export const Experiences = () => {
                 />
               </div>
             </fieldset>
+            <Input
+              label="Idioma"
+              placeholder="Ej. Español"
+              maxLength={80}
+              value={form.language}
+              onChange={(event) => updateForm('language', event.target.value)}
+            />
+            <SelectField
+              label="Dificultad"
+              value={form.difficulty}
+              onChange={(event) => updateForm('difficulty', event.target.value)}
+            >
+              <option value="">Cualquier dificultad</option>
+              <option value="Easy">Fácil</option>
+              <option value="Moderate">Moderada</option>
+              <option value="Demanding">Exigente</option>
+            </SelectField>
+            <SelectField
+              label="Accesibilidad"
+              value={form.accessible}
+              onChange={(event) => updateForm('accessible', event.target.value)}
+            >
+              <option value="">Todas las experiencias</option>
+              <option value="true">Con información de accesibilidad</option>
+            </SelectField>
+            <SelectField
+              label="Ordenar por"
+              value={form.sort}
+              onChange={(event) => updateForm('sort', event.target.value)}
+            >
+              <option value="relevance">Relevancia</option>
+              <option value="newest">Más recientes</option>
+              <option value="priceAsc">Menor precio</option>
+              <option value="priceDesc">Mayor precio</option>
+              <option value="rating">Mejor valoración</option>
+            </SelectField>
           </div>
 
           {priceError && <p className="field-error experience-search__error" role="alert">{priceError}</p>}
@@ -364,19 +414,19 @@ export const Experiences = () => {
           </div>
         )}
 
-        <section className="experience-results" aria-busy={loading}>
+        <section className="experience-results" id="experience-results" aria-busy={catalogQuery.isFetching}>
           <p className="visually-hidden" role="status" aria-live="polite">
             {loading
               ? 'Cargando experiencias.'
               : error
                 ? 'No fue posible cargar las experiencias.'
-                : `${visibleExperiences.length} ${visibleExperiences.length === 1 ? 'resultado disponible' : 'resultados disponibles'}.`}
+                : `${totalItems} ${totalItems === 1 ? 'resultado disponible' : 'resultados disponibles'}.`}
           </p>
           <div className="experience-results__heading">
             <h2>Experiencias disponibles</h2>
             {!loading && !error && (
-              <span className="experience-results__count-label" key={visibleExperiences.length}>
-                {visibleExperiences.length} {visibleExperiences.length === 1 ? 'resultado' : 'resultados'}
+              <span className="experience-results__count-label" key={totalItems}>
+                {totalItems} {totalItems === 1 ? 'resultado' : 'resultados'}
               </span>
             )}
           </div>
@@ -384,19 +434,42 @@ export const Experiences = () => {
           {loading ? (
             <SkeletonLoader />
           ) : error ? (
-            <ErrorState title="No pudimos cargar el catálogo" description={error} onRetry={retry} />
-          ) : visibleExperiences.length === 0 ? (
+            <ErrorState
+              title="No pudimos cargar el catálogo"
+              description={error}
+              onRetry={() => void catalogQuery.refetch()}
+            />
+          ) : experiences.length === 0 ? (
             <EmptyState
               title="Sin resultados"
-              description="No hay experiencias aprobadas que coincidan con estos filtros."
+              description="No encontramos experiencias con estos filtros."
               action={<Button variant="outline" onClick={clearSearch}>Ver todo el catálogo</Button>}
             />
           ) : (
             <div className="experience-grid">
-              {visibleExperiences.map((experience) => (
+              {experiences.map((experience) => (
                 <Card experience={experience} key={experience.id} />
               ))}
             </div>
+          )}
+          {!loading && !error && totalPages > 1 && (
+            <nav className="catalog-pagination" aria-label="Páginas del catálogo">
+              <Button
+                variant="outline"
+                disabled={currentPage <= 1}
+                onClick={() => goToPage(currentPage - 1)}
+              >
+                Anterior
+              </Button>
+              <span>Página {currentPage} de {totalPages}</span>
+              <Button
+                variant="outline"
+                disabled={currentPage >= totalPages}
+                onClick={() => goToPage(currentPage + 1)}
+              >
+                Siguiente
+              </Button>
+            </nav>
           )}
         </section>
       </div>

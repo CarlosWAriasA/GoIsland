@@ -1,14 +1,29 @@
 import { CalendarDays, MapPin, ReceiptText, TicketCheck, UsersRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
+import Input from '../components/Input';
+import SelectField from '../components/SelectField';
 import Skeleton from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
 import { toApiError } from '../services/apiError';
 import { reservationService } from '../services/reservationService';
 import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
-import type { Reservation } from '../types';
+import type { Reservation, ReservationStatus } from '../types';
+
+const PAGE_SIZE = 12;
+const RESERVATION_STATUSES: ReservationStatus[] = [
+  'PendingPayment',
+  'Expired',
+  'Confirmed',
+  'CancelledByTourist',
+  'CancelledByHost',
+  'Completed',
+  'RefundPending',
+  'Refunded',
+];
 
 const formatPrice = (price: number) => new Intl.NumberFormat('es-DO', {
   style: 'currency',
@@ -36,27 +51,59 @@ const ReservationsSkeleton = () => (
 );
 
 interface ReservationsResult {
-  requestKey: number;
+  requestKey: string;
   reservations: Reservation[];
+  totalItems: number;
+  totalPages: number;
   error: string | null;
 }
 
 export const Reservations = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryString = searchParams.toString();
+  const requestedPage = Number(searchParams.get('page'));
+  const currentPage = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const statusValue = searchParams.get('status') as ReservationStatus | null;
+  const currentStatus = statusValue && RESERVATION_STATUSES.includes(statusValue)
+    ? statusValue
+    : undefined;
+  const currentQuery = searchParams.get('q')?.slice(0, 160).trim() || '';
+  const [queryState, setQueryState] = useState({ source: queryString, value: currentQuery });
+  const queryDraft = queryState.source === queryString ? queryState.value : currentQuery;
   const [retryCount, setRetryCount] = useState(0);
   const [result, setResult] = useState<ReservationsResult | null>(null);
-  const loading = result?.requestKey !== retryCount;
-  const reservations = result?.requestKey === retryCount ? result.reservations : [];
-  const error = result?.requestKey === retryCount ? result.error : null;
+  const requestKey = `${queryString}:${retryCount}`;
+  const loading = result?.requestKey !== requestKey;
+  const reservations = result?.requestKey === requestKey ? result.reservations : [];
+  const totalItems = result?.requestKey === requestKey ? result.totalItems : 0;
+  const totalPages = result?.requestKey === requestKey ? result.totalPages : 0;
+  const error = result?.requestKey === requestKey ? result.error : null;
+
+  const updateParams = (values: { query?: string; status?: ReservationStatus; page?: number }) => {
+    const next = new URLSearchParams();
+    const query = values.query?.trim();
+    if (query) next.set('q', query);
+    if (values.status) next.set('status', values.status);
+    if ((values.page ?? 1) > 1) next.set('page', String(values.page));
+    setSearchParams(next);
+  };
 
   useEffect(() => {
     const controller = new AbortController();
 
-    reservationService.getMy(controller.signal)
+    reservationService.getMy({
+      query: currentQuery || undefined,
+      status: currentStatus,
+      page: currentPage,
+      pageSize: PAGE_SIZE,
+    }, controller.signal)
       .then((data) => {
         if (!controller.signal.aborted) {
           setResult({
-            requestKey: retryCount,
-            reservations: data,
+            requestKey,
+            reservations: data.items,
+            totalItems: data.totalItems,
+            totalPages: data.totalPages,
             error: null,
           });
         }
@@ -64,14 +111,16 @@ export const Reservations = () => {
       .catch((requestError: unknown) => {
         if (controller.signal.aborted) return;
         setResult({
-          requestKey: retryCount,
+          requestKey,
           reservations: [],
+          totalItems: 0,
+          totalPages: 0,
           error: toApiError(requestError, 'No fue posible cargar tus reservas.').message,
         });
       });
 
     return () => controller.abort();
-  }, [retryCount]);
+  }, [currentPage, currentQuery, currentStatus, requestKey]);
 
   return (
     <div className="container reservations-page animate-fade-in">
@@ -81,17 +130,49 @@ export const Reservations = () => {
         <p>Consulta las reservas creadas con tu cuenta y su estado real.</p>
       </header>
 
+      <form
+        className="management-list-toolbar surface-panel"
+        role="search"
+        onSubmit={(event) => {
+          event.preventDefault();
+          updateParams({ query: queryDraft, status: currentStatus, page: 1 });
+        }}
+      >
+        <Input
+          label="Buscar reservas"
+          placeholder="Experiencia o ubicación"
+          value={queryDraft}
+          maxLength={160}
+          onChange={(event) => setQueryState({ source: queryString, value: event.target.value })}
+        />
+        <SelectField
+          label="Estado"
+          value={currentStatus ?? ''}
+          onChange={(event) => updateParams({
+            query: queryDraft,
+            status: event.target.value as ReservationStatus || undefined,
+            page: 1,
+          })}
+        >
+          <option value="">Todos los estados</option>
+          {RESERVATION_STATUSES.map((status) => (
+            <option value={status} key={status}>{getReservationStatusLabel(status)}</option>
+          ))}
+        </SelectField>
+        <Button type="submit" variant="outline">Buscar</Button>
+      </form>
+
       <section aria-busy={loading}>
         <p className="visually-hidden" role="status" aria-live="polite">
           {loading
             ? 'Cargando tus reservas.'
             : error
               ? 'No fue posible cargar tus reservas.'
-              : `${reservations.length} ${reservations.length === 1 ? 'reserva disponible' : 'reservas disponibles'}.`}
+              : `${totalItems} ${totalItems === 1 ? 'reserva disponible' : 'reservas disponibles'}.`}
         </p>
         {!loading && !error && reservations.length > 0 && (
           <p className="reservations-page__count">
-            {reservations.length} {reservations.length === 1 ? 'reserva' : 'reservas'}
+            {totalItems} {totalItems === 1 ? 'reserva' : 'reservas'}
           </p>
         )}
 
@@ -144,6 +225,21 @@ export const Reservations = () => {
               );
             })}
           </div>
+        )}
+        {!loading && !error && totalPages > 1 && (
+          <nav className="catalog-pagination" aria-label="Páginas de reservas">
+            <Button
+              variant="outline"
+              disabled={currentPage <= 1}
+              onClick={() => updateParams({ query: currentQuery, status: currentStatus, page: currentPage - 1 })}
+            >Anterior</Button>
+            <span>Página {currentPage} de {totalPages}</span>
+            <Button
+              variant="outline"
+              disabled={currentPage >= totalPages}
+              onClick={() => updateParams({ query: currentQuery, status: currentStatus, page: currentPage + 1 })}
+            >Siguiente</Button>
+          </nav>
         )}
       </section>
     </div>

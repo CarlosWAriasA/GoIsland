@@ -8,6 +8,7 @@ public class ReservationResponse
     public int UserId { get; set; }
     public int ExperienceId { get; set; }
     public int ScheduleId { get; set; }
+    public string ExperienceSlug { get; set; } = string.Empty;
     public string ExperienceTitle { get; set; } = string.Empty;
     public string ExperienceLocation { get; set; } = string.Empty;
     public DateTime StartsAt { get; set; }
@@ -16,6 +17,7 @@ public class ReservationResponse
     public string Status { get; set; } = string.Empty;
     public decimal TotalAmount { get; set; }
     public DateTime ReservationDate { get; set; }
+    public DateTime? ExpiresAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
     public IReadOnlyCollection<ReservationStatusHistoryResponse> StatusHistory { get; set; } = [];

@@ -4,6 +4,10 @@ export interface ExperienceImage {
   cardUrl: string;
   thumbnailUrl: string;
   altText: string;
+  creditText: string;
+  creditUrl: string | null;
+  licenseName: string | null;
+  licenseUrl: string | null;
   isCover: boolean;
   sortOrder: number;
 }
@@ -55,6 +59,7 @@ export interface ExperienceItineraryItem {
 }
 
 export interface ExperienceSearchParams {
+  query?: string;
   location?: string;
   category?: string;
   minPrice?: number;
@@ -62,4 +67,18 @@ export interface ExperienceSearchParams {
   from?: string;
   to?: string;
   quantity?: number;
+  language?: string;
+  difficulty?: string;
+  accessible?: boolean;
+  sort?: 'relevance' | 'newest' | 'priceAsc' | 'priceDesc' | 'rating';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PagedResponse<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
 }

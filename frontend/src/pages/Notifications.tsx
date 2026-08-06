@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { Bell, Mail, Smartphone } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import Alert from '../components/Alert';
 import Button from '../components/Button';
 import ErrorState from '../components/ErrorState';
 import Skeleton from '../components/Skeleton';
+import ToastFeedback from '../components/ToastFeedback';
 import { toApiError } from '../services/apiError';
 import { notificationService } from '../services/notificationService';
 import {
@@ -114,9 +114,9 @@ export const Notifications = () => {
     <div className="container management-page animate-fade-in">
       <header className="page-heading"><span className="page-heading__eyebrow">Notificaciones</span><h1>Configuración de avisos</h1>
         <p>Elige dónde quieres recibir las novedades sobre tus reservas, pagos y experiencias.</p></header>
-      {error && <Alert tone="error">{error}</Alert>}
-      {saved && <Alert tone="success">Preferencias guardadas.</Alert>}
-      {pushFeedback && <Alert tone={pushStatus === 'active' ? 'success' : 'warning'}>{pushFeedback}</Alert>}
+      <ToastFeedback message={error} tone="error" />
+      <ToastFeedback message={saved ? 'Preferencias guardadas.' : null} tone="success" />
+      <ToastFeedback message={pushFeedback} tone={pushStatus === 'active' ? 'success' : 'warning'} />
 
       <section className="surface-panel notification-preferences" aria-labelledby="notification-preferences-title">
         <h2 id="notification-preferences-title">Preferencias</h2>

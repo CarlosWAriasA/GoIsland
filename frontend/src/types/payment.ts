@@ -16,3 +16,8 @@ export interface Payment {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface PaymentCheckout {
+  payment: Payment;
+  clientSecret: string | null;
+}

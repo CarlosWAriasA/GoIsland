@@ -13,8 +13,8 @@ public class NotificationsController : ControllerBase
     public NotificationsController(INotificationService service) => _service = service;
 
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] bool unreadOnly = false) =>
-        TryGetUserId(out var userId) ? Ok(await _service.GetAsync(userId, unreadOnly)) : Unauthorized();
+    public async Task<IActionResult> Get([FromQuery] NotificationListRequest request) =>
+        TryGetUserId(out var userId) ? Ok(await _service.GetAsync(userId, request)) : Unauthorized();
 
     [HttpPatch("{id:int}/read")]
     public async Task<IActionResult> MarkRead(int id)

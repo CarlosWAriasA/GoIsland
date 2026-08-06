@@ -48,6 +48,14 @@ public class NotificationIntegrationTests : PostgresIntegrationTestBase
         Assert.NotNull(read!.ReadAt);
         Assert.False(forbiddenDelete);
         Assert.True(deleted);
+
+        var unreadPage = await service.GetAsync(first.Id, new NotificationListRequest
+        {
+            UnreadOnly = true,
+            PageSize = 1
+        });
+        Assert.Empty(unreadPage.Items);
+        Assert.Equal(0, unreadPage.TotalItems);
     }
 
     private async Task<User> SeedUserAsync()

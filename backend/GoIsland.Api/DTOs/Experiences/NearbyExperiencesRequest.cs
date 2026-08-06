@@ -1,8 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using GoIsland.Api.DTOs.Common;
 
 namespace GoIsland.Api.DTOs.Experiences;
 
-public class NearbyExperiencesRequest
+public class NearbyExperiencesRequest : PaginationRequest
 {
     [Range(typeof(decimal), "-90", "90", ErrorMessage = "No pudimos usar esa ubicación.")]
     public decimal Latitude { get; set; }

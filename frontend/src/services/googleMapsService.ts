@@ -8,6 +8,14 @@ interface PublicConfiguration {
 let configurationPromise: Promise<PublicConfiguration> | null = null;
 let loaderConfigured = false;
 
+export const formatLocationLabel = (address: string) => address
+  .replace(/(^|,\s*)\d{5}(?=\s|,|$)\s*/g, '$1')
+  .replace(/\s+\d{5}(?=,|$)/g, '')
+  .replace(/,\s*,/g, ',')
+  .replace(/^,\s*|,\s*$/g, '')
+  .replace(/\s{2,}/g, ' ')
+  .trim();
+
 const getConfiguration = () => {
   configurationPromise ??= api.get<PublicConfiguration>('/config/public')
     .then((response) => response.data);
@@ -46,5 +54,5 @@ export const reverseGeocodeLocation = async (latitude: number, longitude: number
   const response = await new geocoding.Geocoder().geocode({
     location: { lat: latitude, lng: longitude },
   });
-  return response.results[0]?.formatted_address ?? '';
+  return formatLocationLabel(response.results[0]?.formatted_address ?? '');
 };

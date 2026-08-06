@@ -2,6 +2,7 @@ export type StatusTone = 'neutral' | 'success' | 'warning' | 'error' | 'info';
 
 const reservationLabels: Record<string, string> = {
   PendingPayment: 'Pendiente de pago',
+  Expired: 'Vencida',
   Confirmed: 'Confirmada',
   Completed: 'Completada',
   CancelledByTourist: 'Cancelada por el turista',
@@ -16,7 +17,7 @@ export const getReservationStatusTone = (status: string): StatusTone => {
   if (status === 'Confirmed' || status === 'Completed' || status === 'Refunded') {
     return 'success';
   }
-  if (status.startsWith('Cancelled')) return 'error';
+  if (status.startsWith('Cancelled') || status === 'Expired') return 'error';
   if (status === 'PendingPayment' || status === 'RefundPending') return 'warning';
   return 'info';
 };

@@ -1,5 +1,6 @@
 export type ReservationStatus =
   | 'PendingPayment'
+  | 'Expired'
   | 'Confirmed'
   | 'CancelledByTourist'
   | 'CancelledByHost'
@@ -19,6 +20,7 @@ export interface Reservation {
   userId: number;
   experienceId: number;
   scheduleId: number;
+  experienceSlug: string;
   experienceTitle: string;
   experienceLocation: string;
   startsAt: string;
@@ -27,6 +29,7 @@ export interface Reservation {
   status: ReservationStatus;
   totalAmount: number;
   reservationDate: string;
+  expiresAt: string | null;
   updatedAt: string;
   cancelledAt: string | null;
   statusHistory: ReservationStatusHistory[];
@@ -35,4 +38,13 @@ export interface Reservation {
 export interface CreateReservationRequest {
   scheduleId: number;
   quantity: number;
+}
+
+export interface ReservationListParams {
+  query?: string;
+  status?: ReservationStatus;
+  from?: string;
+  to?: string;
+  page?: number;
+  pageSize?: number;
 }

@@ -10,9 +10,18 @@ interface DialogProps {
   footer?: ReactNode;
   onClose: () => void;
   closeDisabled?: boolean;
+  className?: string;
 }
 
-export const Dialog = ({ open, title, children, footer, onClose, closeDisabled = false }: DialogProps) => {
+export const Dialog = ({
+  open,
+  title,
+  children,
+  footer,
+  onClose,
+  closeDisabled = false,
+  className = '',
+}: DialogProps) => {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -73,7 +82,13 @@ export const Dialog = ({ open, title, children, footer, onClose, closeDisabled =
       className="dialog-backdrop"
       onMouseDown={(event) => event.target === event.currentTarget && !closeDisabled && onClose()}
     >
-      <div className="dialog" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div
+        className={`dialog ${className}`.trim()}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div className="dialog__header">
           <h2 id={titleId}>{title}</h2>
           <Button

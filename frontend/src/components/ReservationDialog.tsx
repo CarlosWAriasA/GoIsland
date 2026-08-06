@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Alert from './Alert';
 import Button from './Button';
@@ -8,15 +9,14 @@ import Input from './Input';
 import SelectField from './SelectField';
 import { useAuth } from '../hooks/useAuth';
 import { getFieldError, toApiError } from '../services/apiError';
-import { experienceService } from '../services/experienceService';
 import { reservationService } from '../services/reservationService';
+import { experienceKeys, reservationKeys } from '../queries/queryKeys';
 import type { Experience, ExperienceSchedule } from '../types';
 
 interface ReservationDialogProps {
   experience: Experience;
   schedules: ExperienceSchedule[];
   onClose: () => void;
-  onSchedulesUpdate: (schedules: ExperienceSchedule[]) => void;
 }
 
 const formatPrice = (price: number) => price === 0
@@ -34,17 +34,32 @@ const formatSchedule = (startsAt: string, endsAt: string) => {
 };
 
 export const ReservationDialog = ({
-  experience, schedules, onClose, onSchedulesUpdate,
+  experience, schedules, onClose,
 }: ReservationDialogProps) => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const requestInFlight = useRef(false);
   const [scheduleId, setScheduleId] = useState(String(schedules[0]?.id ?? ''));
   const [quantity, setQuantity] = useState('1');
   const [fieldError, setFieldError] = useState<string>();
   const [requestError, setRequestError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createReservation = useMutation({
+    mutationFn: reservationService.create,
+    onSuccess: (_reservation, variables) => {
+      queryClient.setQueryData<ExperienceSchedule[]>(
+        experienceKeys.availability(experience.id),
+        (current) => current?.map((schedule) => schedule.id === variables.scheduleId
+          && !schedule.isUnlimitedCapacity
+          ? { ...schedule, availableSpots: Math.max(0, schedule.availableSpots - variables.quantity) }
+          : schedule),
+      );
+      void queryClient.invalidateQueries({ queryKey: experienceKeys.all });
+      void queryClient.invalidateQueries({ queryKey: reservationKeys.all });
+    },
+  });
+  const isSubmitting = createReservation.isPending;
   const selectedSchedule = schedules.find((schedule) => schedule.id === Number(scheduleId));
   const parsedQuantity = Number(quantity);
   const total = Number.isInteger(parsedQuantity) && parsedQuantity > 0
@@ -67,14 +82,6 @@ export const ReservationDialog = ({
     return true;
   };
 
-  const refreshAvailability = async () => {
-    try {
-      onSchedulesUpdate(await experienceService.getAvailability(experience.id));
-    } catch {
-      // El error de reserva conserva prioridad.
-    }
-  };
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (requestInFlight.current || !validate() || !selectedSchedule) return;
@@ -84,10 +91,9 @@ export const ReservationDialog = ({
     }
 
     requestInFlight.current = true;
-    setIsSubmitting(true);
     setRequestError(null);
     try {
-      const reservation = await reservationService.create({
+      const reservation = await createReservation.mutateAsync({
         scheduleId: selectedSchedule.id,
         quantity: parsedQuantity,
       });
@@ -96,10 +102,14 @@ export const ReservationDialog = ({
       const apiError = toApiError(error, 'No fue posible crear la reserva.');
       setFieldError(getFieldError(apiError, 'Quantity') || getFieldError(apiError, 'ScheduleId'));
       setRequestError(apiError.message);
-      if (apiError.status === 409) await refreshAvailability();
+      if (apiError.status === 409) {
+        await queryClient.refetchQueries({
+          queryKey: experienceKeys.availability(experience.id),
+          type: 'active',
+        });
+      }
     } finally {
       requestInFlight.current = false;
-      setIsSubmitting(false);
     }
   };
 
@@ -124,6 +134,7 @@ export const ReservationDialog = ({
           label="Fecha y horario" value={scheduleId}
           onChange={(event) => { setScheduleId(event.target.value); setFieldError(undefined); }}
           error={!selectedSchedule ? fieldError : undefined}
+          required
         >
           {schedules.map((schedule) => (
             <option key={schedule.id} value={schedule.id}>
@@ -145,6 +156,7 @@ export const ReservationDialog = ({
               : `${selectedSchedule.availableSpots} cupos en este horario`
             : undefined}
           disabled={!selectedSchedule}
+          required
         />
         <dl className="reservation-form__summary">
           <div><dt>Precio por persona</dt><dd>{formatPrice(experience.price)}</dd></div>

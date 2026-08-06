@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import AuthMosaic from '../components/AuthMosaic';
 import Logo from '../components/Logo';
 import GoogleSignInButton from '../components/GoogleSignInButton';
+import ToastFeedback from '../components/ToastFeedback';
 import { useAuth } from '../hooks/useAuth';
 import { getFieldError, toApiError } from '../services/apiError';
 import { isGoogleAuthConfigured } from '../services/googleAuthConfig';
@@ -22,6 +22,7 @@ export const Login = () => {
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
   const redirectMessage = typeof location.state?.message === 'string' ? location.state.message : null;
+  const loggedOut = location.state?.loggedOut === true;
   const requestedPath = typeof location.state?.from === 'string'
     && location.state.from.startsWith('/')
     && !location.state.from.startsWith('//')
@@ -29,8 +30,8 @@ export const Login = () => {
     : '/experiences';
 
   useEffect(() => {
-    if (isAuthenticated) navigate(requestedPath, { replace: true });
-  }, [isAuthenticated, navigate, requestedPath]);
+    if (isAuthenticated && !loggedOut) navigate(requestedPath, { replace: true });
+  }, [isAuthenticated, loggedOut, navigate, requestedPath]);
 
   const validate = () => {
     const errors: { email?: string; password?: string } = {};
@@ -85,11 +86,14 @@ export const Login = () => {
           <p>Ingresa tus datos para acceder a tu cuenta.</p>
         </header>
 
-        {redirectMessage && <Alert tone="info">{redirectMessage}</Alert>}
-        {!redirectMessage && sessionExpired && (
-          <Alert tone="warning">Tu sesión expiró. Inicia sesión nuevamente para continuar.</Alert>
-        )}
-        {formError && <Alert tone="error">{formError}</Alert>}
+        <ToastFeedback message={redirectMessage} tone="info" />
+        <ToastFeedback
+          message={!redirectMessage && sessionExpired
+            ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar.'
+            : null}
+          tone="warning"
+        />
+        <ToastFeedback message={formError} tone="error" />
 
         {isGoogleAuthConfigured && (
           <>
@@ -112,6 +116,7 @@ export const Login = () => {
             onChange={(event) => setEmail(event.target.value)}
             error={fieldErrors.email}
             icon={<Mail size={18} />}
+            required
           />
           <Input
             label="Contraseña"
@@ -122,6 +127,7 @@ export const Login = () => {
             onChange={(event) => setPassword(event.target.value)}
             error={fieldErrors.password}
             icon={<LockKeyhole size={18} />}
+            required
           />
           <div className="auth-form__support-link">
             <Link to="/forgot-password">¿Olvidaste tu contraseña?</Link>

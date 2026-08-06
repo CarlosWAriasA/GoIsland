@@ -6,6 +6,30 @@ namespace GoIsland.Api.Tests.Services;
 public class ExperienceLocationRequestTests
 {
     [Fact]
+    public void CreateRequest_AllowsDraftWithOnlyTitle()
+    {
+        var request = new CreateExperienceRequest { Title = "Ruta cultural" };
+        var results = new List<ValidationResult>();
+
+        var valid = Validator.TryValidateObject(request, new ValidationContext(request), results, true);
+
+        Assert.True(valid);
+        Assert.Empty(results);
+    }
+
+    [Fact]
+    public void CreateRequest_ExplainsMissingDraftTitle()
+    {
+        var request = new CreateExperienceRequest();
+        var results = new List<ValidationResult>();
+
+        var valid = Validator.TryValidateObject(request, new ValidationContext(request), results, true);
+
+        Assert.False(valid);
+        Assert.Contains(results, result => result.ErrorMessage == "Escribe un título para la experiencia.");
+    }
+
+    [Fact]
     public void CreateRequest_RejectsIncompleteMapPoint()
     {
         var request = new CreateExperienceRequest

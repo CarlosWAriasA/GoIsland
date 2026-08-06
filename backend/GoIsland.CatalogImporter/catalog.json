@@ -1,0 +1,2500 @@
+{
+  "owner": {
+    "email": "catalogo@goisland.invalid",
+    "displayName": "Descubre GoIsland",
+    "description": "Selección editorial de lugares reales para descubrir la República Dominicana."
+  },
+  "experiences": [
+    {
+      "slug": "paseo-autoguiado-ciudad-colonial",
+      "title": "Paseo autoguiado por la Ciudad Colonial",
+      "shortDescription": "Recorre calles, plazas y edificios históricos en el corazón de Santo Domingo.",
+      "description": "Una ruta a pie para conocer el entorno de la Catedral Primada, el Parque Colón, la calle Las Damas y la Plaza de España. Puedes adaptar el recorrido a tu ritmo y detenerte en los espacios que más te interesen.",
+      "durationMinutes": 150,
+      "meetingPointInstructions": "Comienza en el Parque Colón, frente a la Catedral Primada de América.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Entradas a museos o monumentos",
+        "Transporte",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Calzado cómodo",
+        "Agua",
+        "Protección solar"
+      ],
+      "guestRequirements": "Consulta los horarios y condiciones de cada museo antes de visitarlo.",
+      "difficulty": "Easy",
+      "accessibilityInformation": "Las plazas principales tienen áreas accesibles; algunas calles conservan superficies irregulares.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "patrimonio",
+        "arquitectura",
+        "historia",
+        "santo domingo"
+      ],
+      "location": "Ciudad Colonial, Santo Domingo",
+      "latitude": 18.472394,
+      "longitude": -69.885841,
+      "category": "Historia",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Parque Colón y Catedral Primada",
+          "description": "Observa el entorno de la plaza y la arquitectura de la catedral.",
+          "durationMinutes": 35,
+          "location": "Parque Colón"
+        },
+        {
+          "title": "Calle Las Damas",
+          "description": "Camina por una de las vías históricas más reconocidas del sector.",
+          "durationMinutes": 45,
+          "location": "Calle Las Damas"
+        },
+        {
+          "title": "Plaza de España",
+          "description": "Finaliza el recorrido junto al Alcázar de Colón y el río Ozama.",
+          "durationMinutes": 40,
+          "location": "Plaza de España"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Convento de los Dominicos, Ciudad Colonial de Santo Domingo.JPG",
+          "altText": "Fachada del Convento de los Dominicos en la Ciudad Colonial",
+          "creditText": "Foto: Jogc6605",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Convento_de_los_Dominicos,_Ciudad_Colonial_de_Santo_Domingo.JPG",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+          "width": 3696,
+          "height": 2448
+        },
+        {
+          "wikimediaFile": "Aerial view Ciudad Colonial Santo Domingo 09 2019 0067.jpg",
+          "altText": "Vista aérea de la Ciudad Colonial junto al río Ozama",
+          "creditText": "Foto: Mariordo (Mario Durán & German Valverde)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Aerial_view_Ciudad_Colonial_Santo_Domingo_09_2019_0067.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3000,
+          "height": 2000
+        },
+        {
+          "wikimediaFile": "Santo Domingo - Calle El Conde.JPG",
+          "altText": "Calle El Conde en el centro histórico de Santo Domingo",
+          "creditText": "Foto: Martin Falbisoner",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santo_Domingo_-_Calle_El_Conde.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3972,
+          "height": 3972
+        }
+      ]
+    },
+    {
+      "slug": "caminata-parque-mirador-sur",
+      "title": "Caminata por el Parque Mirador Sur",
+      "shortDescription": "Disfruta un paseo entre áreas verdes y miradores sin salir de Santo Domingo.",
+      "description": "El Parque Mirador Sur ofrece un corredor urbano amplio para caminar, ejercitarse o compartir al aire libre. Esta propuesta autoguiada recorre un tramo tranquilo del parque y permite elegir la distancia según tu tiempo disponible.",
+      "durationMinutes": 90,
+      "meetingPointInstructions": "Elige una de las entradas señalizadas de la avenida Mirador Sur y confirma el punto de regreso.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Alimentos y bebidas",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Calzado deportivo",
+        "Protección solar"
+      ],
+      "guestRequirements": "Realiza el paseo durante horas de buena visibilidad y sigue la señalización del parque.",
+      "difficulty": "Easy",
+      "accessibilityInformation": "Existen tramos pavimentados y áreas recreativas; las condiciones pueden variar entre accesos.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "parque",
+        "caminata",
+        "aire libre",
+        "santo domingo"
+      ],
+      "location": "Parque Mirador Sur, Santo Domingo",
+      "latitude": 18.449722,
+      "longitude": -69.939111,
+      "category": "Naturaleza",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Paseo principal",
+          "description": "Recorre a tu ritmo uno de los tramos peatonales del parque.",
+          "durationMinutes": 60,
+          "location": "Avenida Mirador Sur"
+        },
+        {
+          "title": "Descanso en el mirador",
+          "description": "Haz una pausa en un área segura antes de regresar.",
+          "durationMinutes": 20,
+          "location": "Parque Mirador Sur"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Parque Mirador Sur - Santo Domingo.jpg",
+          "altText": "Área verde del Parque Mirador Sur en Santo Domingo",
+          "creditText": "Foto: Pisandomitierra",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Parque_Mirador_Sur_-_Santo_Domingo.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+          "width": 848,
+          "height": 456
+        },
+        {
+          "wikimediaFile": "Avenida del Parque Mirador Sur - Santo Domingo.jpg",
+          "altText": "Avenida arbolada junto al Parque Mirador Sur",
+          "creditText": "Foto: Pisandomitierra",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Avenida_del_Parque_Mirador_Sur_-_Santo_Domingo.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 848,
+          "height": 456
+        },
+        {
+          "wikimediaFile": "Parque Mirador del Sur (14690558012).jpg",
+          "altText": "Vegetación y senderos del Parque Mirador del Sur",
+          "creditText": "Foto: Daniel Lobo",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Parque_Mirador_del_Sur_(14690558012).jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "width": 4000,
+          "height": 3000
+        }
+      ]
+    },
+    {
+      "slug": "entorno-monumento-heroes-restauracion",
+      "title": "Recorrido por el Monumento de Santiago",
+      "shortDescription": "Conoce el símbolo urbano más reconocido de Santiago de los Caballeros.",
+      "description": "Explora el entorno del Monumento a los Héroes de la Restauración y contempla la ciudad desde su explanada. La visita exterior permite apreciar su arquitectura y comprender su lugar en la identidad de Santiago.",
+      "durationMinutes": 75,
+      "meetingPointInstructions": "Reúnete en la explanada principal del Monumento a los Héroes de la Restauración.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Entrada al museo",
+        "Transporte",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Protección solar"
+      ],
+      "guestRequirements": "Verifica los horarios vigentes si deseas acceder al interior o al museo.",
+      "difficulty": "Easy",
+      "accessibilityInformation": "La explanada cuenta con superficies amplias; consulta las condiciones de acceso al interior.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "monumento",
+        "historia",
+        "santiago",
+        "cibao"
+      ],
+      "location": "Santiago de los Caballeros, Santiago",
+      "latitude": 19.451,
+      "longitude": -70.695,
+      "category": "Historia",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Explanada del monumento",
+          "description": "Rodea el edificio para observar sus detalles exteriores y las vistas urbanas.",
+          "durationMinutes": 45,
+          "location": "Monumento a los Héroes de la Restauración"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Santiago de los Caballeros - Monumento a los Héroes de la Restauración 0541.JPG",
+          "altText": "Monumento a los Héroes de la Restauración en Santiago",
+          "creditText": "Foto: Phyrexian",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santiago_de_los_Caballeros_-_Monumento_a_los_H%C3%A9roes_de_la_Restauraci%C3%B3n_0541.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+          "width": 4000,
+          "height": 6000
+        },
+        {
+          "wikimediaFile": "Monument to the Heroes of the Restoration1.JPG",
+          "altText": "Monumento a los Héroes de la Restauración visto desde su explanada",
+          "creditText": "Foto: Casualknit at English Wikipedia",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Monument_to_the_Heroes_of_the_Restoration1.JPG",
+          "licenseName": "Public domain",
+          "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+          "width": 1536,
+          "height": 2048
+        },
+        {
+          "wikimediaFile": "Santiago de los Caballeros - Monumento a los Héroes de la Restauración 0459.JPG",
+          "altText": "Detalle exterior del Monumento de Santiago",
+          "creditText": "Foto: Phyrexian",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santiago_de_los_Caballeros_-_Monumento_a_los_H%C3%A9roes_de_la_Restauraci%C3%B3n_0459.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3931,
+          "height": 5896
+        }
+      ]
+    },
+    {
+      "slug": "fortaleza-san-felipe-puerto-plata",
+      "title": "Fortaleza San Felipe y su entorno costero",
+      "shortDescription": "Descubre una fortaleza histórica frente al Atlántico en Puerto Plata.",
+      "description": "Pasea por el entorno de la Fortaleza San Felipe, observa sus muros exteriores y disfruta la vista del litoral de Puerto Plata. La ruta combina patrimonio, paisaje costero y espacios abiertos del malecón.",
+      "durationMinutes": 90,
+      "meetingPointInstructions": "Comienza frente a la entrada principal de la Fortaleza San Felipe.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Entrada al museo",
+        "Transporte",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Calzado cómodo",
+        "Protección solar"
+      ],
+      "guestRequirements": "Consulta los horarios del museo si deseas acceder al interior de la fortaleza.",
+      "difficulty": "Easy",
+      "accessibilityInformation": "El entorno exterior incluye áreas abiertas; algunas superficies históricas pueden ser irregulares.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "fortaleza",
+        "puerto plata",
+        "historia",
+        "malecón"
+      ],
+      "location": "Puerto Plata, Puerto Plata",
+      "latitude": 19.804342,
+      "longitude": -70.695411,
+      "category": "Historia",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Vista exterior de la fortaleza",
+          "description": "Observa la estructura defensiva y su relación con la bahía.",
+          "durationMinutes": 40,
+          "location": "Fortaleza San Felipe"
+        },
+        {
+          "title": "Paseo costero",
+          "description": "Continúa por el espacio abierto junto al litoral.",
+          "durationMinutes": 30,
+          "location": "Malecón de Puerto Plata"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Fortaleza de San Felipe DR 1.jpg",
+          "altText": "Fortaleza San Felipe frente al mar en Puerto Plata",
+          "creditText": "Foto: CareAhLine",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Fortaleza_de_San_Felipe_DR_1.jpg",
+          "licenseName": "CC0 1.0",
+          "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+          "width": 4032,
+          "height": 3024
+        },
+        {
+          "wikimediaFile": "Fortaleza de San Felipe DR 2.jpg",
+          "altText": "Muros de la Fortaleza San Felipe frente al Atlántico",
+          "creditText": "Foto: CareAhLine",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Fortaleza_de_San_Felipe_DR_2.jpg",
+          "licenseName": "CC0",
+          "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+          "width": 4032,
+          "height": 3024
+        },
+        {
+          "wikimediaFile": "Fortaleza de San Felipe DR 3.jpg",
+          "altText": "Vista del entorno histórico de la Fortaleza San Felipe",
+          "creditText": "Foto: CareAhLine",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Fortaleza_de_San_Felipe_DR_3.jpg",
+          "licenseName": "CC0",
+          "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+          "width": 4032,
+          "height": 3024
+        }
+      ]
+    },
+    {
+      "slug": "conoce-parque-nacional-los-haitises",
+      "title": "Conoce el Parque Nacional Los Haitises",
+      "shortDescription": "Manglares, mogotes y cuevas forman uno de los paisajes más singulares del país.",
+      "description": "Los Haitises protege un amplio paisaje de manglares, formaciones rocosas y cuevas. Esta ficha te ayuda a ubicar el destino y preparar una visita con operadores autorizados desde Samaná o Sabana de la Mar.",
+      "durationMinutes": 240,
+      "meetingPointInstructions": "Coordina previamente el punto de salida con un operador autorizado en Samaná o Sabana de la Mar.",
+      "pickupInformation": "El acceso habitual requiere transporte acuático organizado por terceros.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Excursión en bote",
+        "Entrada o permisos",
+        "Transporte terrestre",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Protección solar",
+        "Repelente",
+        "Calzado con buen agarre"
+      ],
+      "guestRequirements": "Confirma las condiciones del tiempo, las reglas del área protegida y los servicios contratados antes de salir.",
+      "minimumAge": 6,
+      "difficulty": "Moderate",
+      "accessibilityInformation": "Los traslados en bote, cuevas y embarcaderos pueden presentar barreras de acceso.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "manglares",
+        "cuevas",
+        "parque nacional",
+        "samaná"
+      ],
+      "location": "Parque Nacional Los Haitises, Samaná",
+      "latitude": 19.077896,
+      "longitude": -69.533029,
+      "category": "Naturaleza",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Preparación de la visita",
+          "description": "Confirma ruta, operador, clima y medidas de seguridad antes de partir.",
+          "durationMinutes": 30,
+          "location": "Samaná o Sabana de la Mar"
+        },
+        {
+          "title": "Recorrido por el área protegida",
+          "description": "Sigue el itinerario autorizado entre manglares, mogotes y cuevas.",
+          "durationMinutes": 180,
+          "location": "Parque Nacional Los Haitises"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Dominican republic Los Haitises mangroves.jpeg",
+          "altText": "Manglares del Parque Nacional Los Haitises",
+          "creditText": "Foto: Anton Bielousov",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Dominican_republic_Los_Haitises_mangroves.jpeg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+          "width": 1920,
+          "height": 1280
+        },
+        {
+          "wikimediaFile": "Cueva La Arena Dominican Republic.jpg",
+          "altText": "Entrada de la Cueva La Arena en Los Haitises",
+          "creditText": "Foto: Thetornado76",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Cueva_La_Arena_Dominican_Republic.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3840,
+          "height": 2160
+        },
+        {
+          "wikimediaFile": "Dominican Republic Los Haitises birds island.jpeg",
+          "altText": "Mogotes e islotes del Parque Nacional Los Haitises",
+          "creditText": "Foto: Anton Bielousov",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Dominican_Republic_Los_Haitises_birds_island.jpeg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 1920,
+          "height": 1280
+        }
+      ]
+    },
+    {
+      "slug": "sendero-salto-el-limon",
+      "title": "Sendero hacia Salto El Limón",
+      "shortDescription": "Un recorrido natural hacia una de las cascadas más conocidas de Samaná.",
+      "description": "El trayecto hacia Salto El Limón atraviesa un entorno rural y húmedo antes de llegar a la cascada. Las condiciones del sendero cambian con la lluvia, por lo que conviene organizar la visita con apoyo local y confirmar el estado de la ruta.",
+      "durationMinutes": 180,
+      "meetingPointInstructions": "Coordina el inicio del sendero con un prestador local en la comunidad de El Limón.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Guía local",
+        "Caballo",
+        "Transporte",
+        "Entradas o contribuciones locales"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Calzado con buen agarre",
+        "Repelente",
+        "Ropa que pueda mojarse"
+      ],
+      "guestRequirements": "Confirma el estado del sendero y evita acercarte a zonas resbaladizas o de corriente fuerte.",
+      "minimumAge": 8,
+      "difficulty": "Moderate",
+      "accessibilityInformation": "El sendero incluye pendientes, barro y superficies irregulares.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "cascada",
+        "senderismo",
+        "samaná",
+        "naturaleza"
+      ],
+      "location": "El Limón, Samaná",
+      "latitude": 19.270264,
+      "longitude": -69.446228,
+      "category": "Aventura",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Inicio del sendero",
+          "description": "Confirma la ruta y comienza el recorrido desde la comunidad de El Limón.",
+          "durationMinutes": 60,
+          "location": "El Limón"
+        },
+        {
+          "title": "Llegada a la cascada",
+          "description": "Disfruta el paisaje desde las áreas seguras indicadas en el lugar.",
+          "durationMinutes": 45,
+          "location": "Salto El Limón"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Salto el Limón (14688207924).jpg",
+          "altText": "Cascada Salto El Limón rodeada de vegetación",
+          "creditText": "Foto: Daniel Lobo",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Salto_el_Lim%C3%B3n_(14688207924).jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+          "width": 3000,
+          "height": 4000
+        },
+        {
+          "wikimediaFile": "Salto de Limon waterfall in Samana, Dominican Republic.jpg",
+          "altText": "Caída de agua del Salto El Limón en Samaná",
+          "creditText": "Foto: 58743958@N04",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Salto_de_Limon_waterfall_in_Samana,_Dominican_Republic.jpg",
+          "licenseName": "CC BY-SA 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+          "width": 5120,
+          "height": 3410
+        },
+        {
+          "wikimediaFile": "Wasserfall El Limon.jpg",
+          "altText": "Cascada El Limón rodeada de vegetación tropical",
+          "creditText": "Foto: Thetornado76",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Wasserfall_El_Limon.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3840,
+          "height": 2160
+        }
+      ]
+    },
+    {
+      "slug": "dia-playa-cayo-levantado",
+      "title": "Día de playa en Cayo Levantado",
+      "shortDescription": "Prepara una visita a la playa pública de este pequeño cayo en la bahía de Samaná.",
+      "description": "Cayo Levantado combina arena clara, vegetación tropical y aguas de la bahía de Samaná. El traslado se realiza por bote desde tierra firme y debe coordinarse con prestadores locales, incluyendo la hora de regreso.",
+      "durationMinutes": 300,
+      "meetingPointInstructions": "Confirma el embarcadero, la embarcación y la hora de regreso con el prestador elegido en Samaná.",
+      "pickupInformation": "El acceso a la playa pública requiere transporte acuático contratado por separado.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Traslado en bote",
+        "Alimentos y bebidas",
+        "Equipo acuático"
+      ],
+      "whatToBring": [
+        "Traje de baño",
+        "Toalla",
+        "Protección solar",
+        "Agua"
+      ],
+      "guestRequirements": "Revisa las condiciones marítimas y acuerda claramente el regreso antes de abordar.",
+      "difficulty": "Easy",
+      "accessibilityInformation": "El embarque, desembarque y la arena pueden dificultar el acceso.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "playa",
+        "isla",
+        "samaná",
+        "caribe"
+      ],
+      "location": "Cayo Levantado, Samaná",
+      "latitude": 19.166389,
+      "longitude": -69.275556,
+      "category": "Acuático",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Traslado hacia el cayo",
+          "description": "Viaja en una embarcación coordinada con un prestador local.",
+          "durationMinutes": 30,
+          "location": "Bahía de Samaná"
+        },
+        {
+          "title": "Tiempo en la playa pública",
+          "description": "Disfruta la costa y regresa al embarcadero a la hora acordada.",
+          "durationMinutes": 210,
+          "location": "Cayo Levantado"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Cayo Levantado, Samana, Dominican Republic.jpg",
+          "altText": "Costa y vegetación tropical de Cayo Levantado",
+          "creditText": "Foto: Jorge from Brazil",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Cayo_Levantado,_Samana,_Dominican_Republic.jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+          "width": 1600,
+          "height": 1200
+        },
+        {
+          "wikimediaFile": "Cayo Levantado, Samaná 32000, Dominican Republic - panoramio (10).jpg",
+          "altText": "Playa y palmeras de Cayo Levantado",
+          "creditText": "Foto: Максим Улитин",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Cayo_Levantado,_Saman%C3%A1_32000,_Dominican_Republic_-_panoramio_(10).jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 4826,
+          "height": 3456
+        },
+        {
+          "wikimediaFile": "Cayo Levantado, Samaná 32000, Dominican Republic - panoramio (15).jpg",
+          "altText": "Costa de Cayo Levantado en la bahía de Samaná",
+          "creditText": "Foto: Максим Улитин",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Cayo_Levantado,_Saman%C3%A1_32000,_Dominican_Republic_-_panoramio_(15).jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 5184,
+          "height": 3456
+        }
+      ]
+    },
+    {
+      "slug": "mirador-y-playa-coson",
+      "title": "Mirador y Playa Cosón",
+      "shortDescription": "Contempla la costa de Las Terrenas y disfruta una playa de amplio paisaje.",
+      "description": "La zona de Cosón ofrece vistas elevadas de la costa y una playa extensa cerca de Las Terrenas. Puedes combinar una parada breve en el mirador con tiempo de descanso junto al mar, manteniéndote en accesos públicos y señalizados.",
+      "durationMinutes": 180,
+      "meetingPointInstructions": "Define un punto seguro de llegada en Playa Cosón y evita detenerte en áreas no habilitadas de la carretera.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Alimentos y bebidas",
+        "Equipo de playa"
+      ],
+      "whatToBring": [
+        "Traje de baño",
+        "Toalla",
+        "Protección solar",
+        "Agua"
+      ],
+      "guestRequirements": "Respeta las indicaciones locales y evita entrar al mar cuando las condiciones no sean seguras.",
+      "difficulty": "Easy",
+      "accessibilityInformation": "La arena y algunos accesos naturales pueden dificultar el desplazamiento.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "playa",
+        "mirador",
+        "las terrenas",
+        "samaná"
+      ],
+      "location": "Playa Cosón, Las Terrenas, Samaná",
+      "latitude": 19.29155,
+      "longitude": -69.612025,
+      "category": "Naturaleza",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Vista de la costa",
+          "description": "Haz una parada en un punto permitido para contemplar el paisaje.",
+          "durationMinutes": 20,
+          "location": "Mirador de Cosón"
+        },
+        {
+          "title": "Tiempo junto al mar",
+          "description": "Disfruta la playa y conserva limpia el área utilizada.",
+          "durationMinutes": 120,
+          "location": "Playa Cosón"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Mirador de cosón 1.jpg",
+          "altText": "Vista panorámica de Playa Cosón desde el mirador",
+          "creditText": "Foto: Truthman10200",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Mirador_de_cos%C3%B3n_1.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+          "width": 4000,
+          "height": 2992
+        },
+        {
+          "wikimediaFile": "Mirador de cosón 2.jpg",
+          "altText": "Vista elevada de la costa de Cosón",
+          "creditText": "Foto: Truthman10200",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Mirador_de_cos%C3%B3n_2.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4000,
+          "height": 2992
+        },
+        {
+          "wikimediaFile": "Mirador de cosón 4.jpg",
+          "altText": "Paisaje costero de Playa Cosón desde el mirador",
+          "creditText": "Foto: Truthman10200",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Mirador_de_cos%C3%B3n_4.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 2992,
+          "height": 4000
+        }
+      ]
+    },
+    {
+      "slug": "descubre-bahia-de-las-aguilas",
+      "title": "Descubre Bahía de las Águilas",
+      "shortDescription": "Una playa remota de aguas claras dentro del Parque Nacional Jaragua.",
+      "description": "Bahía de las Águilas se encuentra en una zona protegida de Pedernales y requiere planificación. Organiza el transporte con prestadores locales, lleva lo necesario para el día y sigue las reglas de conservación del parque.",
+      "durationMinutes": 360,
+      "meetingPointInstructions": "Coordina el acceso y el regreso con un prestador local desde Cabo Rojo o la zona indicada por las autoridades.",
+      "pickupInformation": "El último tramo puede requerir transporte acuático o terrestre contratado por separado.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Entrada o permisos",
+        "Alimentos y bebidas",
+        "Equipo de playa"
+      ],
+      "whatToBring": [
+        "Agua suficiente",
+        "Alimentos",
+        "Protección solar",
+        "Bolsa para retirar tus residuos"
+      ],
+      "guestRequirements": "Confirma las condiciones de acceso y respeta todas las normas del Parque Nacional Jaragua.",
+      "difficulty": "Moderate",
+      "accessibilityInformation": "El traslado, el embarque y la arena pueden presentar barreras importantes.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "pedernales",
+        "playa",
+        "parque nacional",
+        "jaragua"
+      ],
+      "location": "Bahía de las Águilas, Pedernales",
+      "latitude": 17.862139,
+      "longitude": -71.645569,
+      "category": "Naturaleza",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Preparación y acceso",
+          "description": "Confirma la ruta, el regreso y las reglas vigentes del área protegida.",
+          "durationMinutes": 60,
+          "location": "Pedernales"
+        },
+        {
+          "title": "Visita responsable a la playa",
+          "description": "Disfruta el paisaje sin extraer elementos naturales ni dejar residuos.",
+          "durationMinutes": 240,
+          "location": "Bahía de las Águilas"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Bahia de las Aguilas.jpg",
+          "altText": "Playa y aguas claras de Bahía de las Águilas",
+          "creditText": "Foto: Scmjht",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Bahia_de_las_Aguilas.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+          "width": 2592,
+          "height": 1944
+        },
+        {
+          "wikimediaFile": "Bahia de las Aguilas 2.JPG",
+          "altText": "Orilla de arena clara en Bahía de las Águilas",
+          "creditText": "Foto: Scmjht",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Bahia_de_las_Aguilas_2.JPG",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 2048,
+          "height": 1536
+        },
+        {
+          "wikimediaFile": "Bahia de las Aguilas beach.jpg",
+          "altText": "Aguas transparentes y costa de Bahía de las Águilas",
+          "creditText": "Foto: jordina_collellcortacans",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Bahia_de_las_Aguilas_beach.jpg",
+          "licenseName": "CC BY-SA 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+          "width": 4000,
+          "height": 3000
+        }
+      ]
+    },
+    {
+      "slug": "sendero-dunas-de-bani",
+      "title": "Sendero por las Dunas de Baní",
+      "shortDescription": "Camina entre dunas y paisaje costero en la península de Las Calderas.",
+      "description": "Las Dunas de Baní forman un paisaje seco y abierto junto al mar. La exposición al sol y la arena hacen recomendable una visita corta, con suficiente agua y siguiendo los senderos permitidos para proteger el ecosistema.",
+      "durationMinutes": 120,
+      "meetingPointInstructions": "Comienza en el acceso autorizado del Monumento Natural Dunas de las Calderas.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Entrada o contribución de acceso",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua suficiente",
+        "Sombrero",
+        "Protección solar",
+        "Calzado cerrado"
+      ],
+      "guestRequirements": "Evita las horas de mayor calor y no abandones las rutas permitidas.",
+      "minimumAge": 8,
+      "difficulty": "Moderate",
+      "accessibilityInformation": "La arena suelta, el calor y la ausencia de sombra dificultan el recorrido.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "dunas",
+        "desierto",
+        "baní",
+        "senderismo"
+      ],
+      "location": "Las Calderas, Baní, Peravia",
+      "latitude": 18.2265,
+      "longitude": -70.5429,
+      "category": "Naturaleza",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Recorrido por las dunas",
+          "description": "Sigue el sendero autorizado y realiza pausas frecuentes para hidratarte.",
+          "durationMinutes": 75,
+          "location": "Dunas de Baní"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Dunas de Baní 1.jpg",
+          "altText": "Paisaje de arena en las Dunas de Baní",
+          "creditText": "Foto: Ronny Medina",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Dunas_de_Ban%C3%AD_1.jpg",
+          "licenseName": "CC BY 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+          "width": 2560,
+          "height": 1440
+        },
+        {
+          "wikimediaFile": "Dunas 1.jpg",
+          "altText": "Relieve de arena en las Dunas de Baní",
+          "creditText": "Foto: Ronny Medina(Nervin Pepen)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Dunas_1.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "wikimediaFile": "MAR DUNAS DE BANI.jpg",
+          "altText": "Dunas costeras junto al mar en Baní",
+          "creditText": "Foto: Eleze77",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:MAR_DUNAS_DE_BANI.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4745,
+          "height": 2442
+        }
+      ]
+    },
+    {
+      "slug": "mirador-lago-enriquillo",
+      "title": "Mirador del Lago Enriquillo",
+      "shortDescription": "Contempla el gran lago del suroeste y el paisaje de la Hoya de Enriquillo.",
+      "description": "El Lago Enriquillo forma parte de una región natural de gran valor. Esta visita propone observar el paisaje desde puntos autorizados y preparar cualquier recorrido adicional con personal u operadores conocedores del área.",
+      "durationMinutes": 120,
+      "meetingPointInstructions": "Utiliza un mirador o acceso reconocido en La Descubierta y sigue las indicaciones locales.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Entrada o permisos",
+        "Guía presencial",
+        "Recorrido en bote"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Sombrero",
+        "Protección solar",
+        "Binoculares opcionales"
+      ],
+      "guestRequirements": "Mantén distancia de la fauna y no accedas a zonas no autorizadas.",
+      "difficulty": "Easy",
+      "accessibilityInformation": "La accesibilidad depende del mirador o acceso elegido; confirma las condiciones antes de salir.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "lago",
+        "suroeste",
+        "naturaleza",
+        "independencia"
+      ],
+      "location": "Lago Enriquillo, Independencia",
+      "latitude": 18.515,
+      "longitude": -71.660833,
+      "category": "Naturaleza",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Observación desde el mirador",
+          "description": "Contempla el lago y las montañas sin abandonar las áreas permitidas.",
+          "durationMinutes": 60,
+          "location": "La Descubierta"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Lago Enriquillo.jpg",
+          "altText": "Vista del Lago Enriquillo desde Las Caritas",
+          "creditText": "Foto: Juan Alberto Silver",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Lago_Enriquillo.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+          "width": 1600,
+          "height": 1200
+        },
+        {
+          "wikimediaFile": "Lago Enriquillo1.jpg",
+          "altText": "Panorama del Lago Enriquillo y sus montañas",
+          "creditText": "Foto: Jast",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Lago_Enriquillo1.jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 1600,
+          "height": 1200
+        },
+        {
+          "wikimediaFile": "Lago Enriquillo2.jpg",
+          "altText": "Orilla y paisaje natural del Lago Enriquillo",
+          "creditText": "Foto: Juan Alberto Silver",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Lago_Enriquillo2.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+          "width": 1600,
+          "height": 1200
+        }
+      ]
+    },
+    {
+      "slug": "paisaje-valle-nuevo",
+      "title": "Paisajes de Valle Nuevo",
+      "shortDescription": "Descubre un ambiente de montaña, pinares y temperaturas frescas en la Cordillera Central.",
+      "description": "Valle Nuevo ofrece paisajes de altura muy distintos a la costa dominicana. La visita requiere revisar el clima, las condiciones del camino y las normas del parque antes de salir, especialmente si se planean senderos o una estancia prolongada.",
+      "durationMinutes": 300,
+      "meetingPointInstructions": "Confirma el acceso habilitado y el estado del camino antes de salir desde Constanza.",
+      "pickupInformation": "El transporte debe ser adecuado para las condiciones vigentes de la ruta.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Entrada o permisos",
+        "Guía presencial",
+        "Equipo para clima frío"
+      ],
+      "whatToBring": [
+        "Abrigo",
+        "Agua",
+        "Calzado cerrado",
+        "Protección solar"
+      ],
+      "guestRequirements": "Consulta el clima y las disposiciones del parque; evita salir si la ruta no es segura.",
+      "minimumAge": 8,
+      "difficulty": "Moderate",
+      "accessibilityInformation": "Los caminos de montaña y senderos naturales pueden limitar el acceso.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "montaña",
+        "constanza",
+        "parque nacional",
+        "senderismo"
+      ],
+      "location": "Parque Nacional Valle Nuevo, Constanza",
+      "latitude": 18.706767,
+      "longitude": -70.602621,
+      "category": "Naturaleza",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Llegada al área de visita",
+          "description": "Registra las indicaciones locales y confirma la hora de regreso.",
+          "durationMinutes": 45,
+          "location": "Parque Nacional Valle Nuevo"
+        },
+        {
+          "title": "Recorrido de paisaje",
+          "description": "Explora únicamente los caminos habilitados y protege la vegetación.",
+          "durationMinutes": 180,
+          "location": "Valle Nuevo"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Piramide vallenuevo.jpg",
+          "altText": "Monumento de Las Pirámides en Valle Nuevo",
+          "creditText": "Foto: Francisco Queliz",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Piramide_vallenuevo.jpg",
+          "licenseName": "Dominio público",
+          "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+          "width": 550,
+          "height": 309
+        },
+        {
+          "wikimediaFile": "Caamaño-Gedenkteken-IMG92.JPG",
+          "altText": "Monumento de Caamaño en el paisaje de Valle Nuevo",
+          "creditText": "Foto: Jos1950",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Caama%C3%B1o-Gedenkteken-IMG92.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 1536,
+          "height": 2048
+        },
+        {
+          "wikimediaFile": "Caamaño-Monument-IMG93.JPG",
+          "altText": "Vegetación de montaña alrededor del monumento de Valle Nuevo",
+          "creditText": "Foto: Jos1950",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Caama%C3%B1o-Monument-IMG93.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 2048,
+          "height": 1536
+        }
+      ]
+    },
+    {
+      "slug": "cumbre-pico-duarte",
+      "title": "Prepara la ruta al Pico Duarte",
+      "shortDescription": "Planifica una travesía responsable hacia la cumbre más alta del Caribe.",
+      "description": "La subida al Pico Duarte es una actividad exigente de montaña que requiere preparación física, equipo apropiado y coordinación con guías y servicios autorizados. Esta ficha sirve como punto de partida para organizar la experiencia, no como una reserva del recorrido.",
+      "durationMinutes": 480,
+      "meetingPointInstructions": "Coordina la ruta, el registro y el punto de salida con un prestador autorizado antes de viajar.",
+      "pickupInformation": "El traslado al inicio del sendero y la logística de varios días se contratan por separado.",
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Guía de montaña",
+        "Alojamiento",
+        "Alimentos",
+        "Transporte",
+        "Permisos y equipo"
+      ],
+      "whatToBring": [
+        "Equipo de montaña",
+        "Abrigo",
+        "Calzado de senderismo",
+        "Agua y alimentos según el plan"
+      ],
+      "guestRequirements": "No inicies la ruta sin guía, registro, condición física adecuada y un plan confirmado para todo el trayecto.",
+      "minimumAge": 16,
+      "difficulty": "Demanding",
+      "accessibilityInformation": "La ruta incluye largas distancias, desnivel, terreno irregular y cambios de clima.",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "pico duarte",
+        "montaña",
+        "senderismo",
+        "cordillera central"
+      ],
+      "location": "Pico Duarte, Cordillera Central",
+      "latitude": 19.0231,
+      "longitude": -70.9988,
+      "category": "Aventura",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Planificación previa",
+          "description": "Selecciona una ruta autorizada, guía, equipo y fechas apropiadas.",
+          "durationMinutes": 120,
+          "location": "Punto de coordinación"
+        },
+        {
+          "title": "Travesía de montaña",
+          "description": "Sigue el plan definido con el guía y las normas del parque durante toda la ruta.",
+          "durationMinutes": 360,
+          "location": "Parque Nacional José Armando Bermúdez"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Pico Duarte1.jpg",
+          "altText": "Cumbre rocosa del Pico Duarte en la Cordillera Central",
+          "creditText": "Foto: Adrian Michael",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Pico_Duarte1.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+          "width": 1839,
+          "height": 2708
+        },
+        {
+          "wikimediaFile": "Approaching the peak of Pico Duarte.jpg",
+          "altText": "Sendero de aproximación a la cumbre del Pico Duarte",
+          "creditText": "Foto: Ken Mayer",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Approaching_the_peak_of_Pico_Duarte.jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "width": 1712,
+          "height": 2288
+        },
+        {
+          "wikimediaFile": "Pico Duarte 2010 - panoramio.jpg",
+          "altText": "Paisaje de altura en la ruta al Pico Duarte",
+          "creditText": "Foto: jvg19",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Pico_Duarte_2010_-_panoramio.jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 4000,
+          "height": 3000
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "pickupInformation": "El traslado marítimo se contrata por separado.",
+      "accessibilityInformation": "El embarque, desembarque y la arena pueden presentar barreras de acceso.",
+      "slug": "visita-isla-saona",
+      "title": "Visita responsable a Isla Saona",
+      "shortDescription": "Prepara un día entre playas, palmeras y aguas claras dentro del Parque Nacional Cotubanamá.",
+      "description": "Isla Saona es uno de los paisajes costeros más reconocidos del este dominicano. El acceso se realiza en embarcación y conviene confirmar el operador, las condiciones del mar, la hora de regreso y las reglas del área protegida antes de salir.",
+      "durationMinutes": 420,
+      "meetingPointInstructions": "Coordina previamente la salida desde Bayahíbe con un prestador autorizado.",
+      "whatIsNotIncluded": [
+        "Traslado en bote",
+        "Entrada o permisos",
+        "Alimentos y bebidas",
+        "Equipo de playa"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Protección solar",
+        "Traje de baño",
+        "Bolsa para retirar tus residuos"
+      ],
+      "guestRequirements": "Respeta las zonas autorizadas, la fauna y las indicaciones del Parque Nacional Cotubanamá.",
+      "difficulty": "Easy",
+      "tags": [
+        "isla saona",
+        "bayahíbe",
+        "playa",
+        "parque nacional"
+      ],
+      "location": "Isla Saona, La Altagracia",
+      "latitude": 18.154,
+      "longitude": -68.679,
+      "category": "Acuático",
+      "itinerary": [
+        {
+          "title": "Salida desde Bayahíbe",
+          "description": "Confirma embarcación, seguridad y hora de regreso.",
+          "durationMinutes": 60,
+          "location": "Bayahíbe"
+        },
+        {
+          "title": "Tiempo en la isla",
+          "description": "Disfruta las áreas habilitadas sin dejar residuos.",
+          "durationMinutes": 300,
+          "location": "Isla Saona"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "DominicanRepublic-Saona-Island-3-1600x965.jpg",
+          "altText": "Costa tropical de Isla Saona",
+          "creditText": "Foto: Reynaldo Anibal",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:DominicanRepublic-Saona-Island-3-1600x965.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 1600,
+          "height": 965
+        },
+        {
+          "wikimediaFile": "Isla Saona (July 2026).jpg",
+          "altText": "Playa de arena clara en Isla Saona",
+          "creditText": "Foto: Lazar Perteši",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Isla_Saona_(July_2026).jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 1200,
+          "height": 1600
+        },
+        {
+          "wikimediaFile": "Saona Island December 2020.jpg",
+          "altText": "Palmeras y mar en Isla Saona",
+          "creditText": "Foto: Danu Widjajanto",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Saona_Island_December_2020.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3456,
+          "height": 2304
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "pickupInformation": "El transporte acuático se contrata por separado.",
+      "accessibilityInformation": "El embarque y la arena pueden dificultar el acceso.",
+      "slug": "dia-isla-catalina",
+      "title": "Día de costa en Isla Catalina",
+      "shortDescription": "Conoce las playas y el paisaje marino de esta isla cercana a La Romana.",
+      "description": "Isla Catalina ofrece una costa de arena clara y zonas marinas visitadas desde La Romana o Bayahíbe. Organiza el traslado con un prestador formal y acuerda antes de abordar todos los servicios y la hora de regreso.",
+      "durationMinutes": 360,
+      "meetingPointInstructions": "Confirma el muelle y la embarcación con el prestador seleccionado en La Romana o Bayahíbe.",
+      "whatIsNotIncluded": [
+        "Traslado en bote",
+        "Alimentos y bebidas",
+        "Equipo de playa o esnórquel"
+      ],
+      "whatToBring": [
+        "Traje de baño",
+        "Toalla",
+        "Agua",
+        "Protección solar"
+      ],
+      "guestRequirements": "Revisa las condiciones marítimas y utiliza chaleco salvavidas durante los traslados.",
+      "difficulty": "Easy",
+      "tags": [
+        "isla catalina",
+        "la romana",
+        "playa",
+        "caribe"
+      ],
+      "location": "Isla Catalina, La Romana",
+      "latitude": 18.357,
+      "longitude": -69.012,
+      "category": "Acuático",
+      "itinerary": [
+        {
+          "title": "Traslado a la isla",
+          "description": "Viaja con el prestador elegido y sigue las instrucciones de seguridad.",
+          "durationMinutes": 45,
+          "location": "La Romana"
+        },
+        {
+          "title": "Tiempo junto al mar",
+          "description": "Disfruta la costa y vuelve al punto acordado a tiempo.",
+          "durationMinutes": 240,
+          "location": "Isla Catalina"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Catalina Island, La Romana, Dominican Republic. Coast line view.jpg",
+          "altText": "Costa de Isla Catalina en La Romana",
+          "creditText": "Foto: Mstyslav Chernov",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Catalina_Island,_La_Romana,_Dominican_Republic._Coast_line_view.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 3000,
+          "height": 1996
+        },
+        {
+          "wikimediaFile": "Catalina Island, La Romana, Dominican Republic. A line of bright painted bungalows nearby the cost line, shaded with palm trees (landscape).jpg",
+          "altText": "Bungalós coloridos y palmeras en Isla Catalina",
+          "creditText": "Foto: Mstyslav Chernov",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Catalina_Island,_La_Romana,_Dominican_Republic._A_line_of_bright_painted_bungalows_nearby_the_cost_line,_shaded_with_palm_trees_(landscape).jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 3000,
+          "height": 1996
+        },
+        {
+          "wikimediaFile": "Catalina Island, La Romana, Dominican Republic. A typical bungalow nearby cost line, shaded with palm trees (1).jpg",
+          "altText": "Playa y vegetación de Isla Catalina",
+          "creditText": "Foto: Mstyslav Chernov",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Catalina_Island,_La_Romana,_Dominican_Republic._A_typical_bungalow_nearby_cost_line,_shaded_with_palm_trees_(1).jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 3000,
+          "height": 1996
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "Hay calles empedradas, desniveles y escaleras en parte del recorrido.",
+      "slug": "recorrido-altos-de-chavon",
+      "title": "Recorrido por Altos de Chavón",
+      "shortDescription": "Camina entre plazas de piedra y miradores sobre el río Chavón.",
+      "description": "Altos de Chavón es un conjunto cultural de arquitectura inspirada en pueblos mediterráneos, ubicado dentro de Casa de Campo. La visita permite recorrer sus calles, observar el anfiteatro y contemplar el valle del río.",
+      "durationMinutes": 150,
+      "meetingPointInstructions": "Confirma el acceso para visitantes y comienza en la plaza principal de Altos de Chavón.",
+      "whatIsNotIncluded": [
+        "Entrada al complejo",
+        "Transporte",
+        "Acceso a eventos o museos"
+      ],
+      "whatToBring": [
+        "Calzado cómodo",
+        "Agua",
+        "Protección solar"
+      ],
+      "guestRequirements": "Consulta previamente horarios, tarifas y condiciones de acceso de Casa de Campo.",
+      "difficulty": "Easy",
+      "tags": [
+        "altos de chavón",
+        "la romana",
+        "arquitectura",
+        "cultura"
+      ],
+      "location": "Altos de Chavón, La Romana",
+      "latitude": 18.423,
+      "longitude": -68.889,
+      "category": "Arte y cultura",
+      "itinerary": [
+        {
+          "title": "Plaza y calles de piedra",
+          "description": "Recorre el centro del conjunto y observa su arquitectura.",
+          "durationMinutes": 60,
+          "location": "Altos de Chavón"
+        },
+        {
+          "title": "Mirador del río",
+          "description": "Contempla el valle desde un punto habilitado.",
+          "durationMinutes": 30,
+          "location": "Río Chavón"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Altos De Chavon, Boca Chica, Dominican Republic - panoramio.jpg",
+          "altText": "Arquitectura de piedra en Altos de Chavón",
+          "creditText": "Foto: Максим Улитин",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Altos_De_Chavon,_Boca_Chica,_Dominican_Republic_-_panoramio.jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 3008,
+          "height": 2000
+        },
+        {
+          "wikimediaFile": "Altos De Chavon, Boca Chica, Dominican Republic - panoramio (2).jpg",
+          "altText": "Calles y edificios de Altos de Chavón",
+          "creditText": "Foto: Максим Улитин",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Altos_De_Chavon,_Boca_Chica,_Dominican_Republic_-_panoramio_(2).jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 3008,
+          "height": 2000
+        },
+        {
+          "wikimediaFile": "Altos De Chavon, Boca Chica, Dominican Republic - panoramio (3).jpg",
+          "altText": "Vista del conjunto cultural Altos de Chavón",
+          "creditText": "Foto: Максим Улитин",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Altos_De_Chavon,_Boca_Chica,_Dominican_Republic_-_panoramio_(3).jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 3008,
+          "height": 2000
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "La arena limita el desplazamiento; algunos accesos cercanos cuentan con superficies firmes.",
+      "slug": "playa-boca-chica",
+      "title": "Paseo por la playa de Boca Chica",
+      "shortDescription": "Disfruta una costa de aguas tranquilas cerca de Santo Domingo.",
+      "description": "Boca Chica es una playa urbana protegida parcialmente por un arrecife. Puedes caminar por la orilla, descansar en las áreas públicas y elegir los servicios que necesites directamente en el lugar.",
+      "durationMinutes": 180,
+      "meetingPointInstructions": "Elige un acceso público visible y acuerda un punto de encuentro antes de separarte del grupo.",
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Alimentos y bebidas",
+        "Sillas o equipo de playa"
+      ],
+      "whatToBring": [
+        "Traje de baño",
+        "Toalla",
+        "Agua",
+        "Protección solar"
+      ],
+      "guestRequirements": "Cuida tus pertenencias y evita entrar al agua si las condiciones no son seguras.",
+      "difficulty": "Easy",
+      "tags": [
+        "boca chica",
+        "playa",
+        "santo domingo",
+        "caribe"
+      ],
+      "location": "Boca Chica, Santo Domingo",
+      "latitude": 18.451,
+      "longitude": -69.607,
+      "category": "Acuático",
+      "itinerary": [
+        {
+          "title": "Caminata por la orilla",
+          "description": "Recorre un tramo de playa y reconoce el punto de regreso.",
+          "durationMinutes": 45,
+          "location": "Playa Boca Chica"
+        },
+        {
+          "title": "Descanso frente al mar",
+          "description": "Disfruta el área pública y conserva limpio tu espacio.",
+          "durationMinutes": 90,
+          "location": "Boca Chica"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Boca Chica RD 12 2017 6442.jpg",
+          "altText": "Vista panorámica de Boca Chica",
+          "creditText": "Foto: Mariordo (Mario Roberto Durán Ortiz)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Boca_Chica_RD_12_2017_6442.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3000,
+          "height": 2000
+        },
+        {
+          "wikimediaFile": "RD Boca Chica 03 2017 2179.jpg",
+          "altText": "Aguas y playa de Boca Chica",
+          "creditText": "Foto: Mariordo (Mario Roberto Durán Ortiz)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:RD_Boca_Chica_03_2017_2179.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3000,
+          "height": 2000
+        },
+        {
+          "wikimediaFile": "RD Boca Chica panorama 03 2017 2213.jpg",
+          "altText": "Panorama costero de Boca Chica",
+          "creditText": "Foto: Mariordo (Mario Roberto Durán Ortiz)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:RD_Boca_Chica_panorama_03_2017_2213.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3645,
+          "height": 1400
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "Existen tramos con aceras amplias, aunque las condiciones cambian a lo largo de la avenida.",
+      "slug": "paseo-malecon-santo-domingo",
+      "title": "Paseo por el Malecón de Santo Domingo",
+      "shortDescription": "Recorre la avenida costera y contempla el Caribe desde la ciudad.",
+      "description": "La avenida George Washington acompaña gran parte del litoral de Santo Domingo. Esta ruta propone caminar por un tramo concurrido y seguro, observar el paisaje marino y hacer pausas en espacios públicos.",
+      "durationMinutes": 90,
+      "meetingPointInstructions": "Comienza en un punto visible de la avenida George Washington y define el lugar de regreso.",
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Alimentos y bebidas",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Calzado cómodo",
+        "Protección solar"
+      ],
+      "guestRequirements": "Realiza el paseo con buena visibilidad y utiliza cruces peatonales habilitados.",
+      "difficulty": "Easy",
+      "tags": [
+        "malecón",
+        "santo domingo",
+        "costa",
+        "paseo"
+      ],
+      "location": "Malecón de Santo Domingo, Distrito Nacional",
+      "latitude": 18.466,
+      "longitude": -69.902,
+      "category": "Naturaleza",
+      "itinerary": [
+        {
+          "title": "Ruta frente al Caribe",
+          "description": "Camina por el paseo marítimo manteniéndote en las áreas peatonales.",
+          "durationMinutes": 60,
+          "location": "Avenida George Washington"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Av. George Washington 457, Santo Domingo, Dominican Republic - panoramio.jpg",
+          "altText": "Avenida George Washington frente al mar Caribe",
+          "creditText": "Foto: 何一峰",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Av._George_Washington_457,_Santo_Domingo,_Dominican_Republic_-_panoramio.jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 3328,
+          "height": 1872
+        },
+        {
+          "wikimediaFile": "DO-santo domingo, republica dominicana, 2013 photo (30).JPG",
+          "altText": "Litoral del Malecón de Santo Domingo",
+          "creditText": "Foto: Soman",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:DO-santo_domingo,_republica_dominicana,_2013_photo_(30).JPG",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 1600,
+          "height": 1200
+        },
+        {
+          "wikimediaFile": "DO-santo domingo, republica dominicana, 2013 photo (31).JPG",
+          "altText": "Vista urbana y costera del Malecón",
+          "creditText": "Foto: Soman",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:DO-santo_domingo,_republica_dominicana,_2013_photo_(31).JPG",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 1600,
+          "height": 1200
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "El recorrido incluye numerosas escaleras y superficies húmedas.",
+      "slug": "parque-los-tres-ojos",
+      "title": "Recorrido por Los Tres Ojos",
+      "shortDescription": "Descubre lagos subterráneos y formaciones de roca en Santo Domingo Este.",
+      "description": "El Parque Nacional Los Tres Ojos reúne cavernas abiertas y lagos de agua dulce. El recorrido se realiza por senderos y escaleras dentro del parque, con puntos de observación de sus formaciones naturales.",
+      "durationMinutes": 120,
+      "meetingPointInstructions": "Comienza en la entrada oficial del Parque Nacional Los Tres Ojos.",
+      "whatIsNotIncluded": [
+        "Entrada al parque",
+        "Transporte",
+        "Guía presencial",
+        "Cruce opcional en bote"
+      ],
+      "whatToBring": [
+        "Calzado con buen agarre",
+        "Agua",
+        "Repelente"
+      ],
+      "guestRequirements": "Consulta los horarios y sigue las barandas y rutas habilitadas.",
+      "difficulty": "Moderate",
+      "tags": [
+        "los tres ojos",
+        "cuevas",
+        "santo domingo este",
+        "lagos"
+      ],
+      "location": "Los Tres Ojos, Santo Domingo Este",
+      "latitude": 18.481,
+      "longitude": -69.843,
+      "category": "Naturaleza",
+      "itinerary": [
+        {
+          "title": "Circuito de lagos",
+          "description": "Sigue la ruta señalizada entre las cavernas y miradores.",
+          "durationMinutes": 75,
+          "location": "Parque Nacional Los Tres Ojos"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Los Tres Ojos 762.jpg",
+          "altText": "Lago dentro del Parque Los Tres Ojos",
+          "creditText": "Foto: Jos1950",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Los_Tres_Ojos_762.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4272,
+          "height": 2848
+        },
+        {
+          "wikimediaFile": "Santo Domingo Este - Los Tres Ojos 0014.JPG",
+          "altText": "Escaleras y vegetación de Los Tres Ojos",
+          "creditText": "Foto: Phyrexian",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santo_Domingo_Este_-_Los_Tres_Ojos_0014.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 6000,
+          "height": 4000
+        },
+        {
+          "wikimediaFile": "Santo Domingo Este - Los Tres Ojos 0116.JPG",
+          "altText": "Formación rocosa y agua en Los Tres Ojos",
+          "creditText": "Foto: Phyrexian",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santo_Domingo_Este_-_Los_Tres_Ojos_0116.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4000,
+          "height": 6000
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "El terreno natural, el calor y algunas pendientes pueden dificultar el recorrido.",
+      "slug": "mirador-el-morro-monte-cristi",
+      "title": "Mirador de El Morro en Monte Cristi",
+      "shortDescription": "Contempla una de las siluetas costeras más singulares del noroeste.",
+      "description": "El Morro se eleva frente a la costa de Monte Cristi y ofrece un paisaje de acantilados, mar y vegetación seca. La propuesta se concentra en miradores y accesos autorizados, sin asumir una ruta de escalada.",
+      "durationMinutes": 120,
+      "meetingPointInstructions": "Utiliza el acceso reconocido del Parque Nacional El Morro y confirma el horario de cierre.",
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Entrada o permisos",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua suficiente",
+        "Sombrero",
+        "Protección solar",
+        "Calzado cerrado"
+      ],
+      "guestRequirements": "No te acerques a bordes inestables ni abandones los senderos permitidos.",
+      "difficulty": "Moderate",
+      "tags": [
+        "monte cristi",
+        "el morro",
+        "acantilado",
+        "mirador"
+      ],
+      "location": "El Morro, Monte Cristi",
+      "latitude": 19.879,
+      "longitude": -71.653,
+      "category": "Naturaleza",
+      "itinerary": [
+        {
+          "title": "Vista del promontorio",
+          "description": "Observa El Morro y la costa desde las áreas seguras.",
+          "durationMinutes": 60,
+          "location": "Parque Nacional El Morro"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Montecristi Dominican Republic El Morro.jpg",
+          "altText": "Promontorio de El Morro en Monte Cristi",
+          "creditText": "Foto: Ultimo1988",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Montecristi_Dominican_Republic_El_Morro.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 1160,
+          "height": 1547
+        },
+        {
+          "wikimediaFile": "Montecristi Dominican Republic El Morro 2.jpg",
+          "altText": "Costa y relieve de El Morro",
+          "creditText": "Foto: Ultimo1988",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Montecristi_Dominican_Republic_El_Morro_2.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 1680,
+          "height": 840
+        },
+        {
+          "wikimediaFile": "Montecristi Dominican Republic El Morro 3.jpg",
+          "altText": "Vista panorámica de El Morro y el mar",
+          "creditText": "Foto: Ultimo1988",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Montecristi_Dominican_Republic_El_Morro_3.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 1200,
+          "height": 1600
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "minimumAge": 8,
+      "accessibilityInformation": "La actividad incluye senderismo, agua, rocas resbaladizas y desniveles.",
+      "slug": "aventura-charcos-damajagua",
+      "title": "Prepara la aventura en los Charcos de Damajagua",
+      "shortDescription": "Organiza una ruta guiada entre cascadas y pozas naturales cerca de Imbert.",
+      "description": "Los Charcos de Damajagua forman un circuito de cañones, saltos y pozas que debe realizarse con guía y equipo de seguridad. La cantidad de charcos disponibles depende de las condiciones y la operación del parque.",
+      "durationMinutes": 240,
+      "meetingPointInstructions": "Llega al centro de visitantes de Damajagua y confirma la ruta disponible.",
+      "whatIsNotIncluded": [
+        "Entrada",
+        "Guía obligatorio",
+        "Equipo de seguridad",
+        "Transporte"
+      ],
+      "whatToBring": [
+        "Calzado acuático sujeto al pie",
+        "Ropa para mojarse",
+        "Toalla",
+        "Agua"
+      ],
+      "guestRequirements": "Sigue al guía, utiliza casco y chaleco, y no realices saltos fuera de la ruta autorizada.",
+      "difficulty": "Demanding",
+      "tags": [
+        "damajagua",
+        "cascadas",
+        "imbert",
+        "aventura"
+      ],
+      "location": "27 Charcos de Damajagua, Puerto Plata",
+      "latitude": 19.737,
+      "longitude": -70.813,
+      "category": "Aventura",
+      "itinerary": [
+        {
+          "title": "Registro y equipo",
+          "description": "Confirma el circuito disponible y recibe las indicaciones de seguridad.",
+          "durationMinutes": 45,
+          "location": "Centro de visitantes"
+        },
+        {
+          "title": "Circuito guiado",
+          "description": "Recorre únicamente los charcos habilitados con el guía.",
+          "durationMinutes": 150,
+          "location": "Río Damajagua"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "27 Charcas rio Damajagua - panoramio.jpg",
+          "altText": "Poza natural en los Charcos de Damajagua",
+          "creditText": "Foto: kikeam71",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:27_Charcas_rio_Damajagua_-_panoramio.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 2189,
+          "height": 1642
+        },
+        {
+          "wikimediaFile": "Damajagua Tours.jpg",
+          "altText": "Visitantes con equipo en Damajagua",
+          "creditText": "Foto: Funcheta",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Damajagua_Tours.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4000,
+          "height": 3200
+        },
+        {
+          "wikimediaFile": "Damajagua Waterfall.jpg",
+          "altText": "Cascada entre rocas en Damajagua",
+          "creditText": "Foto: Funcheta",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Damajagua_Waterfall.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4800,
+          "height": 3200
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "La arena limita el acceso; las condiciones de viento y oleaje cambian durante el día.",
+      "slug": "playa-y-ambiente-cabarete",
+      "title": "Playa y ambiente de Cabarete",
+      "shortDescription": "Conoce una costa reconocida por el viento, los deportes y su ambiente relajado.",
+      "description": "Cabarete combina una playa extensa con escuelas y zonas dedicadas a deportes de viento. Puedes caminar por la costa y observar la actividad; cualquier clase o alquiler debe coordinarse directamente con prestadores formales.",
+      "durationMinutes": 180,
+      "meetingPointInstructions": "Elige un acceso público y reconoce las zonas destinadas a bañistas y deportes.",
+      "whatIsNotIncluded": [
+        "Clases deportivas",
+        "Alquiler de equipo",
+        "Transporte",
+        "Alimentos y bebidas"
+      ],
+      "whatToBring": [
+        "Protección solar",
+        "Agua",
+        "Traje de baño",
+        "Toalla"
+      ],
+      "guestRequirements": "Mantén distancia de cometas, tablas y áreas deportivas activas.",
+      "difficulty": "Easy",
+      "tags": [
+        "cabarete",
+        "playa",
+        "kitesurf",
+        "puerto plata"
+      ],
+      "location": "Cabarete, Puerto Plata",
+      "latitude": 19.758,
+      "longitude": -70.419,
+      "category": "Deportes",
+      "itinerary": [
+        {
+          "title": "Paseo por la costa",
+          "description": "Recorre la playa identificando las áreas deportivas.",
+          "durationMinutes": 60,
+          "location": "Playa Cabarete"
+        },
+        {
+          "title": "Descanso frente al mar",
+          "description": "Elige una zona segura fuera de las maniobras deportivas.",
+          "durationMinutes": 90,
+          "location": "Cabarete"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Cabarete, Dominican Republic (8644953576).jpg",
+          "altText": "Playa de Cabarete en Puerto Plata",
+          "creditText": "Foto: Alex Proimos from Sydney, Australia",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Cabarete,_Dominican_Republic_(8644953576).jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "width": 4287,
+          "height": 2411
+        },
+        {
+          "wikimediaFile": "Cabarete beach - panoramio.jpg",
+          "altText": "Costa y ambiente de Cabarete",
+          "creditText": "Foto: Maris Teteris",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Cabarete_beach_-_panoramio.jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 3456,
+          "height": 2304
+        },
+        {
+          "wikimediaFile": "Kitebeach at cabarete 2.JPG",
+          "altText": "Cometas sobre Kite Beach en Cabarete",
+          "creditText": "Foto: aroom",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Kitebeach_at_cabarete_2.JPG",
+          "licenseName": "CC BY-SA 2.5",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.5",
+          "width": 1600,
+          "height": 1200
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "La arena y algunos accesos con pendiente pueden dificultar el desplazamiento.",
+      "slug": "dia-playa-sosua",
+      "title": "Día de playa en Sosúa",
+      "shortDescription": "Descansa frente a una bahía protegida de la costa norte.",
+      "description": "La playa de Sosúa se encuentra en una bahía de aguas azules rodeada de vegetación y servicios. Esta ficha propone una visita por cuenta propia, confirmando en el lugar cualquier consumo, alquiler o actividad acuática.",
+      "durationMinutes": 240,
+      "meetingPointInstructions": "Entra por un acceso público y acuerda un punto de encuentro visible.",
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Alimentos y bebidas",
+        "Equipo acuático",
+        "Sillas de playa"
+      ],
+      "whatToBring": [
+        "Traje de baño",
+        "Toalla",
+        "Agua",
+        "Protección solar"
+      ],
+      "guestRequirements": "Consulta el estado del mar y cuida tus pertenencias durante la visita.",
+      "difficulty": "Easy",
+      "tags": [
+        "sosúa",
+        "playa",
+        "puerto plata",
+        "bahía"
+      ],
+      "location": "Playa Sosúa, Puerto Plata",
+      "latitude": 19.752,
+      "longitude": -70.519,
+      "category": "Acuático",
+      "itinerary": [
+        {
+          "title": "Vista de la bahía",
+          "description": "Reconoce la playa y el punto de salida antes de instalarte.",
+          "durationMinutes": 30,
+          "location": "Playa Sosúa"
+        },
+        {
+          "title": "Tiempo junto al mar",
+          "description": "Disfruta la zona pública y retira tus residuos.",
+          "durationMinutes": 180,
+          "location": "Bahía de Sosúa"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "City of Sosua, Dominican Republic, Aerial View.jpg",
+          "altText": "Vista aérea de la bahía de Sosúa",
+          "creditText": "Foto: Alub70",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:City_of_Sosua,_Dominican_Republic,_Aerial_View.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 1600,
+          "height": 1047
+        },
+        {
+          "wikimediaFile": "Parasols and palms at Sosua Beach - panoramio.jpg",
+          "altText": "Palmeras y sombrillas en Playa Sosúa",
+          "creditText": "Foto: Scotia",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Parasols_and_palms_at_Sosua_Beach_-_panoramio.jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 1280,
+          "height": 863
+        },
+        {
+          "wikimediaFile": "Sosua Beach Dominican Republic.jpg",
+          "altText": "Arena y mar en Playa Sosúa",
+          "creditText": "Foto: stupiddingo",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Sosua_Beach_Dominican_Republic.jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "width": 3648,
+          "height": 2736
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "El centro incluye superficies firmes; las pendientes y aceras varían según la calle.",
+      "slug": "paseo-urbano-constanza",
+      "title": "Paseo urbano por Constanza",
+      "shortDescription": "Descubre el ambiente de valle y montaña de una de las ciudades más altas del país.",
+      "description": "Constanza sirve como punto de partida para numerosos paisajes de la Cordillera Central. Este paseo corto se concentra en su centro urbano, sus vistas de montaña y espacios públicos, sin entrar en fincas o propiedades privadas.",
+      "durationMinutes": 120,
+      "meetingPointInstructions": "Comienza en el Parque Anacaona o en otro punto público céntrico y visible.",
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Visitas a fincas",
+        "Alimentos y bebidas",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Abrigo ligero",
+        "Agua",
+        "Calzado cómodo",
+        "Protección solar"
+      ],
+      "guestRequirements": "Consulta el clima y evita caminar por vías sin espacio peatonal.",
+      "difficulty": "Easy",
+      "tags": [
+        "constanza",
+        "montaña",
+        "valle",
+        "pueblo"
+      ],
+      "location": "Constanza, La Vega",
+      "latitude": 18.91,
+      "longitude": -70.744,
+      "category": "Arte y cultura",
+      "itinerary": [
+        {
+          "title": "Centro de Constanza",
+          "description": "Recorre calles céntricas y espacios públicos a tu ritmo.",
+          "durationMinutes": 60,
+          "location": "Constanza"
+        },
+        {
+          "title": "Vista del valle",
+          "description": "Busca un punto público seguro para contemplar las montañas.",
+          "durationMinutes": 30,
+          "location": "Valle de Constanza"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Constanza (15196384558).jpg",
+          "altText": "Paisaje urbano y montañoso de Constanza",
+          "creditText": "Foto: Angel Ramos G",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Constanza_(15196384558).jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "width": 5184,
+          "height": 3456
+        },
+        {
+          "wikimediaFile": "Constanza Dominican Republic.jpg",
+          "altText": "Vista del valle de Constanza",
+          "creditText": "Foto: CristoRey99",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Constanza_Dominican_Republic.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 1476,
+          "height": 959
+        },
+        {
+          "wikimediaFile": "Constanza, Dominican Republic downtown parade.jpg",
+          "altText": "Centro urbano de Constanza",
+          "creditText": "Foto: Constanzano99",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Constanza,_Dominican_Republic_downtown_parade.jpg",
+          "licenseName": "CC0",
+          "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+          "width": 895,
+          "height": 537
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "Las aceras y cruces presentan condiciones variables a lo largo de la ruta.",
+      "slug": "centro-historico-san-pedro-macoris",
+      "title": "Centro histórico de San Pedro de Macorís",
+      "shortDescription": "Recorre plazas y edificios que cuentan la historia urbana del este.",
+      "description": "San Pedro de Macorís conserva arquitectura vinculada a su desarrollo portuario y azucarero. Esta caminata conecta espacios públicos del centro y permite observar fachadas históricas sin depender de horarios de visita interior.",
+      "durationMinutes": 120,
+      "meetingPointInstructions": "Comienza en el Parque Duarte de San Pedro de Macorís.",
+      "whatIsNotIncluded": [
+        "Entradas a edificios",
+        "Transporte",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Calzado cómodo",
+        "Protección solar"
+      ],
+      "guestRequirements": "Utiliza cruces peatonales y observa los edificios desde espacios públicos.",
+      "difficulty": "Easy",
+      "tags": [
+        "san pedro de macorís",
+        "historia",
+        "arquitectura",
+        "este"
+      ],
+      "location": "San Pedro de Macorís",
+      "latitude": 18.453,
+      "longitude": -69.307,
+      "category": "Historia",
+      "itinerary": [
+        {
+          "title": "Parque Duarte",
+          "description": "Observa el entorno del parque y sus edificios cercanos.",
+          "durationMinutes": 40,
+          "location": "Parque Duarte"
+        },
+        {
+          "title": "Calles históricas",
+          "description": "Continúa por vías céntricas manteniéndote en las aceras.",
+          "durationMinutes": 50,
+          "location": "Centro de San Pedro de Macorís"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "San Pedro De Macoris 21000, Dominican Republic - panoramio.jpg",
+          "altText": "Edificio urbano de San Pedro de Macorís",
+          "creditText": "Foto: Максим Улитин",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:San_Pedro_De_Macoris_21000,_Dominican_Republic_-_panoramio.jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 5184,
+          "height": 3456
+        },
+        {
+          "wikimediaFile": "San Pedro De Macoris 21000, Dominican Republic - panoramio (10).jpg",
+          "altText": "Calle del centro de San Pedro de Macorís",
+          "creditText": "Foto: Максим Улитин",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:San_Pedro_De_Macoris_21000,_Dominican_Republic_-_panoramio_(10).jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 2160,
+          "height": 3840
+        },
+        {
+          "wikimediaFile": "San Pedro De Macoris 21000, Dominican Republic - panoramio (12).jpg",
+          "altText": "Arquitectura histórica de San Pedro de Macorís",
+          "creditText": "Foto: Максим Улитин",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:San_Pedro_De_Macoris_21000,_Dominican_Republic_-_panoramio_(12).jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 5184,
+          "height": 3456
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "La plaza es amplia; el edificio histórico puede presentar barreras de acceso.",
+      "slug": "visita-alcazar-de-colon",
+      "title": "Visita al entorno del Alcázar de Colón",
+      "shortDescription": "Observa uno de los edificios más emblemáticos de la Plaza de España.",
+      "description": "El Alcázar de Colón domina la Plaza de España en la Ciudad Colonial. Puedes apreciar su arquitectura exterior y combinar el paseo con una visita al museo si sus horarios y condiciones lo permiten.",
+      "durationMinutes": 90,
+      "meetingPointInstructions": "Comienza en la Plaza de España, frente al Alcázar de Colón.",
+      "whatIsNotIncluded": [
+        "Entrada al museo",
+        "Guía presencial",
+        "Transporte"
+      ],
+      "whatToBring": [
+        "Calzado cómodo",
+        "Agua",
+        "Protección solar"
+      ],
+      "guestRequirements": "Verifica los horarios vigentes antes de planear una visita interior.",
+      "difficulty": "Easy",
+      "tags": [
+        "alcázar de colón",
+        "ciudad colonial",
+        "museo",
+        "historia"
+      ],
+      "location": "Plaza de España, Santo Domingo",
+      "latitude": 18.477,
+      "longitude": -69.883,
+      "category": "Historia",
+      "itinerary": [
+        {
+          "title": "Plaza de España",
+          "description": "Observa la fachada y el entorno monumental del alcázar.",
+          "durationMinutes": 45,
+          "location": "Alcázar de Colón"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Santo Domingo - Alcazar de Colon 01.JPG",
+          "altText": "Fachada del Alcázar de Colón",
+          "creditText": "Foto: Martin Falbisoner",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santo_Domingo_-_Alcazar_de_Colon_01.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4478,
+          "height": 2342
+        },
+        {
+          "wikimediaFile": "Santo Domingo - Alcazar de Colon 02.JPG",
+          "altText": "Arcadas de piedra del Alcázar de Colón",
+          "creditText": "Foto: Martin Falbisoner",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santo_Domingo_-_Alcazar_de_Colon_02.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 2894,
+          "height": 1859
+        },
+        {
+          "wikimediaFile": "Santo Domingo - Alcázar de Colón 0887.JPG",
+          "altText": "Alcázar de Colón visto desde la Plaza de España",
+          "creditText": "Foto: Phyrexian",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santo_Domingo_-_Alc%C3%A1zar_de_Col%C3%B3n_0887.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4000,
+          "height": 6000
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "Hay piedra, escalones y superficies históricas irregulares.",
+      "slug": "recorrido-fortaleza-ozama",
+      "title": "Recorrido por la Fortaleza Ozama",
+      "shortDescription": "Conoce una fortificación histórica junto al río Ozama.",
+      "description": "La Fortaleza Ozama forma parte del conjunto monumental de la Ciudad Colonial. Su entorno permite observar muros, patios y vistas del río; el acceso interior depende de los horarios y condiciones vigentes.",
+      "durationMinutes": 90,
+      "meetingPointInstructions": "Comienza frente a la entrada oficial de la Fortaleza Ozama en la calle Las Damas.",
+      "whatIsNotIncluded": [
+        "Entrada",
+        "Guía presencial",
+        "Transporte"
+      ],
+      "whatToBring": [
+        "Calzado cómodo",
+        "Agua",
+        "Protección solar"
+      ],
+      "guestRequirements": "Consulta los horarios y evita subir a zonas cerradas o no señalizadas.",
+      "difficulty": "Easy",
+      "tags": [
+        "fortaleza ozama",
+        "ciudad colonial",
+        "historia",
+        "río ozama"
+      ],
+      "location": "Fortaleza Ozama, Santo Domingo",
+      "latitude": 18.474,
+      "longitude": -69.882,
+      "category": "Historia",
+      "itinerary": [
+        {
+          "title": "Murallas y patio",
+          "description": "Recorre las áreas habilitadas y observa la Torre del Homenaje.",
+          "durationMinutes": 60,
+          "location": "Fortaleza Ozama"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Santo Domingo - Fortaleza Ozama 0805.JPG",
+          "altText": "Torre y murallas de la Fortaleza Ozama",
+          "creditText": "Foto: Phyrexian",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santo_Domingo_-_Fortaleza_Ozama_0805.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 6000,
+          "height": 4000
+        },
+        {
+          "wikimediaFile": "Santo Domingo - Fortaleza Ozama 0813.JPG",
+          "altText": "Patio de piedra de la Fortaleza Ozama",
+          "creditText": "Foto: Phyrexian",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santo_Domingo_-_Fortaleza_Ozama_0813.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 6000,
+          "height": 4000
+        },
+        {
+          "wikimediaFile": "Santo Domingo - Fortaleza Ozama 0823.JPG",
+          "altText": "Fortaleza Ozama en la Ciudad Colonial",
+          "creditText": "Foto: Phyrexian",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santo_Domingo_-_Fortaleza_Ozama_0823.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 6000,
+          "height": 4000
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "El parque tiene superficies firmes; algunos accesos al edificio histórico pueden presentar desniveles.",
+      "slug": "catedral-primada-y-parque-colon",
+      "title": "Catedral Primada y Parque Colón",
+      "shortDescription": "Descubre el corazón monumental de la Ciudad Colonial.",
+      "description": "El Parque Colón y la Catedral Primada forman uno de los conjuntos urbanos más visitados de Santo Domingo. El paseo exterior permite apreciar fachadas, plazas y vida cotidiana; la entrada al templo depende de sus normas y horarios.",
+      "durationMinutes": 75,
+      "meetingPointInstructions": "Reúnete junto a la estatua de Cristóbal Colón en el centro del parque.",
+      "whatIsNotIncluded": [
+        "Entrada o donaciones",
+        "Guía presencial",
+        "Transporte"
+      ],
+      "whatToBring": [
+        "Calzado cómodo",
+        "Agua"
+      ],
+      "guestRequirements": "Respeta las celebraciones religiosas y la vestimenta solicitada si accedes al templo.",
+      "difficulty": "Easy",
+      "tags": [
+        "catedral primada",
+        "parque colón",
+        "ciudad colonial",
+        "arquitectura"
+      ],
+      "location": "Parque Colón, Santo Domingo",
+      "latitude": 18.472,
+      "longitude": -69.884,
+      "category": "Historia",
+      "itinerary": [
+        {
+          "title": "Parque Colón",
+          "description": "Observa la plaza y sus fachadas históricas.",
+          "durationMinutes": 30,
+          "location": "Parque Colón"
+        },
+        {
+          "title": "Exterior de la catedral",
+          "description": "Aprecia los detalles de la fachada desde el espacio público.",
+          "durationMinutes": 25,
+          "location": "Catedral Primada de América"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Dominican Republic, Santo Domingo, Cathedral of Santo Domingo.jpg",
+          "altText": "Catedral Primada de América en Santo Domingo",
+          "creditText": "Foto: Dr. Thomas Liptak",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Dominican_Republic,_Santo_Domingo,_Cathedral_of_Santo_Domingo.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 5184,
+          "height": 3456
+        },
+        {
+          "wikimediaFile": "Santo Domingo - Catedral Santa Maria La Menor 01.JPG",
+          "altText": "Fachada de la Catedral Santa María la Menor",
+          "creditText": "Foto: Martin Falbisoner",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santo_Domingo_-_Catedral_Santa_Maria_La_Menor_01.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4331,
+          "height": 2828
+        },
+        {
+          "wikimediaFile": "Santo Domingo - Catedral Santa Maria La Menor 02.JPG",
+          "altText": "Detalle exterior de la Catedral Primada",
+          "creditText": "Foto: Martin Falbisoner",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Santo_Domingo_-_Catedral_Santa_Maria_La_Menor_02.JPG",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4957,
+          "height": 3339
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "pickupInformation": "El transporte o acceso disponible se contrata por separado.",
+      "accessibilityInformation": "La accesibilidad depende del medio de acceso; los jardines incluyen pendientes y superficies naturales.",
+      "slug": "isabel-de-torres-puerto-plata",
+      "title": "Paisaje de Isabel de Torres",
+      "shortDescription": "Contempla Puerto Plata y su costa desde la montaña.",
+      "description": "La loma Isabel de Torres ofrece vistas amplias de Puerto Plata, jardines y un ambiente más fresco. Antes de subir, confirma el medio de acceso disponible, las condiciones meteorológicas y el horario de regreso.",
+      "durationMinutes": 180,
+      "meetingPointInstructions": "Confirma el acceso habilitado y el punto exacto de salida antes de dirigirte a la montaña.",
+      "whatIsNotIncluded": [
+        "Transporte o acceso",
+        "Entrada",
+        "Guía presencial",
+        "Alimentos y bebidas"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Calzado cerrado",
+        "Protección solar",
+        "Abrigo ligero"
+      ],
+      "guestRequirements": "No utilices senderos cerrados y evita la visita cuando haya poca visibilidad o mal tiempo.",
+      "difficulty": "Moderate",
+      "tags": [
+        "isabel de torres",
+        "puerto plata",
+        "montaña",
+        "mirador"
+      ],
+      "location": "Loma Isabel de Torres, Puerto Plata",
+      "latitude": 19.763,
+      "longitude": -70.712,
+      "category": "Naturaleza",
+      "itinerary": [
+        {
+          "title": "Ascenso coordinado",
+          "description": "Utiliza el acceso habilitado y confirma la hora de regreso.",
+          "durationMinutes": 45,
+          "location": "Puerto Plata"
+        },
+        {
+          "title": "Jardines y miradores",
+          "description": "Recorre las áreas abiertas y contempla la costa.",
+          "durationMinutes": 90,
+          "location": "Isabel de Torres"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Car 2 for Mt. Isabel de Torres - panoramio.jpg",
+          "altText": "Acceso hacia la loma Isabel de Torres",
+          "creditText": "Foto: Scotia",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Car_2_for_Mt._Isabel_de_Torres_-_panoramio.jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 1280,
+          "height": 856
+        },
+        {
+          "wikimediaFile": "Seilbahn zum Pico Isabel de Torres.jpg",
+          "altText": "Vista del trayecto a Isabel de Torres",
+          "creditText": "Foto: Reimarhoven at de.wikipedia",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Seilbahn_zum_Pico_Isabel_de_Torres.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+          "width": 1024,
+          "height": 768
+        },
+        {
+          "wikimediaFile": "View over coast from Mt. Isabel de Torres - panoramio.jpg",
+          "altText": "Costa de Puerto Plata vista desde Isabel de Torres",
+          "creditText": "Foto: Scotia",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:View_over_coast_from_Mt._Isabel_de_Torres_-_panoramio.jpg",
+          "licenseName": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "width": 1280,
+          "height": 859
+        }
+      ]
+    },
+    {
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "price": 0,
+      "whatIsIncluded": [],
+      "accessibilityInformation": "La explanada dispone de superficies amplias; confirma el acceso interior disponible.",
+      "slug": "basilica-de-higuey",
+      "title": "Basílica de Higüey y su entorno",
+      "shortDescription": "Conoce un referente de la arquitectura religiosa dominicana.",
+      "description": "La Basílica Catedral Nuestra Señora de la Altagracia destaca por su gran arco y su importancia espiritual. Puedes recorrer el entorno exterior y entrar cuando las celebraciones y horarios permitan una visita respetuosa.",
+      "durationMinutes": 90,
+      "meetingPointInstructions": "Comienza en la explanada principal de la Basílica de Higüey.",
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Guía presencial",
+        "Donaciones"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Ropa adecuada para un templo"
+      ],
+      "guestRequirements": "Mantén silencio durante los servicios y sigue las indicaciones del recinto.",
+      "difficulty": "Easy",
+      "tags": [
+        "higüey",
+        "basílica",
+        "altagracia",
+        "arquitectura"
+      ],
+      "location": "Basílica de Higüey, La Altagracia",
+      "latitude": 18.617,
+      "longitude": -68.708,
+      "category": "Arte y cultura",
+      "itinerary": [
+        {
+          "title": "Explanada y fachada",
+          "description": "Observa la arquitectura exterior y el entorno del templo.",
+          "durationMinutes": 40,
+          "location": "Basílica de Higüey"
+        },
+        {
+          "title": "Visita respetuosa",
+          "description": "Accede únicamente si el horario y las actividades religiosas lo permiten.",
+          "durationMinutes": 30,
+          "location": "Basílica Catedral"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "BasilicaAtHiguey 1000W.jpg",
+          "altText": "Fachada de la Basílica de Higüey",
+          "creditText": "Foto: JohnHarvey at English Wikipedia",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:BasilicaAtHiguey_1000W.jpg",
+          "licenseName": "CC BY-SA 2.5",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.5",
+          "width": 1000,
+          "height": 664
+        },
+        {
+          "wikimediaFile": "Basilika Nuestra de la Altagracia.JPG",
+          "altText": "Arco principal de la Basílica Nuestra Señora de la Altagracia",
+          "creditText": "Foto: Andreas Volkmer",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Basilika_Nuestra_de_la_Altagracia.JPG",
+          "licenseName": "CC BY 2.5",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.5",
+          "width": 2304,
+          "height": 3072
+        },
+        {
+          "wikimediaFile": "BasílicaHigüey.jpg",
+          "altText": "Basílica de Higüey vista desde su explanada",
+          "creditText": "Foto: Celiovmota",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Bas%C3%ADlicaHig%C3%BCey.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 2284,
+          "height": 2304
+        }
+      ]
+    }
+  ]
+}

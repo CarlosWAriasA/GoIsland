@@ -1,3 +1,4 @@
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Hosts;
 
 namespace GoIsland.Api.Services.Hosts;
@@ -26,7 +27,7 @@ public interface IHostService
     Task<HostOperationResult> ApplyAsync(int userId, HostApplicationRequest request);
     Task<HostProfileResponse?> GetMineAsync(int userId);
     Task<HostOperationResult> UpdateMineAsync(int userId, UpdateHostProfileRequest request);
-    Task<IReadOnlyCollection<HostProfileResponse>> GetForAdminAsync(string? status);
+    Task<PagedResponse<HostProfileResponse>> GetForAdminAsync(HostApplicationListRequest request);
     Task<HostProfileResponse?> GetByIdForAdminAsync(int id);
     Task<HostOperationResult> ReviewAsync(
         int id,

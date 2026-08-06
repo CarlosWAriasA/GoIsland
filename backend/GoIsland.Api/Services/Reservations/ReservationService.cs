@@ -1,10 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
 using GoIsland.Api.Data;
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Reservations;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Notifications;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace GoIsland.Api.Services.Reservations;
 
@@ -14,17 +16,23 @@ public class ReservationService : IReservationService
     private readonly GoIslandDbContext _context;
     private readonly ILogger<ReservationService> _logger;
     private readonly IOutboxWriter _outbox;
+    private readonly IReservationExpirationService _expiration;
+    private readonly ReservationExpirationOptions _expirationOptions;
     private readonly List<IReservationObserver> _observers = [];
 
     public ReservationService(
         GoIslandDbContext context,
         IEnumerable<IReservationObserver> observers,
         IOutboxWriter outbox,
+        IReservationExpirationService expiration,
+        IOptions<ReservationExpirationOptions> expirationOptions,
         ILogger<ReservationService> logger)
     {
         _context = context;
         _logger = logger;
         _outbox = outbox;
+        _expiration = expiration;
+        _expirationOptions = expirationOptions.Value;
         foreach (var observer in observers) Subscribe(observer);
     }
 
@@ -68,6 +76,8 @@ public class ReservationService : IReservationService
         var repeated = await FindRepeatedAsync(userId, "Create", key, requestHash);
         if (repeated is not null) return repeated;
 
+        await _expiration.ExpireForScheduleAsync(request.ScheduleId);
+
         var match = await (from schedule in _context.ExperienceSchedules
                            join experience in _context.Experiences on schedule.ExperienceId equals experience.Id
                            where schedule.Id == request.ScheduleId
@@ -107,6 +117,7 @@ public class ReservationService : IReservationService
             Status = isFree ? ReservationStatuses.Confirmed : ReservationStatuses.PendingPayment,
             TotalAmount = match.Experience.Price * request.Quantity,
             ReservationDate = now,
+            ExpiresAt = isFree ? null : now.Add(_expirationOptions.HoldDuration),
             UpdatedAt = now
         };
         await _context.Reservations.AddAsync(reservation);
@@ -143,18 +154,18 @@ public class ReservationService : IReservationService
         return new(ReservationCreationStatus.Success, response);
     }
 
-    public async Task<IReadOnlyCollection<ReservationResponse>> GetByUserIdAsync(int userId)
+    public async Task<PagedResponse<ReservationResponse>> GetByUserIdAsync(
+        int userId,
+        ReservationListRequest request)
     {
-        var ids = await _context.Reservations.AsNoTracking()
-            .Where(reservation => reservation.UserId == userId)
-            .OrderByDescending(reservation => reservation.ReservationDate)
-            .Select(reservation => reservation.Id)
-            .ToArrayAsync();
-        return await BuildResponsesAsync(ids);
+        return await GetPageAsync(
+            QueryResponses().Where(reservation => reservation.UserId == userId),
+            request);
     }
 
     public async Task<ReservationResponse?> GetByIdAsync(int id, int userId, bool isAdmin)
     {
+        await _expiration.ExpireReservationAsync(id);
         var allowed = await _context.Reservations.AsNoTracking().AnyAsync(reservation =>
             reservation.Id == id && (isAdmin || reservation.UserId == userId));
         return allowed ? await BuildResponseAsync(id) : null;
@@ -178,6 +189,8 @@ public class ReservationService : IReservationService
         var operation = $"Reschedule:{id}";
         var repeated = await FindRepeatedAsync(userId, operation, key, requestHash);
         if (repeated is not null) return repeated;
+
+        await _expiration.ExpireReservationAsync(id);
 
         var reservation = await _context.Reservations.SingleOrDefaultAsync(item =>
             item.Id == id && item.UserId == userId);
@@ -228,21 +241,22 @@ public class ReservationService : IReservationService
         return new(ReservationCreationStatus.Success, response);
     }
 
-    public async Task<IReadOnlyCollection<ReservationResponse>?> GetForHostAsync(int hostUserId)
+    public async Task<PagedResponse<ReservationResponse>?> GetForHostAsync(
+        int hostUserId,
+        ReservationListRequest request)
     {
         if (!await IsApprovedHostAsync(hostUserId)) return null;
-        var ids = await (from reservation in _context.Reservations.AsNoTracking()
-                         join experience in _context.Experiences.AsNoTracking()
-                             on reservation.ExperienceId equals experience.Id
-                         where experience.HostId == hostUserId
-                         orderby reservation.ReservationDate descending
-                         select reservation.Id).ToArrayAsync();
-        return await BuildResponsesAsync(ids);
+        var query = QueryResponses().Where(reservation =>
+            _context.Experiences.Any(experience =>
+                experience.Id == reservation.ExperienceId
+                && experience.HostId == hostUserId));
+        return await GetPageAsync(query, request);
     }
 
     public async Task<ReservationResponse?> GetForHostByIdAsync(int id, int hostUserId)
     {
         if (!await IsApprovedHostAsync(hostUserId)) return null;
+        await _expiration.ExpireReservationAsync(id);
         var allowed = await (from reservation in _context.Reservations.AsNoTracking()
                              join experience in _context.Experiences.AsNoTracking()
                                  on reservation.ExperienceId equals experience.Id
@@ -305,6 +319,8 @@ public class ReservationService : IReservationService
         var requestHash = Hash(reason ?? string.Empty);
         var repeated = await FindRepeatedAsync(actorUserId, operation, key, requestHash);
         if (repeated is not null) return repeated;
+
+        await _expiration.ExpireReservationAsync(id);
 
         Reservation? reservation;
         ExperienceSchedule? schedule;
@@ -376,6 +392,7 @@ public class ReservationService : IReservationService
         var existing = await _context.ReservationIdempotencyKeys.AsNoTracking().SingleOrDefaultAsync(item =>
             item.UserId == userId && item.Operation == operation && item.Key == key);
         if (existing is null) return null;
+        await _expiration.ExpireReservationAsync(existing.ReservationId);
         return existing.RequestHash == requestHash
             ? new(ReservationCreationStatus.Success, await BuildResponseAsync(existing.ReservationId))
             : new(ReservationCreationStatus.IdempotencyConflict);
@@ -398,42 +415,53 @@ public class ReservationService : IReservationService
             profile.UserId == userId
             && profile.VerificationStatus == HostVerificationStatuses.Approved);
 
-    private async Task<IReadOnlyCollection<ReservationResponse>> BuildResponsesAsync(IEnumerable<int> ids)
+    private async Task<PagedResponse<ReservationResponse>> GetPageAsync(
+        IQueryable<ReservationResponse> query,
+        ReservationListRequest request)
     {
-        var responses = new List<ReservationResponse>();
-        foreach (var id in ids)
+        var status = NormalizeOptional(request.Status);
+        if (status is not null)
         {
-            var response = await BuildResponseAsync(id);
-            if (response is not null) responses.Add(response);
+            query = query.Where(reservation => reservation.Status == status);
         }
-        return responses;
+
+        var search = NormalizeOptional(request.Query);
+        if (search is not null)
+        {
+            var pattern = $"%{EscapeLikePattern(search)}%";
+            query = query.Where(reservation =>
+                EF.Functions.ILike(reservation.ExperienceTitle, pattern, "\\")
+                || EF.Functions.ILike(reservation.ExperienceLocation, pattern, "\\"));
+        }
+
+        if (request.From.HasValue)
+        {
+            var fromUtc = request.From.Value.ToUniversalTime();
+            query = query.Where(reservation => reservation.StartsAt >= fromUtc);
+        }
+
+        if (request.To.HasValue)
+        {
+            var toUtc = request.To.Value.ToUniversalTime();
+            query = query.Where(reservation => reservation.StartsAt <= toUtc);
+        }
+
+        var totalItems = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(reservation => reservation.ReservationDate)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToArrayAsync();
+        return PagedResponse<ReservationResponse>.Create(
+            items,
+            request.Page,
+            request.PageSize,
+            totalItems);
     }
 
     private async Task<ReservationResponse?> BuildResponseAsync(int id)
     {
-        var response = await (from reservation in _context.Reservations.AsNoTracking()
-                              join experience in _context.Experiences.AsNoTracking()
-                                  on reservation.ExperienceId equals experience.Id
-                              join schedule in _context.ExperienceSchedules.AsNoTracking()
-                                  on reservation.ScheduleId equals schedule.Id
-                              where reservation.Id == id
-                              select new ReservationResponse
-                              {
-                                  Id = reservation.Id,
-                                  UserId = reservation.UserId,
-                                  ExperienceId = reservation.ExperienceId,
-                                  ScheduleId = reservation.ScheduleId,
-                                  ExperienceTitle = experience.Title,
-                                  ExperienceLocation = experience.Location,
-                                  StartsAt = schedule.StartsAt,
-                                  EndsAt = schedule.EndsAt,
-                                  Quantity = reservation.Quantity,
-                                  Status = reservation.Status,
-                                  TotalAmount = reservation.TotalAmount,
-                                  ReservationDate = reservation.ReservationDate,
-                                  UpdatedAt = reservation.UpdatedAt,
-                                  CancelledAt = reservation.CancelledAt
-                              }).SingleOrDefaultAsync();
+        var response = await QueryResponses().SingleOrDefaultAsync(reservation => reservation.Id == id);
         if (response is null) return null;
         response.StatusHistory = await _context.ReservationStatusHistories.AsNoTracking()
             .Where(history => history.ReservationId == id)
@@ -448,11 +476,37 @@ public class ReservationService : IReservationService
         return response;
     }
 
+    private IQueryable<ReservationResponse> QueryResponses() =>
+        from reservation in _context.Reservations.AsNoTracking()
+        join experience in _context.Experiences.AsNoTracking()
+            on reservation.ExperienceId equals experience.Id
+        join schedule in _context.ExperienceSchedules.AsNoTracking()
+            on reservation.ScheduleId equals schedule.Id
+        select new ReservationResponse
+        {
+            Id = reservation.Id,
+            UserId = reservation.UserId,
+            ExperienceId = reservation.ExperienceId,
+            ScheduleId = reservation.ScheduleId,
+            ExperienceSlug = experience.Slug,
+            ExperienceTitle = experience.Title,
+            ExperienceLocation = experience.Location,
+            StartsAt = schedule.StartsAt,
+            EndsAt = schedule.EndsAt,
+            Quantity = reservation.Quantity,
+            Status = reservation.Status,
+            TotalAmount = reservation.TotalAmount,
+            ReservationDate = reservation.ReservationDate,
+            ExpiresAt = reservation.ExpiresAt,
+            UpdatedAt = reservation.UpdatedAt,
+            CancelledAt = reservation.CancelledAt
+        };
+
     private async Task AddHistoryAsync(
         Reservation reservation,
         string? from,
         string to,
-        int actorUserId,
+        int? actorUserId,
         string? reason,
         DateTime now) =>
         await _context.ReservationStatusHistories.AddAsync(new ReservationStatusHistory
@@ -496,6 +550,14 @@ public class ReservationService : IReservationService
 
     private static string NormalizeKey(string? key) =>
         string.IsNullOrWhiteSpace(key) ? Guid.NewGuid().ToString("N") : key.Trim();
+
+    private static string? NormalizeOptional(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string EscapeLikePattern(string value) => value
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("%", "\\%", StringComparison.Ordinal)
+        .Replace("_", "\\_", StringComparison.Ordinal);
 
     private static string Hash(string value) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));

@@ -8,6 +8,7 @@ public enum PaymentOperationStatus
     ReservationNotFound,
     PaymentNotFound,
     InvalidTransition,
+    ReservationExpired,
     IdempotencyConflict,
     ConcurrencyConflict,
     GatewayRejected
@@ -15,4 +16,13 @@ public enum PaymentOperationStatus
 
 public record PaymentOperationResult(
     PaymentOperationStatus Status,
-    PaymentResponse? Payment = null);
+    PaymentResponse? Payment = null,
+    string? ClientSecret = null);
+
+public enum WebhookProcessingStatus
+{
+    Processed,
+    Duplicate,
+    PaymentNotFound,
+    ConcurrencyConflict
+}

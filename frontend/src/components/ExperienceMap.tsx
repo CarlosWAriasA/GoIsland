@@ -1,6 +1,6 @@
 import { MapPin, Search, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { loadGoogleMaps } from '../services/googleMapsService';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { formatLocationLabel, loadGoogleMaps } from '../services/googleMapsService';
 
 export interface MapPoint {
   id: number | string;
@@ -21,6 +21,7 @@ interface ExperienceMapProps {
   userPoint?: { latitude: number; longitude: number } | null;
   onSelect?: (point: MapSelection) => void;
   onPointClick?: (id: MapPoint['id']) => void;
+  focusedPointId?: MapPoint['id'];
   searchEnabled?: boolean;
   searchValue?: string;
   label: string;
@@ -35,6 +36,7 @@ export const ExperienceMap = ({
   userPoint,
   onSelect,
   onPointClick,
+  focusedPointId,
   searchEnabled = false,
   searchValue = '',
   label,
@@ -45,8 +47,14 @@ export const ExperienceMap = ({
   const onSelectRef = useRef(onSelect);
   const onPointClickRef = useRef(onPointClick);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [query, setQuery] = useState(searchValue);
+  const [queryDraft, setQueryDraft] = useState({ source: searchValue, value: searchValue });
+  const query = queryDraft.source === searchValue ? queryDraft.value : searchValue;
+  const setQuery = useCallback(
+    (value: string) => setQueryDraft({ source: searchValue, value }),
+    [searchValue],
+  );
   const [suggestions, setSuggestions] = useState<google.maps.places.PlacePrediction[]>([]);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
@@ -76,15 +84,16 @@ export const ExperienceMap = ({
           sessionToken: autocompleteSessionRef.current,
         });
         if (!cancelled) {
-          setSuggestions(
-            response.suggestions
-              .map((suggestion) => suggestion.placePrediction)
-              .filter((prediction): prediction is google.maps.places.PlacePrediction => Boolean(prediction)),
-          );
+          const nextSuggestions = response.suggestions
+            .map((suggestion) => suggestion.placePrediction)
+            .filter((prediction): prediction is google.maps.places.PlacePrediction => Boolean(prediction));
+          setSuggestions(nextSuggestions);
+          setActiveIndex(nextSuggestions.length > 0 ? 0 : -1);
         }
       } catch {
         if (!cancelled) {
           setSuggestions([]);
+          setActiveIndex(-1);
           setSearchError('No se pudieron cargar los lugares.');
         }
       } finally {
@@ -110,9 +119,12 @@ export const ExperienceMap = ({
 
       const latitude = Number(place.location.lat().toFixed(6));
       const longitude = Number(place.location.lng().toFixed(6));
-      const location = place.formattedAddress || place.displayName || prediction.text.text;
+      const location = formatLocationLabel(
+        place.formattedAddress || place.displayName || prediction.text.text,
+      );
       setQuery(location);
       setSuggestions([]);
+      setActiveIndex(-1);
       autocompleteSessionRef.current = null;
 
       if (place.viewport) {
@@ -153,15 +165,20 @@ export const ExperienceMap = ({
         mapRef.current = map;
         const bounds = new google.maps.LatLngBounds();
         let boundsCount = 0;
+        let focusedPosition: google.maps.LatLngLiteral | null = null;
 
         points.forEach((point) => {
           const position = { lat: point.latitude, lng: point.longitude };
+          const isFocused = String(point.id) === String(focusedPointId ?? '');
+          if (isFocused) focusedPosition = position;
           bounds.extend(position);
           boundsCount += 1;
           const marker = new google.maps.Marker({
             map,
             position,
             title: point.title,
+            animation: isFocused ? google.maps.Animation.DROP : undefined,
+            zIndex: isFocused ? 10 : undefined,
           });
           marker.addListener('click', () => onPointClickRef.current?.(point.id));
           markers.push(marker);
@@ -195,7 +212,10 @@ export const ExperienceMap = ({
           });
         }
 
-        if (boundsCount === 1) {
+        if (focusedPosition) {
+          map.setCenter(focusedPosition);
+          map.setZoom(15);
+        } else if (boundsCount === 1) {
           map.setCenter(bounds.getCenter());
           map.setZoom(15);
         } else if (boundsCount > 1) {
@@ -211,7 +231,7 @@ export const ExperienceMap = ({
             let location = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
             try {
               const response = await geocoder.geocode({ location: event.latLng });
-              location = response.results[0]?.formatted_address || location;
+              location = formatLocationLabel(response.results[0]?.formatted_address || location);
             } catch {
               // Las coordenadas permiten conservar la selección si la geocodificación falla.
             }
@@ -236,7 +256,7 @@ export const ExperienceMap = ({
       userCircle?.setMap(null);
       mapRef.current = null;
     };
-  }, [points, selectedPoint, userPoint]);
+  }, [focusedPointId, points, selectedPoint, setQuery, userPoint]);
 
   return (
     <div className="google-map-shell">
@@ -253,7 +273,30 @@ export const ExperienceMap = ({
                 setSearchError(null);
                 if (value.trim().length < 2 || value === searchValue) {
                   setSuggestions([]);
+                  setActiveIndex(-1);
                   setIsSearching(false);
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  if (suggestions.length > 0) {
+                    setActiveIndex((prev) => (prev + 1) % suggestions.length);
+                  }
+                } else if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  if (suggestions.length > 0) {
+                    setActiveIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+                  }
+                } else if (event.key === 'Enter') {
+                  event.preventDefault();
+                  if (suggestions.length > 0) {
+                    const targetIndex = activeIndex >= 0 && activeIndex < suggestions.length ? activeIndex : 0;
+                    void selectSuggestion(suggestions[targetIndex]);
+                  }
+                } else if (event.key === 'Escape') {
+                  setSuggestions([]);
+                  setActiveIndex(-1);
                 }
               }}
               placeholder="Buscar un lugar"
@@ -270,6 +313,7 @@ export const ExperienceMap = ({
                 onClick={() => {
                   setQuery('');
                   setSuggestions([]);
+                  setActiveIndex(-1);
                   setSearchError(null);
                 }}
                 aria-label="Limpiar búsqueda"
@@ -292,19 +336,22 @@ export const ExperienceMap = ({
                   {searchError}
                 </div>
               )}
-              {suggestions.map((prediction) => (
+              {suggestions.map((prediction, index) => (
                 <button
                   key={prediction.placeId}
                   type="button"
-                  className="google-map-suggestion"
+                  className={`google-map-suggestion${index === activeIndex ? ' google-map-suggestion--active' : ''}`}
                   role="option"
-                  aria-selected="false"
+                  aria-selected={index === activeIndex}
+                  onMouseEnter={() => setActiveIndex(index)}
                   onClick={() => void selectSuggestion(prediction)}
                 >
                   <MapPin size={18} aria-hidden="true" />
                   <span>
                     <strong>{prediction.mainText?.text || prediction.text.text}</strong>
-                    {prediction.secondaryText?.text && <small>{prediction.secondaryText.text}</small>}
+                    {prediction.secondaryText?.text && (
+                      <small>{formatLocationLabel(prediction.secondaryText.text)}</small>
+                    )}
                   </span>
                 </button>
               ))}

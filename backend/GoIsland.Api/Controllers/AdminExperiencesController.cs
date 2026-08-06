@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Experiences;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Experiences;
@@ -20,14 +21,10 @@ public class AdminExperiencesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyCollection<HostExperienceResponse>>> GetAll([FromQuery] string? status)
+    public async Task<ActionResult<PagedResponse<HostExperienceResponse>>> GetAll(
+        [FromQuery] ManagedExperienceListRequest request)
     {
-        if (!string.IsNullOrWhiteSpace(status) && !ExperienceApprovalStatuses.All.Contains(status))
-        {
-            return BadRequest(new { message = "El estado de moderacion no es valido." });
-        }
-
-        return Ok(await _service.GetForAdminAsync(status));
+        return Ok(await _service.GetForAdminAsync(request));
     }
 
     [HttpPost("{id:int}/approve")]

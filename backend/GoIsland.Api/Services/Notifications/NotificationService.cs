@@ -1,4 +1,5 @@
 using GoIsland.Api.Data;
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Notifications;
 using GoIsland.Api.Models;
 using Microsoft.EntityFrameworkCore;
@@ -11,11 +12,26 @@ public class NotificationService : INotificationService, IOutboxWriter
 
     public NotificationService(GoIslandDbContext context) => _context = context;
 
-    public async Task<IReadOnlyCollection<NotificationResponse>> GetAsync(int userId, bool unreadOnly) =>
-        await _context.Notifications.AsNoTracking()
-            .Where(item => item.UserId == userId && (!unreadOnly || item.ReadAt == null))
-            .OrderByDescending(item => item.CreatedAt).Take(100)
-            .Select(item => ToResponse(item)).ToArrayAsync();
+    public async Task<PagedResponse<NotificationResponse>> GetAsync(
+        int userId,
+        NotificationListRequest request)
+    {
+        var query = _context.Notifications.AsNoTracking()
+            .Where(item => item.UserId == userId
+                && (!request.UnreadOnly || item.ReadAt == null));
+        var totalItems = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(item => item.CreatedAt)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Select(item => ToResponse(item))
+            .ToArrayAsync();
+        return PagedResponse<NotificationResponse>.Create(
+            items,
+            request.Page,
+            request.PageSize,
+            totalItems);
+    }
 
     public async Task<NotificationResponse?> MarkReadAsync(int userId, int id)
     {

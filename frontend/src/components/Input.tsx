@@ -36,7 +36,12 @@ export const Input = ({
 
   return (
     <div className="field-group">
-      {label && <label className="field-label" htmlFor={inputId}>{label}</label>}
+      {label && (
+        <label className="field-label" htmlFor={inputId}>
+          {label}
+          {props.required && <span className="field-required" aria-hidden="true">*</span>}
+        </label>
+      )}
       <div className="field-control">
         {icon && <span className="field-icon" aria-hidden="true">{icon}</span>}
         <input

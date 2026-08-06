@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import axios from 'axios';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, CalendarCheck, Search, TicketCheck } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
@@ -13,6 +13,7 @@ import Typewriter from '../components/Typewriter';
 import { useRevealOnScroll } from '../hooks/useRevealOnScroll';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
+import { experienceKeys, queryRefresh } from '../queries/queryKeys';
 import type { Experience } from '../types';
 
 const FEATURED_LIMIT = 6;
@@ -40,34 +41,23 @@ export const Home = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [term, setTerm] = useState('');
-  const [featured, setFeatured] = useState<Experience[]>([]);
-  const [totalAvailable, setTotalAvailable] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [completedRequest, setCompletedRequest] = useState<number | null>(null);
-  const loading = completedRequest !== retryCount;
+  const featuredQuery = useQuery({
+    queryKey: experienceKeys.featured(),
+    queryFn: ({ signal }) => experienceService.getExperiences(signal, {
+      pageSize: FEATURED_LIMIT,
+      sort: 'newest',
+    }),
+    refetchInterval: queryRefresh.catalog,
+    refetchOnMount: 'always',
+  });
+  const featured = pickFeatured(featuredQuery.data?.items ?? []);
+  const totalAvailable = featuredQuery.data?.totalItems ?? 0;
+  const error = !featuredQuery.data && featuredQuery.error
+    ? toApiError(featuredQuery.error, 'No fue posible cargar las experiencias.').message
+    : null;
+  const loading = featuredQuery.isPending;
 
   useRevealOnScroll(!loading);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    experienceService.getExperiences(controller.signal)
-      .then((data) => {
-        setFeatured(pickFeatured(data));
-        setTotalAvailable(data.length);
-        setError(null);
-      })
-      .catch((requestError: unknown) => {
-        if (axios.isCancel(requestError)) return;
-        setFeatured([]);
-        setTotalAvailable(0);
-        setError(toApiError(requestError, 'No fue posible cargar las experiencias.').message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setCompletedRequest(retryCount);
-      });
-    return () => controller.abort();
-  }, [retryCount]);
 
   useEffect(() => {
     if (!location.hash) return;
@@ -90,7 +80,7 @@ export const Home = () => {
           </h1>
           <p>
             Anfitriones dominicanos abren sus rutas, su mar y su cocina.
-            Tú eliges la fecha; nosotros mostramos cupos y precios reales.
+            Elige una experiencia y consulta sus fechas antes de reservar.
           </p>
 
           <form className="home-hero__search" onSubmit={submitSearch} role="search">
@@ -130,12 +120,12 @@ export const Home = () => {
           <ErrorState
             title="No pudimos cargar las experiencias"
             description={error}
-            onRetry={() => setRetryCount((current) => current + 1)}
+            onRetry={() => void featuredQuery.refetch()}
           />
         ) : featured.length === 0 ? (
           <EmptyState
             title="Todavía no hay experiencias publicadas"
-            description="Cuando los anfitriones publiquen actividades aprobadas, aparecerán aquí."
+            description="Pronto encontrarás nuevas experiencias aquí."
           />
         ) : (
           <div className="experience-grid">
@@ -157,7 +147,7 @@ export const Home = () => {
           <li className="surface-panel how-step">
             <span className="how-step__icon" aria-hidden="true"><CalendarCheck size={22} /></span>
             <h3>2. Elige fecha y cupos</h3>
-            <p>Cada experiencia muestra sus horarios futuros y los cupos disponibles en cada uno.</p>
+            <p>Consulta las fechas y los cupos disponibles.</p>
           </li>
           <li className="surface-panel how-step">
             <span className="how-step__icon" aria-hidden="true"><TicketCheck size={22} /></span>

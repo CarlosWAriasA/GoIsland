@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Experiences;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Experiences;
@@ -41,14 +42,15 @@ public class HostExperiencesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyCollection<HostExperienceResponse>>> GetAll()
+    public async Task<ActionResult<PagedResponse<HostExperienceResponse>>> GetAll(
+        [FromQuery] ManagedExperienceListRequest request)
     {
         if (!TryGetUserId(out var userId))
         {
             return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
-        return Ok(await _service.GetMineAsync(userId));
+        return Ok(await _service.GetMineAsync(userId, request));
     }
 
     [HttpGet("{id:int}")]
@@ -173,10 +175,12 @@ public class HostExperiencesController : ControllerBase
             {
                 message = "La experiencia no admite esa operacion en su estado actual."
             }),
-            ExperienceManagementStatus.Incomplete => BadRequest(new
-            {
-                message = result.Message
-            }),
+            ExperienceManagementStatus.Incomplete => BadRequest(
+                ApiProblemDetailsFactory.CreateValidation(
+                    HttpContext,
+                    result.Errors?.ToDictionary(entry => entry.Key, entry => entry.Value)
+                        ?? new Dictionary<string, string[]>(),
+                    result.Message ?? "Revisa los campos marcados.")),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };
     }

@@ -27,7 +27,10 @@ export const TextAreaField = ({
 
   return (
     <div className="field-group">
-      <label className="field-label" htmlFor={fieldId}>{label}</label>
+      <label className="field-label" htmlFor={fieldId}>
+        {label}
+        {props.required && <span className="field-required" aria-hidden="true">*</span>}
+      </label>
       <textarea
         id={fieldId}
         className={`text-field text-area-field${error ? ' text-field--error' : ''} ${className}`}

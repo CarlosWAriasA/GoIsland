@@ -25,9 +25,14 @@ export const SelectField = ({
     .filter(Boolean)
     .join(' ') || undefined;
 
+  const { onKeyDown, ...restProps } = props;
+
   return (
     <div className="field-group">
-      <label className="field-label" htmlFor={selectId}>{label}</label>
+      <label className="field-label" htmlFor={selectId}>
+        {label}
+        {props.required && <span className="field-required" aria-hidden="true">*</span>}
+      </label>
       <div className="field-control">
         <select
           id={selectId}
@@ -35,7 +40,13 @@ export const SelectField = ({
           aria-describedby={describedBy}
           data-empty={props.value === '' || props.value === undefined ? 'true' : 'false'}
           className={`text-field select-field${error ? ' text-field--error' : ''} ${className}`}
-          {...props}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+            }
+            onKeyDown?.(event);
+          }}
+          {...restProps}
         />
         <ChevronDown className="select-field__icon" size={18} aria-hidden="true" />
       </div>

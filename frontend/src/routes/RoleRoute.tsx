@@ -6,7 +6,7 @@ interface RoleRouteProps {
 }
 
 export const RoleRoute = ({ allowedRoles }: RoleRouteProps) => {
-  const { user, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -17,7 +17,11 @@ export const RoleRoute = ({ allowedRoles }: RoleRouteProps) => {
     );
   }
 
-  if (!user || !allowedRoles.includes(user.role)) {
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!allowedRoles.includes(user.role)) {
     return <Navigate to="/profile" replace />;
   }
 

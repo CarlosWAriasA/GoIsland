@@ -1,4 +1,5 @@
 using GoIsland.Api.Data;
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Experiences;
 using GoIsland.Api.Models;
 using Microsoft.EntityFrameworkCore;
@@ -16,11 +17,8 @@ public class ExperienceService : IExperienceService
         _context = context;
     }
 
-    public async Task<IReadOnlyCollection<ExperienceResponse>> GetAllAsync()
-    {
-        var experiences = await _unitOfWork.Experiences.GetAllAsync();
-        return await AddRatingsAsync(experiences);
-    }
+    public Task<PagedResponse<ExperienceResponse>> GetAllAsync(SearchExperiencesRequest request) =>
+        SearchAsync(request);
 
     public async Task<ExperienceResponse?> GetByIdAsync(int id)
     {
@@ -28,20 +26,30 @@ public class ExperienceService : IExperienceService
         return experience is null ? null : (await AddRatingsAsync([experience])).Single();
     }
 
-    public async Task<IReadOnlyCollection<ExperienceResponse>> SearchAsync(SearchExperiencesRequest request)
+    public async Task<ExperienceResponse?> GetBySlugAsync(string slug)
     {
-        var experiences = await _unitOfWork.Experiences.SearchAsync(
-            request.Location,
-            request.Category,
-            request.MinPrice,
-            request.MaxPrice,
-            request.From,
-            request.To,
-            request.Quantity);
-        return await AddRatingsAsync(experiences);
+        var normalizedSlug = slug.Trim().ToLowerInvariant();
+        if (normalizedSlug.Length is < 1 or > 180)
+        {
+            return null;
+        }
+
+        var experience = await _unitOfWork.Experiences.GetBySlugAsync(normalizedSlug);
+        return experience is null ? null : (await AddRatingsAsync([experience])).Single();
     }
 
-    public async Task<IReadOnlyCollection<ExperienceResponse>> GetNearbyAsync(NearbyExperiencesRequest request)
+    public async Task<PagedResponse<ExperienceResponse>> SearchAsync(SearchExperiencesRequest request)
+    {
+        var page = await _unitOfWork.Experiences.SearchAsync(request);
+        var responses = await AddRatingsAsync(page.Items);
+        return PagedResponse<ExperienceResponse>.Create(
+            responses,
+            page.Page,
+            page.PageSize,
+            page.TotalItems);
+    }
+
+    public async Task<PagedResponse<ExperienceResponse>> GetNearbyAsync(NearbyExperiencesRequest request)
     {
         var latitude = (double)request.Latitude;
         var longitude = (double)request.Longitude;
@@ -55,8 +63,6 @@ public class ExperienceService : IExperienceService
         var maximumLongitude = (decimal)Math.Min(180d, longitude + longitudeDelta);
 
         var candidates = await _context.Experiences.AsNoTracking()
-            .Include(item => item.Images)
-            .Include(item => item.Itinerary)
             .Where(item => item.IsApproved
                 && item.ApprovalStatus == ExperienceApprovalStatuses.Approved
                 && item.Latitude.HasValue
@@ -65,30 +71,51 @@ public class ExperienceService : IExperienceService
                 && item.Latitude <= maximumLatitude
                 && item.Longitude >= minimumLongitude
                 && item.Longitude <= maximumLongitude)
+            .Select(item => new
+            {
+                item.Id,
+                Latitude = item.Latitude!.Value,
+                Longitude = item.Longitude!.Value
+            })
             .ToArrayAsync();
 
         var distances = candidates
             .Select(item => new
             {
-                Experience = item,
+                item.Id,
                 Distance = CalculateDistanceKm(
                     latitude,
                     longitude,
-                    (double)item.Latitude!.Value,
-                    (double)item.Longitude!.Value)
+                    (double)item.Latitude,
+                    (double)item.Longitude)
             })
             .Where(item => item.Distance <= radiusKm)
             .OrderBy(item => item.Distance)
             .ToArray();
 
-        var responses = await AddRatingsAsync(distances.Select(item => item.Experience));
-        var distanceById = distances.ToDictionary(item => item.Experience.Id, item => item.Distance);
+        var pageDistances = distances
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToArray();
+        var pageIds = pageDistances.Select(item => item.Id).ToArray();
+        var pageExperiences = await _context.Experiences.AsNoTracking()
+            .Where(item => pageIds.Contains(item.Id))
+            .Include(item => item.Images)
+            .Include(item => item.Itinerary)
+            .AsSplitQuery()
+            .ToArrayAsync();
+        var responses = await AddRatingsAsync(pageExperiences);
+        var distanceById = pageDistances.ToDictionary(item => item.Id, item => item.Distance);
         foreach (var response in responses)
         {
             response.DistanceKm = Math.Round((decimal)distanceById[response.Id], 1);
         }
 
-        return responses.OrderBy(item => item.DistanceKm).ToArray();
+        return PagedResponse<ExperienceResponse>.Create(
+            responses.OrderBy(item => item.DistanceKm),
+            request.Page,
+            request.PageSize,
+            distances.Length);
     }
 
     private async Task<IReadOnlyCollection<ExperienceResponse>> AddRatingsAsync(IEnumerable<Experience> source)
@@ -162,6 +189,10 @@ public class ExperienceService : IExperienceService
                     SourceUrl = image.SecureUrl
                         ?? $"/uploads/experiences/{experience.Id}/{image.FileName}",
                     AltText = image.AltText,
+                    CreditText = image.CreditText,
+                    CreditUrl = image.CreditUrl,
+                    LicenseName = image.LicenseName,
+                    LicenseUrl = image.LicenseUrl,
                     IsCover = image.IsCover,
                     SortOrder = image.SortOrder
                 })

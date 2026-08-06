@@ -2,9 +2,9 @@ import { KeyRound, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import ToastFeedback from '../components/ToastFeedback';
 import { getFieldError, toApiError } from '../services/apiError';
 import { authService } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
@@ -87,8 +87,8 @@ export const ChangePassword = () => {
           </div>
         </div>
 
-        {success && <Alert tone="success">{success}</Alert>}
-        {error && <Alert tone="error">{error}</Alert>}
+        <ToastFeedback message={success} tone="success" />
+        <ToastFeedback message={error} tone="error" />
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <Input
@@ -99,6 +99,7 @@ export const ChangePassword = () => {
             onChange={(event) => setCurrentPassword(event.target.value)}
             error={fieldErrors.currentPassword}
             icon={<LockKeyhole size={18} />}
+            required
           />
           <Input
             label="Nueva contraseña"
@@ -109,6 +110,7 @@ export const ChangePassword = () => {
             error={fieldErrors.newPassword}
             hint={fieldErrors.newPassword ? undefined : PASSWORD_POLICY_HINT}
             icon={<LockKeyhole size={18} />}
+            required
           />
           <Input
             label="Confirmar nueva contraseña"
@@ -118,6 +120,7 @@ export const ChangePassword = () => {
             onChange={(event) => setConfirmPassword(event.target.value)}
             error={fieldErrors.confirmPassword}
             icon={<ShieldCheck size={18} />}
+            required
           />
           <div className="account-form__actions">
             <Link className="button-link button-link--outline" to="/profile">Volver al perfil</Link>

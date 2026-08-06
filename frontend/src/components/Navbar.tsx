@@ -4,7 +4,6 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Button from './Button';
 import Logo from './Logo';
-import NotificationBell from './NotificationBell';
 import UserMenu from './UserMenu';
 
 const getNavLinkClass = ({ isActive }: { isActive: boolean }) => (
@@ -24,7 +23,7 @@ export const Navbar = () => {
   const handleLogout = () => {
     closeMenu();
     logout();
-    navigate('/login');
+    navigate('/login', { replace: true, state: { loggedOut: true } });
   };
 
   return (
@@ -35,7 +34,6 @@ export const Navbar = () => {
         </Link>
 
         <div className="site-header__actions">
-          {isAuthenticated && <NotificationBell />}
           <Button
             variant="ghost"
             className="site-header__menu-button"

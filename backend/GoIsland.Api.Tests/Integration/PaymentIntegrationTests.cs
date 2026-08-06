@@ -127,6 +127,80 @@ public class PaymentIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
+    public async Task Webhook_ConfirmsAndRefundsOnceWhenEventsAreRepeated()
+    {
+        var seed = await SeedReservationAsync(quantity: 2, price: 50m);
+        var service = GetRequiredService<IPaymentService>();
+        var created = await service.CreateAsync(
+            seed.Tourist.Id,
+            seed.Reservation.Id,
+            $"pay-{Guid.NewGuid():N}");
+        var payment = created.Payment!;
+        var spotsAfterReservation = await Context.ExperienceSchedules.AsNoTracking()
+            .Where(item => item.Id == seed.Schedule.Id)
+            .Select(item => item.AvailableSpots)
+            .SingleAsync();
+
+        var succeeded = new GatewayWebhookEvent(
+            MockPaymentGateway.Provider,
+            $"evt-success-{Guid.NewGuid():N}",
+            payment.ProviderPaymentId!,
+            GatewayWebhookEventKind.PaymentSucceeded);
+        Assert.Equal(WebhookProcessingStatus.Processed, await service.ProcessWebhookAsync(succeeded));
+        Assert.Equal(WebhookProcessingStatus.Duplicate, await service.ProcessWebhookAsync(succeeded));
+
+        var refunded = new GatewayWebhookEvent(
+            MockPaymentGateway.Provider,
+            $"evt-refund-{Guid.NewGuid():N}",
+            payment.ProviderPaymentId!,
+            GatewayWebhookEventKind.PaymentRefunded,
+            ProviderRefundId: $"mock_re_{Guid.NewGuid():N}");
+        Assert.Equal(WebhookProcessingStatus.Processed, await service.ProcessWebhookAsync(refunded));
+        Assert.Equal(WebhookProcessingStatus.Duplicate, await service.ProcessWebhookAsync(refunded));
+
+        Assert.Equal(PaymentStatuses.Refunded,
+            await Context.Payments.Where(item => item.Id == payment.Id).Select(item => item.Status).SingleAsync());
+        Assert.Equal(ReservationStatuses.Refunded,
+            await Context.Reservations.Where(item => item.Id == seed.Reservation.Id)
+                .Select(item => item.Status).SingleAsync());
+        Assert.Equal(spotsAfterReservation + 2,
+            await Context.ExperienceSchedules.Where(item => item.Id == seed.Schedule.Id)
+                .Select(item => item.AvailableSpots).SingleAsync());
+        Assert.Equal(2, await Context.PaymentWebhookEvents.CountAsync(item => item.PaymentId == payment.Id));
+        Assert.Equal(1, await Context.Refunds.CountAsync(item => item.PaymentId == payment.Id));
+    }
+
+    [Fact]
+    public async Task Webhook_RejectionKeepsReservationPendingAndDoesNotDuplicateAttempts()
+    {
+        var seed = await SeedReservationAsync(quantity: 1, price: 50m);
+        var service = GetRequiredService<IPaymentService>();
+        var created = await service.CreateAsync(
+            seed.Tourist.Id,
+            seed.Reservation.Id,
+            $"pay-{Guid.NewGuid():N}");
+        var payment = created.Payment!;
+        var rejected = new GatewayWebhookEvent(
+            MockPaymentGateway.Provider,
+            $"evt-failed-{Guid.NewGuid():N}",
+            payment.ProviderPaymentId!,
+            GatewayWebhookEventKind.PaymentFailed,
+            "card_declined");
+
+        Assert.Equal(WebhookProcessingStatus.Processed, await service.ProcessWebhookAsync(rejected));
+        Assert.Equal(WebhookProcessingStatus.Duplicate, await service.ProcessWebhookAsync(rejected));
+        Assert.Equal(PaymentStatuses.Pending,
+            await Context.Payments.Where(item => item.Id == payment.Id).Select(item => item.Status).SingleAsync());
+        Assert.Equal("card_declined",
+            await Context.Payments.Where(item => item.Id == payment.Id).Select(item => item.FailureCode).SingleAsync());
+        Assert.Equal(ReservationStatuses.PendingPayment,
+            await Context.Reservations.Where(item => item.Id == seed.Reservation.Id)
+                .Select(item => item.Status).SingleAsync());
+        Assert.Equal(1, await Context.PaymentGatewayAttempts.CountAsync(item =>
+            item.PaymentId == payment.Id && item.Outcome == PaymentGatewayAttemptOutcomes.Rejected));
+    }
+
+    [Fact]
     public async Task MockReject_KeepsReservationPendingAndAllowsNewPayment()
     {
         var seed = await SeedReservationAsync(quantity: 1, price: 60m);
@@ -248,6 +322,78 @@ public class PaymentIntegrationTests : PostgresIntegrationTestBase
         Assert.Null(await service.GetByIdAsync(paymentId, outsider.Tourist.Id, isAdmin: false));
     }
 
+    [Fact]
+    public async Task Expiration_ReleasesCapacityOnceAndRecordsHistoryAuditAndFailedPayment()
+    {
+        var seed = await SeedReservationAsync(quantity: 2, price: 50m);
+        var paymentService = GetRequiredService<IPaymentService>();
+        var payment = await paymentService.CreateAsync(
+            seed.Tourist.Id, seed.Reservation.Id, $"pay-{Guid.NewGuid():N}");
+        var reservation = await Context.Reservations.SingleAsync(item => item.Id == seed.Reservation.Id);
+        reservation.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+        await Context.SaveChangesAsync();
+        Context.ChangeTracker.Clear();
+        var expiration = GetRequiredService<IReservationExpirationService>();
+
+        var first = await expiration.ExpireReservationAsync(seed.Reservation.Id);
+        Context.ChangeTracker.Clear();
+        var repeated = await expiration.ExpireReservationAsync(seed.Reservation.Id);
+
+        Assert.True(first);
+        Assert.False(repeated);
+        Assert.Equal(ReservationStatuses.Expired,
+            await Context.Reservations.Where(item => item.Id == seed.Reservation.Id)
+                .Select(item => item.Status).SingleAsync());
+        Assert.Equal(10, await Context.ExperienceSchedules.Where(item => item.Id == seed.Schedule.Id)
+            .Select(item => item.AvailableSpots).SingleAsync());
+        Assert.Equal(PaymentStatuses.Failed,
+            await Context.Payments.Where(item => item.Id == payment.Payment!.Id)
+                .Select(item => item.Status).SingleAsync());
+        Assert.Equal("ReservationExpired",
+            await Context.Payments.Where(item => item.Id == payment.Payment!.Id)
+                .Select(item => item.FailureCode).SingleAsync());
+        Assert.Equal(1, await Context.ReservationStatusHistories.CountAsync(item =>
+            item.ReservationId == seed.Reservation.Id && item.ToStatus == ReservationStatuses.Expired));
+        Assert.Equal(1, await Context.CapacityAudits.CountAsync(item =>
+            item.ReservationId == seed.Reservation.Id && item.Reason == "ReservationExpired"));
+    }
+
+    [Fact]
+    public async Task PaymentAfterDeadline_IsRejectedWhetherItStartsOrConfirmsLate()
+    {
+        var startSeed = await SeedReservationAsync(quantity: 1, price: 45m);
+        var service = GetRequiredService<IPaymentService>();
+        var startReservation = await Context.Reservations
+            .SingleAsync(item => item.Id == startSeed.Reservation.Id);
+        startReservation.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+        await Context.SaveChangesAsync();
+        Context.ChangeTracker.Clear();
+
+        var lateStart = await service.CreateAsync(
+            startSeed.Tourist.Id, startSeed.Reservation.Id, $"pay-{Guid.NewGuid():N}");
+        Assert.Equal(PaymentOperationStatus.ReservationExpired, lateStart.Status);
+
+        var confirmSeed = await SeedReservationAsync(quantity: 1, price: 45m);
+        var created = await service.CreateAsync(
+            confirmSeed.Tourist.Id, confirmSeed.Reservation.Id, $"pay-{Guid.NewGuid():N}");
+        var confirmReservation = await Context.Reservations
+            .SingleAsync(item => item.Id == confirmSeed.Reservation.Id);
+        confirmReservation.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+        await Context.SaveChangesAsync();
+        Context.ChangeTracker.Clear();
+
+        var lateConfirm = await service.MockConfirmAsync(
+            created.Payment!.Id, confirmSeed.Tourist.Id, isAdmin: false);
+
+        Assert.Equal(PaymentOperationStatus.ReservationExpired, lateConfirm.Status);
+        Assert.Equal(ReservationStatuses.Expired,
+            await Context.Reservations.Where(item => item.Id == confirmSeed.Reservation.Id)
+                .Select(item => item.Status).SingleAsync());
+        Assert.NotEqual(PaymentStatuses.Paid,
+            await Context.Payments.Where(item => item.Id == created.Payment.Id)
+                .Select(item => item.Status).SingleAsync());
+    }
+
     private async Task<PaymentSeed> SeedReservationAsync(
         int quantity,
         decimal price,
@@ -290,6 +436,7 @@ public class PaymentIntegrationTests : PostgresIntegrationTestBase
         var experience = new Experience
         {
             HostId = host.Id,
+            Slug = $"pagos-{marker}",
             Title = $"Pagos {marker}",
             Description = "Experiencia para validar el ciclo de pagos.",
             Location = $"Lugar-{marker}",

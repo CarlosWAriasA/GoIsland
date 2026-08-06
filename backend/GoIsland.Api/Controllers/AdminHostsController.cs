@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Hosts;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Hosts;
@@ -20,14 +21,10 @@ public class AdminHostsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyCollection<HostProfileResponse>>> GetAll([FromQuery] string? status)
+    public async Task<ActionResult<PagedResponse<HostProfileResponse>>> GetAll(
+        [FromQuery] HostApplicationListRequest request)
     {
-        if (!string.IsNullOrWhiteSpace(status) && !HostVerificationStatuses.All.Contains(status))
-        {
-            return BadRequest(new { message = "El estado de anfitrion no es valido." });
-        }
-
-        return Ok(await _hostService.GetForAdminAsync(status));
+        return Ok(await _hostService.GetForAdminAsync(request));
     }
 
     [HttpGet("{id:int}")]

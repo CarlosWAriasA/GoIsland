@@ -2,6 +2,7 @@ import { api } from './api';
 import type {
   NotificationItem,
   NotificationPreferences,
+  PagedResponse,
   RegisterWebPushSubscription,
   WebPushDevice,
   WebPushPublicKeyResponse,
@@ -16,8 +17,16 @@ const announceNotificationsChanged = () => {
 };
 
 export const notificationService = {
-  getAll: async (signal?: AbortSignal): Promise<NotificationItem[]> =>
-    (await api.get<NotificationItem[]>('/notifications', { signal })).data,
+  getAll: async (signal?: AbortSignal): Promise<PagedResponse<NotificationItem>> =>
+    (await api.get<PagedResponse<NotificationItem>>('/notifications', {
+      params: { pageSize: 100 },
+      signal,
+    })).data,
+  getUnreadCount: async (signal?: AbortSignal): Promise<number> =>
+    (await api.get<PagedResponse<NotificationItem>>('/notifications', {
+      params: { unreadOnly: true, pageSize: 1 },
+      signal,
+    })).data.totalItems,
   markRead: async (id: number): Promise<NotificationItem> => {
     const item = (await api.patch<NotificationItem>(`/notifications/${id}/read`)).data;
     announceNotificationsChanged();

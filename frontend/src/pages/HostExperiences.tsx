@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  ChevronDown,
   ImagePlus,
   Infinity as InfinityIcon,
   LocateFixed,
@@ -14,12 +15,15 @@ import {
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
+import { Link, useSearchParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
+import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import Input from '../components/Input';
+import MultiSelectField from '../components/MultiSelectField';
 import PriceField from '../components/PriceField';
 import SelectField from '../components/SelectField';
 import Skeleton from '../components/Skeleton';
@@ -30,9 +34,10 @@ import { getFieldError, toApiError } from '../services/apiError';
 import type { ApiError } from '../services/apiError';
 import { resolveApiAssetUrl } from '../services/api';
 import { hostExperienceService } from '../services/hostExperienceService';
-import { reverseGeocodeLocation } from '../services/googleMapsService';
+import { formatLocationLabel, reverseGeocodeLocation } from '../services/googleMapsService';
 import type {
   ExperienceImage,
+  ExperienceItineraryItem,
   ManagedExperience,
   ManagedExperienceRequest,
 } from '../types';
@@ -41,8 +46,39 @@ import { getModerationLabel, getModerationTone } from '../utils/moderationStatus
 const ExperienceMap = lazy(() => import('../components/ExperienceMap'));
 const MAX_IMAGES = 10;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const LIST_PAGE_SIZE = 12;
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const ACCESSIBILITY_OPTIONS = [
+  'Accesible para personas con movilidad reducida',
+  'Accesibilidad parcial',
+  'Sin acceso adaptado',
+] as const;
+const ANY_LANGUAGE_OPTION = 'Cualquier idioma';
+const LANGUAGE_OPTIONS = [
+  ANY_LANGUAGE_OPTION,
+  'Español',
+  'Inglés',
+  'Francés',
+  'Portugués',
+  'Italiano',
+  'Alemán',
+  'Criollo haitiano',
+  'Lengua de señas dominicana',
+] as const;
 const parseList = (value: string) => value.split(',').map((item) => item.trimStart());
+
+const validateDraft = (form: ManagedExperienceRequest): ApiError | null => {
+  const title = form.title.trim();
+  if (!title) {
+    const message = 'Escribe un título para guardar el borrador.';
+    return { message, errors: { Title: [message] } };
+  }
+  if (title.length < 3) {
+    const message = 'El título debe tener al menos 3 caracteres.';
+    return { message, errors: { Title: [message] } };
+  }
+  return null;
+};
 
 const createEmptyForm = (): ManagedExperienceRequest => ({
   title: '',
@@ -69,7 +105,7 @@ const createEmptyForm = (): ManagedExperienceRequest => ({
   category: '',
   price: 0,
   capacity: 1,
-  isUnlimitedCapacity: false,
+  isUnlimitedCapacity: true,
 });
 
 const formatCurrency = (amount: number) => amount === 0
@@ -141,7 +177,7 @@ const LocationPicker = ({ location, latitude, longitude, onChange, error }: Loca
       <div className="location-picker__status">
         <span>{selectedPoint ? 'Ubicación seleccionada' : 'Selecciona un lugar o marca el mapa'}</span>
         {selectedPoint && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null, null)}>
+          <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null, null, '')}>
             Quitar punto
           </Button>
         )}
@@ -313,10 +349,25 @@ const ImagePicker = ({
 };
 
 export const HostExperiences = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryString = searchParams.toString();
+  const requestedPage = Number(searchParams.get('page'));
+  const currentPage = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const statusValue = searchParams.get('status');
+  const currentStatus = ['Draft', 'PendingReview', 'Approved', 'Rejected', 'Suspended'].includes(statusValue || '')
+    ? statusValue as ManagedExperience['approvalStatus']
+    : undefined;
+  const currentQuery = searchParams.get('q')?.slice(0, 160).trim() || '';
   const [experiences, setExperiences] = useState<ManagedExperience[]>([]);
+  const [listDraft, setListDraft] = useState({ source: queryString, value: currentQuery });
+  const listQuery = listDraft.source === queryString ? listDraft.value : currentQuery;
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
   const [form, setForm] = useState<ManagedExperienceRequest>(createEmptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [openItineraryIndex, setOpenItineraryIndex] = useState<number | null>(null);
+  const [experienceToDelete, setExperienceToDelete] = useState<ManagedExperience | null>(null);
   const [existingImages, setExistingImages] = useState<ExperienceImage[]>([]);
   const [removedImageIds, setRemovedImageIds] = useState<number[]>([]);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -327,13 +378,23 @@ export const HostExperiences = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<ApiError | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
   const visibleImages = useMemo(
     () => existingImages.filter((image) => !removedImageIds.includes(image.id)),
     [existingImages, removedImageIds],
   );
+
+  const clearFormFieldError = (...fieldNames: string[]) => {
+    setFormError((current) => {
+      if (!current?.errors) return current;
+      const normalizedNames = new Set(fieldNames.map((name) => name.toLowerCase()));
+      const errors = Object.fromEntries(Object.entries(current.errors).filter(
+        ([name]) => !normalizedNames.has(name.toLowerCase()),
+      ));
+      return Object.keys(errors).length > 0 ? { ...current, errors } : null;
+    });
+  };
 
   const clearPendingPreviews = () => {
     pendingImages.forEach((image) => URL.revokeObjectURL(image.previewUrl));
@@ -353,11 +414,30 @@ export const HostExperiences = () => {
     setRetryCount((current) => current + 1);
   };
 
+  const updateListParams = (values: { query?: string; status?: string; page?: number }) => {
+    const next = new URLSearchParams();
+    const query = values.query?.trim();
+    if (query) next.set('q', query);
+    if (values.status) next.set('status', values.status);
+    if ((values.page ?? 1) > 1) next.set('page', String(values.page));
+    setSearchParams(next);
+  };
+
   useEffect(() => {
     const controller = new AbortController();
-    hostExperienceService.getMine(controller.signal)
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) setLoading(true);
+    });
+    hostExperienceService.getMine({
+      query: currentQuery || undefined,
+      status: currentStatus,
+      page: currentPage,
+      pageSize: LIST_PAGE_SIZE,
+    }, controller.signal)
       .then((data) => {
-        setExperiences(data);
+        setExperiences(data.items);
+        setTotalPages(data.totalPages);
+        setTotalItems(data.totalItems);
         setError(null);
       })
       .catch((requestError: unknown) => {
@@ -367,7 +447,7 @@ export const HostExperiences = () => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [retryCount]);
+  }, [currentPage, currentQuery, currentStatus, queryString, retryCount]);
 
   useEffect(() => {
     if (!showForm) return undefined;
@@ -394,6 +474,7 @@ export const HostExperiences = () => {
   const startCreate = () => {
     setEditingId(null);
     setForm(createEmptyForm());
+    setOpenItineraryIndex(null);
     setFormError(null);
     resetImages();
     setShowForm(true);
@@ -420,7 +501,7 @@ export const HostExperiences = () => {
       cancellationPolicy: experience.cancellationPolicy,
       tags: experience.tags,
       itinerary: experience.itinerary,
-      location: experience.location,
+      location: formatLocationLabel(experience.location),
       latitude: experience.latitude,
       longitude: experience.longitude,
       category: experience.category,
@@ -428,6 +509,7 @@ export const HostExperiences = () => {
       capacity: experience.isUnlimitedCapacity ? 1 : experience.capacity,
       isUnlimitedCapacity: experience.isUnlimitedCapacity,
     });
+    setOpenItineraryIndex(experience.itinerary.length > 0 ? 0 : null);
     setFormError(null);
     resetImages(experience.images);
     setShowForm(true);
@@ -437,8 +519,44 @@ export const HostExperiences = () => {
     if (submitting) return;
     setShowForm(false);
     setEditingId(null);
+    setOpenItineraryIndex(null);
     setFormError(null);
     resetImages();
+  };
+
+  const addItineraryStep = () => {
+    const nextIndex = form.itinerary.length;
+    setForm((current) => ({
+      ...current,
+      itinerary: [...current.itinerary, {
+        title: '',
+        description: '',
+        durationMinutes: 30,
+        location: null,
+      }],
+    }));
+    setOpenItineraryIndex(nextIndex);
+  };
+
+  const updateItineraryStep = (index: number, changes: Partial<ExperienceItineraryItem>) => {
+    setForm((current) => ({
+      ...current,
+      itinerary: current.itinerary.map((candidate, candidateIndex) => (
+        candidateIndex === index ? { ...candidate, ...changes } : candidate
+      )),
+    }));
+  };
+
+  const removeItineraryStep = (index: number) => {
+    setForm((current) => ({
+      ...current,
+      itinerary: current.itinerary.filter((_, candidateIndex) => candidateIndex !== index),
+    }));
+    setOpenItineraryIndex((current) => {
+      if (current === null) return null;
+      if (current === index) return form.itinerary.length > 1 ? Math.min(index, form.itinerary.length - 2) : null;
+      return current > index ? current - 1 : current;
+    });
   };
 
   const handleLocationChange = (
@@ -446,20 +564,31 @@ export const HostExperiences = () => {
     longitude: number | null,
     location?: string,
   ) => {
+    clearFormFieldError('Location', 'Latitude', 'Longitude');
     setForm((current) => ({
       ...current,
       latitude,
       longitude,
-      location: location?.trim() || current.location,
+      location: location !== undefined
+        ? formatLocationLabel(location)
+        : (latitude === null && longitude === null ? '' : current.location),
     }));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const draftError = validateDraft(form);
+    if (draftError) {
+      setFormError(draftError);
+      toast.error(draftError.message);
+      window.setTimeout(() => {
+        document.querySelector<HTMLElement>('.experience-drawer [aria-invalid="true"]')?.focus();
+      });
+      return;
+    }
     setSubmitting(true);
     setFormError(null);
     setImageError(null);
-    setSuccess(null);
     let saved: ManagedExperience | null = null;
     let synchronizedImages: ExperienceImage[] = [];
     try {
@@ -500,18 +629,22 @@ export const HostExperiences = () => {
 
       const completed = { ...saved, images: synchronizedImages };
       setExperiences((current) => current.map((item) => item.id === completed.id ? completed : item));
-      setSuccess(editingId
+      toast.success(editingId
         ? 'La experiencia volvió a borrador después de guardar los cambios.'
         : 'La experiencia fue creada como borrador. Envíala cuando esté lista.');
+      setRetryCount((current) => current + 1);
       closeForm();
     } catch (requestError: unknown) {
       const apiError = toApiError(requestError);
       if (saved) {
         setExistingImages(synchronizedImages);
         setRemovedImageIds([]);
-        setImageError(`El borrador se guardó, pero no pudimos sincronizar la galería: ${apiError.message}`);
+        const message = `El borrador se guardó, pero no pudimos sincronizar la galería: ${apiError.message}`;
+        setImageError(message);
+        toast.error(message);
       } else {
         setFormError(apiError);
+        toast.error(apiError.message);
       }
     } finally {
       setSubmitting(false);
@@ -521,32 +654,41 @@ export const HostExperiences = () => {
   const submitForReview = async (id: number) => {
     setBusyId(id);
     setError(null);
-    setSuccess(null);
     try {
       const updated = await hostExperienceService.submit(id);
       setExperiences((current) => current.map((item) => item.id === id ? updated : item));
-      setSuccess('La experiencia fue enviada a revisión.');
+      toast.success('La experiencia fue enviada a revisión.');
+      setRetryCount((current) => current + 1);
     } catch (requestError: unknown) {
-      setError(toApiError(requestError).message);
+      const apiError = toApiError(requestError);
+      const experience = experiences.find((item) => item.id === id);
+      if (apiError.errors && experience) {
+        startEdit(experience);
+        setFormError(apiError);
+        setImageError(getFieldError(apiError, 'CoverImage') ?? null);
+        window.setTimeout(() => {
+          document.querySelector<HTMLElement>('.experience-drawer [aria-invalid="true"]')?.focus();
+        });
+      }
+      toast.error(apiError.message);
     } finally {
       setBusyId(null);
     }
   };
 
   const removeExperience = async (experience: ManagedExperience) => {
-    const confirmed = window.confirm(`¿Eliminar el borrador “${experience.title}”?`);
-    if (!confirmed) return;
-
     setBusyId(experience.id);
     setError(null);
     try {
       await hostExperienceService.remove(experience.id);
       setExperiences((current) => current.filter((item) => item.id !== experience.id));
-      setSuccess('La experiencia fue eliminada.');
+      toast.success('La experiencia fue eliminada.');
+      setRetryCount((current) => current + 1);
     } catch (requestError: unknown) {
-      setError(toApiError(requestError).message);
+      toast.error(toApiError(requestError).message);
     } finally {
       setBusyId(null);
+      setExperienceToDelete(null);
     }
   };
 
@@ -563,9 +705,23 @@ export const HostExperiences = () => {
             <X size={21} aria-hidden="true" />
           </button>
         </header>
-        <form className="experience-drawer__form" onSubmit={handleSubmit} noValidate>
+        <form
+          className="experience-drawer__form"
+          onSubmit={handleSubmit}
+          noValidate
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              const target = event.target as HTMLElement;
+              const isTextarea = target.tagName === 'TEXTAREA';
+              const isSubmitButton = target.tagName === 'BUTTON' && target.getAttribute('type') === 'submit';
+              const isItineraryToggle = target.closest('.itinerary-editor__toggle');
+              if (!isTextarea && !isSubmitButton && !isItineraryToggle) {
+                event.preventDefault();
+              }
+            }
+          }}
+        >
           <div className="experience-drawer__content">
-            {formError && <Alert tone="error">{formError.message}</Alert>}
             <section className="experience-form-section">
               <div className="experience-form-section__heading">
                 <span>1</span><h3>Información básica</h3>
@@ -573,7 +729,10 @@ export const HostExperiences = () => {
               <Input
                 label="Título"
                 value={form.title}
-                onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                onChange={(event) => {
+                  clearFormFieldError('Title');
+                  setForm((current) => ({ ...current, title: event.target.value }));
+                }}
                 error={formError ? getFieldError(formError, 'Title') : undefined}
                 required
               />
@@ -581,7 +740,10 @@ export const HostExperiences = () => {
                 label="Resumen"
                 hint="Una frase clara para las tarjetas del catálogo."
                 value={form.shortDescription}
-                onChange={(event) => setForm((current) => ({ ...current, shortDescription: event.target.value }))}
+                onChange={(event) => {
+                  clearFormFieldError('ShortDescription');
+                  setForm((current) => ({ ...current, shortDescription: event.target.value }));
+                }}
                 error={formError ? getFieldError(formError, 'ShortDescription') : undefined}
                 rows={2}
                 maxLength={300}
@@ -589,17 +751,21 @@ export const HostExperiences = () => {
               <TextAreaField
                 label="Descripción"
                 value={form.description}
-                onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                onChange={(event) => {
+                  clearFormFieldError('Description');
+                  setForm((current) => ({ ...current, description: event.target.value }));
+                }}
                 error={formError ? getFieldError(formError, 'Description') : undefined}
                 rows={6}
-                required
               />
               <SelectField
                 label="Categoría"
                 value={form.category}
-                onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
+                onChange={(event) => {
+                  clearFormFieldError('Category');
+                  setForm((current) => ({ ...current, category: event.target.value }));
+                }}
                 error={formError ? getFieldError(formError, 'Category') : undefined}
-                required
               >
                 <option value="">Selecciona una categoría</option>
                 {EXPERIENCE_CATEGORIES.map((category) => (
@@ -607,14 +773,19 @@ export const HostExperiences = () => {
                 ))}
               </SelectField>
               <Input
-                label="Duración en minutos"
+                label="Duración estimada en minutos"
+                hint="Déjala vacía si no aplica."
                 type="number"
                 min="1"
                 value={form.durationMinutes ?? ''}
-                onChange={(event) => setForm((current) => ({
-                  ...current,
-                  durationMinutes: event.target.value ? Number(event.target.value) : null,
-                }))}
+                onChange={(event) => {
+                  clearFormFieldError('DurationMinutes');
+                  setForm((current) => ({
+                    ...current,
+                    durationMinutes: event.target.value ? Number(event.target.value) : null,
+                  }));
+                }}
+                error={formError ? getFieldError(formError, 'DurationMinutes') : undefined}
               />
             </section>
 
@@ -640,7 +811,6 @@ export const HostExperiences = () => {
                 onChange={(event) => setForm((current) => ({ ...current, price: Number(event.target.value) }))}
                 error={formError ? getFieldError(formError, 'Price') : undefined}
                 disabled={form.price === 0}
-                required
               />
               <label className="choice-card">
                 <input
@@ -664,7 +834,6 @@ export const HostExperiences = () => {
                 error={formError ? getFieldError(formError, 'Capacity') : undefined}
                 icon={<UsersRound size={18} />}
                 disabled={form.isUnlimitedCapacity}
-                required={!form.isUnlimitedCapacity}
               />
             </section>
 
@@ -703,7 +872,7 @@ export const HostExperiences = () => {
             </section>
 
             <details className="experience-advanced">
-              <summary>Completar información para publicar</summary>
+              <summary>Información adicional</summary>
               <div className="experience-advanced__content">
                 <TextAreaField
                   label="Punto de encuentro"
@@ -712,7 +881,7 @@ export const HostExperiences = () => {
                   rows={3}
                 />
                 <TextAreaField
-                  label="Recogida (opcional)"
+                  label="Recogida"
                   value={form.pickupInformation ?? ''}
                   onChange={(event) => setForm((current) => ({
                     ...current,
@@ -745,7 +914,7 @@ export const HostExperiences = () => {
                   rows={3}
                 />
                 <Input
-                  label="Edad mínima (opcional)"
+                  label="Edad mínima"
                   type="number"
                   min="0"
                   value={form.minimumAge ?? ''}
@@ -764,20 +933,29 @@ export const HostExperiences = () => {
                   <option value="Moderate">Moderada</option>
                   <option value="Demanding">Exigente</option>
                 </SelectField>
-                <TextAreaField
+                <SelectField
                   label="Accesibilidad"
                   value={form.accessibilityInformation}
                   onChange={(event) => setForm((current) => ({
                     ...current,
                     accessibilityInformation: event.target.value,
                   }))}
-                  rows={3}
-                />
-                <Input
+                >
+                  <option value="">Selecciona una opción</option>
+                  {form.accessibilityInformation
+                    && !ACCESSIBILITY_OPTIONS.includes(form.accessibilityInformation as typeof ACCESSIBILITY_OPTIONS[number])
+                    && <option value={form.accessibilityInformation}>{form.accessibilityInformation}</option>}
+                  {ACCESSIBILITY_OPTIONS.map((option) => (
+                    <option value={option} key={option}>{option}</option>
+                  ))}
+                </SelectField>
+                <MultiSelectField
                   label="Idiomas"
-                  hint="Separa cada idioma con una coma."
-                  value={form.languages.join(', ')}
-                  onChange={(event) => setForm((current) => ({ ...current, languages: parseList(event.target.value) }))}
+                  hint="Puedes seleccionar más de uno."
+                  options={LANGUAGE_OPTIONS}
+                  value={form.languages}
+                  exclusiveOption={ANY_LANGUAGE_OPTION}
+                  onChange={(languages) => setForm((current) => ({ ...current, languages }))}
                 />
                 <SelectField
                   label="Cancelación"
@@ -798,76 +976,88 @@ export const HostExperiences = () => {
 
                 <div className="itinerary-editor">
                   <div className="itinerary-editor__heading">
-                    <strong>Itinerario</strong>
+                    <div>
+                      <strong>Itinerario</strong>
+                      <p>Organiza la experiencia en etapas fáciles de seguir.</p>
+                    </div>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setForm((current) => ({
-                        ...current,
-                        itinerary: [...current.itinerary, {
-                          title: '',
-                          description: '',
-                          durationMinutes: 30,
-                          location: null,
-                        }],
-                      }))}
+                      onClick={addItineraryStep}
                     ><Plus size={16} aria-hidden="true" />Agregar etapa</Button>
                   </div>
+                  {form.itinerary.length === 0 && (
+                    <p className="itinerary-editor__empty">Todavía no has agregado ninguna etapa.</p>
+                  )}
                   {form.itinerary.map((item, index) => (
-                    <div className="itinerary-editor__item" key={index}>
-                      <strong>Etapa {index + 1}</strong>
-                      <Input
-                        label="Título"
-                        value={item.title}
-                        onChange={(event) => setForm((current) => ({
-                          ...current,
-                          itinerary: current.itinerary.map((candidate, candidateIndex) => (
-                            candidateIndex === index ? { ...candidate, title: event.target.value } : candidate
-                          )),
-                        }))}
-                      />
-                      <TextAreaField
-                        label="Descripción"
-                        value={item.description}
-                        onChange={(event) => setForm((current) => ({
-                          ...current,
-                          itinerary: current.itinerary.map((candidate, candidateIndex) => (
-                            candidateIndex === index ? { ...candidate, description: event.target.value } : candidate
-                          )),
-                        }))}
-                        rows={2}
-                      />
-                      <Input
-                        label="Duración en minutos"
-                        type="number"
-                        min="1"
-                        value={item.durationMinutes}
-                        onChange={(event) => setForm((current) => ({
-                          ...current,
-                          itinerary: current.itinerary.map((candidate, candidateIndex) => (
-                            candidateIndex === index
-                              ? { ...candidate, durationMinutes: Number(event.target.value) }
-                              : candidate
-                          )),
-                        }))}
-                      />
-                      <Button
+                    <article className={`itinerary-editor__item${openItineraryIndex === index ? ' itinerary-editor__item--open' : ''}`} key={index}>
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setForm((current) => ({
-                          ...current,
-                          itinerary: current.itinerary.filter((_, candidateIndex) => candidateIndex !== index),
-                        }))}
-                      ><Trash2 size={16} aria-hidden="true" />Quitar etapa</Button>
-                    </div>
+                        className="itinerary-editor__toggle"
+                        aria-expanded={openItineraryIndex === index}
+                        aria-controls={`itinerary-step-${index}`}
+                        onClick={() => setOpenItineraryIndex((current) => current === index ? null : index)}
+                      >
+                        <span className="itinerary-editor__step-number">{index + 1}</span>
+                        <span className="itinerary-editor__step-summary">
+                          <strong>{item.title.trim() || `Etapa ${index + 1}`}</strong>
+                          <span>{item.durationMinutes > 0 ? `${item.durationMinutes} min` : 'Sin duración'}</span>
+                        </span>
+                        <ChevronDown className="itinerary-editor__toggle-icon" size={19} aria-hidden="true" />
+                      </button>
+                      <div
+                        id={`itinerary-step-${index}`}
+                        className="itinerary-editor__item-content"
+                        hidden={openItineraryIndex !== index}
+                      >
+                        <Input
+                          label="Título"
+                          value={item.title}
+                          onChange={(event) => {
+                            clearFormFieldError(`Itinerary[${index}].Title`);
+                            updateItineraryStep(index, { title: event.target.value });
+                          }}
+                          error={formError ? getFieldError(formError, `Itinerary[${index}].Title`) : undefined}
+                        />
+                        <TextAreaField
+                          label="Descripción"
+                          value={item.description}
+                          onChange={(event) => {
+                            clearFormFieldError(`Itinerary[${index}].Description`);
+                            updateItineraryStep(index, { description: event.target.value });
+                          }}
+                          error={formError ? getFieldError(formError, `Itinerary[${index}].Description`) : undefined}
+                          rows={2}
+                        />
+                        <Input
+                          label="Duración en minutos"
+                          type="number"
+                          min="1"
+                          value={item.durationMinutes}
+                          onChange={(event) => {
+                            clearFormFieldError(`Itinerary[${index}].DurationMinutes`);
+                            updateItineraryStep(index, { durationMinutes: Number(event.target.value) });
+                          }}
+                          error={formError ? getFieldError(formError, `Itinerary[${index}].DurationMinutes`) : undefined}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeItineraryStep(index)}
+                        ><Trash2 size={16} aria-hidden="true" />Quitar etapa</Button>
+                      </div>
+                    </article>
                   ))}
                 </div>
               </div>
             </details>
           </div>
           <footer className="experience-drawer__footer">
+            <p className="experience-drawer__draft-hint">
+              Solo necesitas un título para guardar el borrador.
+            </p>
             <Button type="button" variant="outline" onClick={closeForm} disabled={submitting}>Cancelar</Button>
             <Button type="submit" isLoading={submitting}>Guardar borrador</Button>
           </footer>
@@ -888,8 +1078,39 @@ export const HostExperiences = () => {
         <Button onClick={startCreate}><Plus size={18} aria-hidden="true" />Nueva experiencia</Button>
       </header>
 
-      {success && <Alert tone="success">{success}</Alert>}
-      {error && <Alert tone="error">{error}</Alert>}
+      <form
+        className="management-list-toolbar surface-panel"
+        role="search"
+        onSubmit={(event) => {
+          event.preventDefault();
+          updateListParams({ query: listQuery, status: currentStatus, page: 1 });
+        }}
+      >
+        <Input
+          label="Buscar experiencias"
+          placeholder="Título, lugar o categoría"
+          value={listQuery}
+          maxLength={160}
+          onChange={(event) => setListDraft({ source: queryString, value: event.target.value })}
+        />
+        <SelectField
+          label="Estado"
+          value={currentStatus ?? ''}
+          onChange={(event) => updateListParams({
+            query: listQuery,
+            status: event.target.value || undefined,
+            page: 1,
+          })}
+        >
+          <option value="">Todos los estados</option>
+          <option value="Draft">Borradores</option>
+          <option value="PendingReview">En revisión</option>
+          <option value="Approved">Aprobadas</option>
+          <option value="Rejected">Rechazadas</option>
+          <option value="Suspended">Suspendidas</option>
+        </SelectField>
+        <Button type="submit" variant="outline">Buscar</Button>
+      </form>
 
       {loading ? (
         <div className="management-list" role="status">
@@ -922,7 +1143,10 @@ export const HostExperiences = () => {
                   <div>
                     <span className="management-card__reference">Experiencia #{experience.id}</span>
                     <h2>{experience.title}</h2>
-                    <p><MapPin size={16} aria-hidden="true" />{experience.location}</p>
+                    <p>
+                      <MapPin size={16} aria-hidden="true" />
+                      {experience.location ? formatLocationLabel(experience.location) : 'Lugar por definir'}
+                    </p>
                   </div>
                   <StatusBadge tone={getModerationTone(experience.approvalStatus)}>
                     {getModerationLabel(experience.approvalStatus)}
@@ -932,7 +1156,7 @@ export const HostExperiences = () => {
                   <Alert tone="error"><strong>Motivo:</strong> {experience.rejectionReason}</Alert>
                 )}
                 <dl className="management-card__facts">
-                  <div><dt>Categoría</dt><dd>{experience.category}</dd></div>
+                  <div><dt>Categoría</dt><dd>{experience.category || 'Por definir'}</dd></div>
                   <div><dt>Precio</dt><dd>{formatCurrency(experience.price)}</dd></div>
                   <div>
                     <dt>Cupos</dt>
@@ -959,7 +1183,7 @@ export const HostExperiences = () => {
                   {experience.approvalStatus === 'Draft' && (
                     <Button
                       variant="danger"
-                      onClick={() => void removeExperience(experience)}
+                      onClick={() => setExperienceToDelete(experience)}
                       disabled={busyId === experience.id}
                     >
                       <Trash2 size={17} aria-hidden="true" />Eliminar
@@ -971,7 +1195,38 @@ export const HostExperiences = () => {
           ))}
         </div>
       )}
+      {!loading && !error && totalItems > 0 && (
+        <p className="management-list-total">
+          {totalItems} {totalItems === 1 ? 'experiencia' : 'experiencias'}
+        </p>
+      )}
+      {!loading && !error && totalPages > 1 && (
+        <nav className="catalog-pagination" aria-label="Páginas de experiencias">
+          <Button
+            variant="outline"
+            disabled={currentPage <= 1}
+            onClick={() => updateListParams({ query: currentQuery, status: currentStatus, page: currentPage - 1 })}
+          >Anterior</Button>
+          <span>Página {currentPage} de {totalPages}</span>
+          <Button
+            variant="outline"
+            disabled={currentPage >= totalPages}
+            onClick={() => updateListParams({ query: currentQuery, status: currentStatus, page: currentPage + 1 })}
+          >Siguiente</Button>
+        </nav>
+      )}
       {drawer}
+      <ConfirmDialog
+        open={experienceToDelete !== null}
+        title="Eliminar experiencia"
+        message={experienceToDelete ? <>¿Quieres eliminar el borrador “{experienceToDelete.title}”?</> : ''}
+        confirmLabel="Eliminar experiencia"
+        isConfirming={busyId !== null}
+        onClose={() => setExperienceToDelete(null)}
+        onConfirm={() => {
+          if (experienceToDelete) void removeExperience(experienceToDelete);
+        }}
+      />
     </div>
   );
 };

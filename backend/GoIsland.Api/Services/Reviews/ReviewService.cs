@@ -1,4 +1,5 @@
 using GoIsland.Api.Data;
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Reviews;
 using GoIsland.Api.Models;
 using Microsoft.EntityFrameworkCore;
@@ -64,19 +65,22 @@ public class ReviewService : IReviewService
         return ReviewMutationStatus.Success;
     }
 
-    public Task<IReadOnlyCollection<ReviewResponse>> GetForExperienceAsync(int experienceId) =>
+    public Task<PagedResponse<ReviewResponse>> GetForExperienceAsync(
+        int experienceId,
+        ReviewListRequest request) =>
         ListAsync(_context.Reviews.Where(item => item.ExperienceId == experienceId
-            && item.ModerationStatus == ReviewModerationStatuses.Visible));
+            && item.ModerationStatus == ReviewModerationStatuses.Visible), request);
 
-    public Task<IReadOnlyCollection<ReviewResponse>> GetForHostAsync(int hostId) =>
+    public Task<PagedResponse<ReviewResponse>> GetForHostAsync(int hostId, ReviewListRequest request) =>
         ListAsync(_context.Reviews.Where(item => item.HostId == hostId
-            && item.ModerationStatus == ReviewModerationStatuses.Visible));
+            && item.ModerationStatus == ReviewModerationStatuses.Visible), request);
 
-    public Task<IReadOnlyCollection<ReviewResponse>> GetForAdminAsync(string? status)
+    public Task<PagedResponse<ReviewResponse>> GetForAdminAsync(ReviewListRequest request)
     {
         var query = _context.Reviews.AsQueryable();
-        if (!string.IsNullOrWhiteSpace(status)) query = query.Where(item => item.ModerationStatus == status);
-        return ListAsync(query);
+        if (!string.IsNullOrWhiteSpace(request.Status))
+            query = query.Where(item => item.ModerationStatus == request.Status);
+        return ListAsync(query, request);
     }
 
     public async Task<ReviewMutationResult> HideAsync(int adminUserId, int id, string reason)
@@ -95,11 +99,53 @@ public class ReviewService : IReviewService
         return new(ReviewMutationStatus.Success, await BuildAsync(id, includeHidden: true));
     }
 
-    private async Task<IReadOnlyCollection<ReviewResponse>> ListAsync(IQueryable<Review> query) =>
-        await (from review in query.AsNoTracking()
-               join user in _context.Users.AsNoTracking() on review.UserId equals user.Id
-               orderby review.CreatedAt descending
-               select ToResponse(review, user.FullName)).ToArrayAsync();
+    private async Task<PagedResponse<ReviewResponse>> ListAsync(
+        IQueryable<Review> query,
+        ReviewListRequest request)
+    {
+        var responses = from review in query.AsNoTracking()
+                        join user in _context.Users.AsNoTracking() on review.UserId equals user.Id
+                        select new ReviewResponse
+                        {
+                            Id = review.Id,
+                            ReservationId = review.ReservationId,
+                            UserId = review.UserId,
+                            AuthorName = user.FullName,
+                            ExperienceId = review.ExperienceId,
+                            HostId = review.HostId,
+                            Rating = review.Rating,
+                            Comment = review.Comment,
+                            ModerationStatus = review.ModerationStatus,
+                            CreatedAt = review.CreatedAt,
+                            UpdatedAt = review.UpdatedAt
+                        };
+        var search = string.IsNullOrWhiteSpace(request.Query) ? null : request.Query.Trim();
+        if (search is not null)
+        {
+            var pattern = $"%{EscapeLikePattern(search)}%";
+            responses = responses.Where(review =>
+                EF.Functions.ILike(review.AuthorName, pattern, "\\")
+                || EF.Functions.ILike(review.Comment, pattern, "\\"));
+        }
+
+        if (request.ReservationId.HasValue)
+        {
+            responses = responses.Where(review =>
+                review.ReservationId == request.ReservationId.Value);
+        }
+
+        var totalItems = await responses.CountAsync();
+        var items = await responses
+            .OrderByDescending(review => review.CreatedAt)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToArrayAsync();
+        return PagedResponse<ReviewResponse>.Create(
+            items,
+            request.Page,
+            request.PageSize,
+            totalItems);
+    }
 
     private async Task<ReviewResponse?> BuildAsync(int id, bool includeHidden)
     {
@@ -116,4 +162,9 @@ public class ReviewService : IReviewService
         Rating = review.Rating, Comment = review.Comment, ModerationStatus = review.ModerationStatus,
         CreatedAt = review.CreatedAt, UpdatedAt = review.UpdatedAt
     };
+
+    private static string EscapeLikePattern(string value) => value
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("%", "\\%", StringComparison.Ordinal)
+        .Replace("_", "\\_", StringComparison.Ordinal);
 }

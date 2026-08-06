@@ -38,11 +38,95 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
             MaxPrice = 100m
         });
 
-        var result = Assert.Single(search);
+        var result = Assert.Single(search.Items);
+        Assert.Equal(1, search.TotalItems);
+        Assert.Equal(1, search.TotalPages);
         Assert.Equal(approved.Experience.Id, result.Id);
         Assert.True(result.IsApproved);
         Assert.Null(await publicService.GetByIdAsync(draft.Experience!.Id));
         Assert.NotNull(await publicService.GetByIdAsync(approved.Experience.Id));
+        Assert.Null(await publicService.GetBySlugAsync(draft.Experience.Slug));
+        Assert.Equal(
+            approved.Experience.Id,
+            (await publicService.GetBySlugAsync(approved.Experience.Slug))?.Id);
+    }
+
+    [Fact]
+    public async Task PublicSearch_AppliesTextFiltersSortingAndPaginationOnTheServer()
+    {
+        var service = GetRequiredService<IExperienceManagementService>();
+        var publicService = GetRequiredService<IExperienceService>();
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync(marker);
+        var admin = await CreateUserAsync($"admin-search-{marker}@goisland.test", UserRoles.Admin);
+
+        foreach (var (title, price, language, difficulty) in new[]
+        {
+            ($"Cacao premium {marker}", 90m, "Español", ExperienceDifficulties.Easy),
+            ($"Cacao familiar {marker}", 35m, "Español", ExperienceDifficulties.Easy),
+            ($"Ruta costera {marker}", 15m, "Inglés", ExperienceDifficulties.Moderate)
+        })
+        {
+            var created = await service.CreateAsync(host.Id, CreateRequest(
+                title,
+                $"Lugar-{marker}",
+                $"Tipo-{marker}",
+                price));
+            var entity = await Context.Experiences.FindAsync(created.Experience!.Id);
+            entity!.Languages = [language];
+            entity.Difficulty = difficulty;
+            entity.Tags = title.StartsWith("Cacao", StringComparison.Ordinal) ? ["cacao local"] : [];
+            await Context.SaveChangesAsync();
+            await AddCoverAsync(created.Experience.Id, $"{marker}-{created.Experience.Id}");
+            await service.SubmitAsync(host.Id, created.Experience.Id);
+            await service.ReviewAsync(created.Experience.Id, admin.Id, ExperienceReviewAction.Approve, null);
+        }
+
+        var firstPage = await publicService.SearchAsync(new SearchExperiencesRequest
+        {
+            Query = "cacao",
+            Language = "español",
+            Difficulty = ExperienceDifficulties.Easy,
+            Sort = ExperienceSortOptions.PriceAscending,
+            Page = 1,
+            PageSize = 1
+        });
+
+        var first = Assert.Single(firstPage.Items);
+        Assert.Contains("familiar", first.Title, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, firstPage.TotalItems);
+        Assert.Equal(2, firstPage.TotalPages);
+
+        var secondPage = await publicService.SearchAsync(new SearchExperiencesRequest
+        {
+            Query = "cacao",
+            Language = "español",
+            Difficulty = ExperienceDifficulties.Easy,
+            Sort = ExperienceSortOptions.PriceAscending,
+            Page = 2,
+            PageSize = 1
+        });
+
+        Assert.Contains("premium", Assert.Single(secondPage.Items).Title, StringComparison.OrdinalIgnoreCase);
+
+        var hostPage = await service.GetMineAsync(host.Id, new ManagedExperienceListRequest
+        {
+            Query = "cacao",
+            Status = ExperienceApprovalStatuses.Approved,
+            Page = 1,
+            PageSize = 1
+        });
+        Assert.Single(hostPage.Items);
+        Assert.Equal(2, hostPage.TotalItems);
+
+        var moderationPage = await service.GetForAdminAsync(new ManagedExperienceListRequest
+        {
+            Query = marker,
+            Status = ExperienceApprovalStatuses.Approved,
+            PageSize = 2
+        });
+        Assert.Equal(2, moderationPage.Items.Count);
+        Assert.Equal(3, moderationPage.TotalItems);
     }
 
     [Fact]
@@ -56,19 +140,19 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
 
         var incomplete = await service.CreateAsync(owner.Id, new CreateExperienceRequest
         {
-            Title = $"Borrador incompleto {marker}",
-            Description = "Este borrador todavía no está listo para revisión.",
-            Location = $"Lugar-{marker}",
-            Category = $"Tipo-{marker}",
-            Price = 10m,
-            Capacity = 2
+            Title = $"Borrador incompleto {marker}"
         });
         var blockedSubmission = await service.SubmitAsync(owner.Id, incomplete.Experience!.Id);
         Assert.Equal(ExperienceManagementStatus.Incomplete, blockedSubmission.Status);
-        Assert.Contains("Completa antes de enviar", blockedSubmission.Message);
+        Assert.Equal("Revisa los campos marcados antes de enviar la experiencia.", blockedSubmission.Message);
+        Assert.Equal("Escribe un resumen de la experiencia.", blockedSubmission.Errors!["ShortDescription"][0]);
+        Assert.DoesNotContain("DurationMinutes", blockedSubmission.Errors);
+        Assert.Equal("Agrega una foto de portada.", blockedSubmission.Errors["CoverImage"][0]);
 
-        var created = await service.CreateAsync(owner.Id, CreateRequest(
-            $"Propiedad {marker}", $"Lugar-{marker}", $"Tipo-{marker}", 50m, 8));
+        var completeWithoutDuration = CreateRequest(
+            $"Propiedad {marker}", $"Lugar-{marker}", $"Tipo-{marker}", 50m, 8);
+        completeWithoutDuration.DurationMinutes = null;
+        var created = await service.CreateAsync(owner.Id, completeWithoutDuration);
         await AddCoverAsync(created.Experience!.Id, marker);
 
         Assert.Equal(ExperienceApprovalStatuses.Draft, created.Experience!.ApprovalStatus);
@@ -91,6 +175,39 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
             log => log.EntityType == nameof(Experience)
                 && log.EntityId == created.Experience.Id
                 && log.Action == nameof(ExperienceReviewAction.Reject));
+    }
+
+    [Fact]
+    public async Task Submit_AllowsOptionalExperienceDetailsToRemainEmpty()
+    {
+        var service = GetRequiredService<IExperienceManagementService>();
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"optional-{marker}");
+        var created = await service.CreateAsync(host.Id, new CreateExperienceRequest
+        {
+            Title = $"Paseo gratis {marker}",
+            ShortDescription = "Una salida sencilla para disfrutar el río.",
+            Description = "Una experiencia comunitaria gratuita para conocer y disfrutar el entorno.",
+            DurationMinutes = 90,
+            Location = $"Río San Juan-{marker}",
+            Category = $"Tipo-{marker}",
+            Price = 0m,
+            Capacity = 10
+        });
+        await AddCoverAsync(created.Experience!.Id, $"optional-{marker}");
+
+        var submitted = await service.SubmitAsync(host.Id, created.Experience.Id);
+
+        Assert.Equal(ExperienceManagementStatus.Success, submitted.Status);
+        Assert.Equal(ExperienceApprovalStatuses.PendingReview, submitted.Experience!.ApprovalStatus);
+        Assert.Empty(submitted.Experience.WhatIsIncluded);
+        Assert.Empty(submitted.Experience.WhatToBring);
+        Assert.Empty(submitted.Experience.Languages);
+        Assert.Empty(submitted.Experience.Itinerary);
+        Assert.Equal(string.Empty, submitted.Experience.MeetingPointInstructions);
+        Assert.Equal(string.Empty, submitted.Experience.GuestRequirements);
+        Assert.Equal(string.Empty, submitted.Experience.Difficulty);
+        Assert.Equal(string.Empty, submitted.Experience.CancellationPolicy);
     }
 
     private async Task<User> CreateApprovedHostAsync(string marker)

@@ -16,6 +16,8 @@ Antes del primer despliegue con datos reales:
 
 Las decisiones que requieren acceso a cuentas se registran en
 `docs/deployment/external-readiness-checklist.md`.
+El procedimiento completo de copia, restauración, rotación y validación está en
+`docs/deployment/operations-runbook.md`.
 
 ## Backend local en contenedor
 
@@ -38,6 +40,9 @@ GET http://localhost:8080/api/health/ready
 
 El primer endpoint comprueba que el proceso vive. El segundo devuelve `503` cuando PostgreSQL no
 está disponible.
+
+El backend escribe logs JSON por consola. Todas las respuestas incluyen `X-Correlation-ID`; se
+debe registrar ese valor al investigar un error sin exponer contenido de la solicitud ni secretos.
 
 ## Variables del backend
 
@@ -63,11 +68,14 @@ está disponible.
 | `WebPush__PrivateKey` | Según uso | Clave privada VAPID |
 | `Payments__Provider` | Sí | `Stripe` en la demostración |
 | `Payments__Mode` | Sí | `Sandbox` |
+| `Reservations__Expiration__HoldMinutes` | Sí | Minutos disponibles para pagar; inicialmente `15` |
+| `Reservations__Expiration__PollIntervalSeconds` | Sí | Frecuencia de reconciliación; inicialmente `30` |
+| `Reservations__Expiration__BatchSize` | Sí | Reservas procesadas por lote; inicialmente `50` |
 | `Cloudinary__CloudName` | Fase 2 | Cuenta de imágenes |
 | `Cloudinary__ApiKey` | Fase 2 | Identificador de carga |
 | `Cloudinary__ApiSecret` | Fase 2 | Secreto de carga |
-| `Stripe__SecretKey` | Fase 8 | Clave `sk_test_` |
-| `Stripe__WebhookSecret` | Fase 8 | Firma `whsec_` del endpoint |
+| `Stripe__SecretKey` | Sí | Clave secreta de prueba `sk_test_`; las claves live se rechazan |
+| `Stripe__WebhookSecret` | Sí | Firma `whsec_` del endpoint |
 
 ## Render
 
@@ -76,7 +84,9 @@ está disponible.
 3. Configurar las variables anteriores en el panel.
 4. Definir `ForwardedHeaders__TrustManagedProxy=true` y evitar exponer el contenedor por otra ruta.
 5. Usar `/api/health` como health check.
-6. Ejecutar los scripts SQL pendientes de forma controlada antes de dirigir tráfico al servicio.
+6. Confirmar que las migraciones `014_add_catalog_search_indexes.sql`,
+   `015_add_unique_schedule_start.sql` y `016_add_reservation_expiration.sql` están aplicadas. Se
+   aplicaron a la base actual de Neon el 4 de agosto de 2026.
 7. Confirmar `/api/health/ready` y probar registro, acceso, catálogo y reserva desde Vercel.
 
 Render proporciona `PORT`; no se debe fijar un puerto distinto en el código ni en el panel.
@@ -104,16 +114,44 @@ Crear el proyecto con:
 - Build Command: `npm run build`
 - Output Directory: `dist`
 - `VITE_API_URL=https://<api-publica>/api`
+- `VITE_SITE_URL=https://<frontend-publico>` sin barra final
 - `VITE_GOOGLE_CLIENT_ID=<cliente-web>`
-- `VITE_STRIPE_PUBLISHABLE_KEY=pk_test_<...>` cuando se complete Stripe
+- `VITE_STRIPE_PUBLISHABLE_KEY=pk_test_<...>`; las claves live no cargan el formulario
 
-`frontend/vercel.json` envía las rutas de la SPA a `index.html`, de modo que una URL de detalle se
-puede abrir o recargar directamente.
+El build consulta el catálogo público para generar `sitemap.xml` y el HTML social de cada
+experiencia aprobada. Por eso la API debe estar disponible durante el despliegue y la carga manual
+del catálogo debe completarse antes del build definitivo. `frontend/vercel.json` conserva la
+reescritura de la SPA para rutas que todavía no existían durante el último build.
+
+## Stripe Sandbox
+
+En el ambiente público, configurar `Payments__Provider=Stripe`, `Payments__Mode=Sandbox` y las
+credenciales de prueba indicadas arriba. Registrar uno de estos endpoints, según el proveedor del
+backend:
+
+```text
+https://<api-azure>/api/payments/webhook
+https://<api-render>/api/payments/webhook
+```
+
+Suscribir exclusivamente los eventos utilizados por la aplicación:
+
+- `payment_intent.succeeded`
+- `payment_intent.payment_failed`
+- `payment_intent.canceled`
+- `charge.refunded`
+
+El webhook verifica `Stripe-Signature` antes de procesar el evento. Los eventos repetidos se
+registran una sola vez. Una confirmación tardía de una reserva vencida inicia un reembolso de
+prueba automático y nunca recupera los cupos ya liberados.
+
+Para desarrollo sin conexión se mantiene `Payments__Provider=Mock`; sus acciones simuladas no
+están disponibles cuando el proveedor activo es Stripe.
 
 ## Recuperación
 
 1. Detener temporalmente escrituras o poner fuera de tráfico la revisión afectada.
-2. Restaurar la copia de Neon en una rama o base separada.
+2. Restaurar la copia de Neon en una rama o base separada; nunca sobre la base activa.
 3. Validar esquema, conteos principales y `/api/health/ready`.
 4. Actualizar `ConnectionStrings__DefaultConnection` para apuntar a la base validada.
 5. Desplegar o reiniciar sin reconstruir la imagen.
@@ -121,3 +159,6 @@ puede abrir o recargar directamente.
 
 Las imágenes se restauran desde Cloudinary y sus identificadores persistidos; nunca dependen del
 disco del contenedor.
+
+Los comandos, comprobaciones y procedimiento de reversión están detallados en
+`docs/deployment/operations-runbook.md`.

@@ -2,11 +2,11 @@ import { Mail } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import AuthMosaic from '../components/AuthMosaic';
 import Logo from '../components/Logo';
+import ToastFeedback from '../components/ToastFeedback';
 import { getFieldError, toApiError } from '../services/apiError';
 import { authService } from '../services/authService';
 
@@ -51,8 +51,8 @@ export const ForgotPassword = () => {
           <p>Te enviaremos un enlace si el correo pertenece a una cuenta registrada.</p>
         </header>
 
-        {message && <Alert tone="success">{message}</Alert>}
-        {error && <Alert tone="error">{error}</Alert>}
+        <ToastFeedback message={message} tone="success" />
+        <ToastFeedback message={error} tone="error" />
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <Input
@@ -63,6 +63,7 @@ export const ForgotPassword = () => {
             onChange={(event) => setEmail(event.target.value)}
             error={fieldError}
             icon={<Mail size={18} />}
+            required
           />
           <Button type="submit" fullWidth isLoading={isSubmitting}>Enviar instrucciones</Button>
         </form>

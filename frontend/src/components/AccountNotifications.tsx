@@ -26,7 +26,7 @@ export const AccountNotifications = ({ onNavigate }: AccountNotificationsProps) 
     const controller = new AbortController();
     notificationService.getAll(controller.signal)
       .then((notifications) => {
-        setItems(notifications);
+        setItems(notifications.items);
         setError(null);
       })
       .catch((requestError: unknown) => {

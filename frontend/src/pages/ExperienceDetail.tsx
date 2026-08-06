@@ -1,17 +1,29 @@
-import axios from 'axios';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
+  ArrowRight,
+  Backpack,
   CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
   Compass,
+  Globe,
+  Info,
   MapPin,
+  Maximize2,
+  Navigation,
   Ship,
   TicketCheck,
   TreePine,
   Utensils,
   UsersRound,
   Waves,
+  X,
+  XCircle,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
@@ -20,13 +32,15 @@ import ErrorState from '../components/ErrorState';
 import ReservationDialog from '../components/ReservationDialog';
 import Skeleton from '../components/Skeleton';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMetadata } from '../hooks/usePageMetadata';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
 import RatingStars from '../components/RatingStars';
 import { getCancellationPolicyLabel, getDifficultyLabel } from '../utils/experienceLabels';
 import { reviewService } from '../services/reviewService';
 import { resolveApiAssetUrl } from '../services/api';
-import type { Experience, ExperienceSchedule, Review } from '../types';
+import { formatLocationLabel } from '../services/googleMapsService';
+import { experienceKeys, queryRefresh } from '../queries/queryKeys';
 
 const ExperienceMap = lazy(() => import('../components/ExperienceMap'));
 
@@ -85,69 +99,145 @@ const DetailSkeleton = () => (
   </div>
 );
 
+
 export const ExperienceDetail = () => {
-  const { id } = useParams();
+  const { identifier: routeIdentifier } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
-  const parsedId = Number(id);
-  const isValidId = Number.isInteger(parsedId) && parsedId > 0;
+  const identifier = routeIdentifier?.trim() ?? '';
+  const isValidIdentifier = identifier.length > 0 && identifier.length <= 180;
   const requestedReturnPath = typeof location.state?.from === 'string'
     && location.state.from.startsWith('/experiences')
     && !location.state.from.startsWith('//')
     ? location.state.from
     : '/experiences';
-  const [retryCount, setRetryCount] = useState(0);
   const [reservationOpen, setReservationOpen] = useState(false);
-  const requestKey = `${parsedId}::${retryCount}`;
-  const [result, setResult] = useState<{
-    requestKey: string;
-    experience: Experience | null;
-    schedules: ExperienceSchedule[];
-    reviews: Review[];
-    error: string | null;
-    notFound: boolean;
-  } | null>(null);
-  const loading = isValidId && result?.requestKey !== requestKey;
-  const experience = result?.requestKey === requestKey ? result.experience : null;
-  const schedules = result?.requestKey === requestKey ? result.schedules : [];
-  const reviews = result?.requestKey === requestKey ? result.reviews : [];
-  const error = result?.requestKey === requestKey ? result.error : null;
-  const notFound = !isValidId || (result?.requestKey === requestKey && result.notFound);
+  const detailQuery = useQuery({
+    queryKey: experienceKeys.detail(identifier),
+    queryFn: ({ signal }) => experienceService.getExperience(identifier, signal),
+    enabled: isValidIdentifier,
+  });
+  const experience = detailQuery.data ?? null;
+  const availabilityQuery = useQuery({
+    queryKey: experienceKeys.availability(experience?.id ?? 0),
+    queryFn: ({ signal }) => experienceService.getAvailability(experience!.id, undefined, signal),
+    enabled: experience !== null,
+    staleTime: 10_000,
+    refetchInterval: queryRefresh.availability,
+    refetchOnMount: 'always',
+  });
+  const reviewsQuery = useQuery({
+    queryKey: experienceKeys.reviews(experience?.id ?? 0),
+    queryFn: ({ signal }) => reviewService.forExperience(experience!.id, signal),
+    enabled: experience !== null,
+    select: (data) => data.items,
+  });
+  const schedules = availabilityQuery.data ?? [];
+  const reviews = reviewsQuery.data ?? [];
+  const requestError = (!detailQuery.data ? detailQuery.error : null)
+    ?? (!availabilityQuery.data ? availabilityQuery.error : null)
+    ?? (!reviewsQuery.data ? reviewsQuery.error : null);
+  const apiError = requestError
+    ? toApiError(requestError, 'No fue posible cargar esta experiencia.')
+    : null;
+  const loading = isValidIdentifier && (
+    detailQuery.isPending
+    || (experience !== null && (availabilityQuery.isPending || reviewsQuery.isPending))
+  );
+  const error = apiError?.status === 404 ? null : apiError?.message ?? null;
+  const notFound = !isValidIdentifier || apiError?.status === 404;
+
+  const metadata = useMemo(() => {
+    if (!experience) return undefined;
+    const coverImage = experience.images.find((image) => image.isCover) ?? experience.images[0];
+    const description = (experience.shortDescription || experience.description).slice(0, 160);
+    const path = `/experiences/${experience.slug}`;
+    const siteOrigin = (import.meta.env.VITE_SITE_URL || window.location.origin).replace(/\/$/, '');
+    const canonical = `${siteOrigin}${path}`;
+    return {
+      title: `${experience.title} | GoIsland`,
+      description,
+      path,
+      image: coverImage ? resolveApiAssetUrl(coverImage.url) : undefined,
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'TouristTrip',
+        '@id': canonical,
+        name: experience.title,
+        description,
+        url: canonical,
+        image: coverImage ? resolveApiAssetUrl(coverImage.url) : undefined,
+        touristType: experience.category,
+        itinerary: experience.location,
+      },
+    };
+  }, [experience]);
+  usePageMetadata(metadata);
 
   useEffect(() => {
-    if (!isValidId) return;
-
-    const controller = new AbortController();
-
-    Promise.all([
-      experienceService.getExperience(parsedId, controller.signal),
-      experienceService.getAvailability(parsedId, undefined, controller.signal),
-      reviewService.forExperience(parsedId, controller.signal),
-    ])
-      .then(([data, availability, publicReviews]) => setResult({
-        requestKey,
-        experience: data,
-        schedules: availability,
-        reviews: publicReviews,
-        error: null,
-        notFound: false,
-      }))
-      .catch((requestError: unknown) => {
-        if (axios.isCancel(requestError)) return;
-        const apiError = toApiError(requestError, 'No fue posible cargar esta experiencia.');
-        setResult({
-          requestKey,
-          experience: null,
-          schedules: [],
-          reviews: [],
-          error: apiError.status === 404 ? null : apiError.message,
-          notFound: apiError.status === 404,
-        });
+    if (experience && /^\d+$/.test(identifier)) {
+      queryClient.setQueryData(experienceKeys.detail(experience.slug), experience);
+      navigate(`/experiences/${experience.slug}`, {
+        replace: true,
+        state: location.state,
       });
+    }
+  }, [experience, identifier, location.state, navigate, queryClient]);
 
-    return () => controller.abort();
-  }, [isValidId, parsedId, requestKey]);
+  const allImages = useMemo(() => {
+    if (!experience || experience.images.length === 0) return [];
+    return [...experience.images].sort((a, b) => (b.isCover ? 1 : 0) - (a.isCover ? 1 : 0));
+  }, [experience]);
+
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [userHasInteracted, setUserHasInteracted] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+  useEffect(() => {
+    if (userHasInteracted || allImages.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveImageIndex((prev) => (prev + 1) % allImages.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [userHasInteracted, allImages.length]);
+
+  const handlePrevImage = () => {
+    if (allImages.length <= 1) return;
+    setUserHasInteracted(true);
+    setActiveImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+  };
+
+  const handleNextImage = () => {
+    if (allImages.length <= 1) return;
+    setUserHasInteracted(true);
+    setActiveImageIndex((prev) => (prev + 1) % allImages.length);
+  };
+
+  const handleSelectImage = (index: number) => {
+    setUserHasInteracted(true);
+    setActiveImageIndex(index);
+  };
+
+  useEffect(() => {
+    if (!isLightboxOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsLightboxOpen(false);
+      } else if (e.key === 'ArrowLeft') {
+        handlePrevImage();
+      } else if (e.key === 'ArrowRight') {
+        handleNextImage();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isLightboxOpen, allImages.length]);
 
   if (loading) return <DetailSkeleton />;
 
@@ -156,7 +246,7 @@ export const ExperienceDetail = () => {
       <div className="container experience-detail-state animate-fade-in">
         <EmptyState
           title="Experiencia no disponible"
-          description="La experiencia no existe, no está aprobada o dejó de estar disponible."
+          description="Esta experiencia ya no está disponible."
           action={<Link className="button-link button-link--outline" to={requestedReturnPath}>Volver al catálogo</Link>}
         />
       </div>
@@ -169,7 +259,13 @@ export const ExperienceDetail = () => {
         <ErrorState
           title="No pudimos cargar la experiencia"
           description={error || 'No fue posible cargar esta experiencia.'}
-          onRetry={() => setRetryCount((current) => current + 1)}
+          onRetry={() => {
+            if (!experience) {
+              void detailQuery.refetch();
+              return;
+            }
+            void Promise.all([availabilityQuery.refetch(), reviewsQuery.refetch()]);
+          }}
         />
         <Link className="experience-detail-state__back" to={requestedReturnPath}>Volver al catálogo</Link>
       </div>
@@ -177,14 +273,18 @@ export const ExperienceDetail = () => {
   }
 
   const nextSchedule = schedules[0];
-  const coverImage = experience.images.find((image) => image.isCover) ?? experience.images[0];
-  const galleryImages = experience.images.filter((image) => image.id !== coverImage?.id);
-  const availabilityTone = nextSchedule ? 'info' : 'warning';
-  const hasPreparationInfo = Boolean(experience.meetingPointInstructions)
-    || Boolean(experience.pickupInformation)
-    || Boolean(experience.guestRequirements)
-    || experience.minimumAge !== null;
-  const hasUsefulInfo = experience.languages.length > 0
+  const canReserve = Boolean(nextSchedule
+    && (nextSchedule.isUnlimitedCapacity || nextSchedule.availableSpots > 0));
+
+  const hasBeforeGoing = Boolean(
+    experience.meetingPointInstructions
+    || experience.pickupInformation
+    || experience.guestRequirements
+    || experience.minimumAge !== null,
+  );
+  const hasIncludedInformation = experience.whatIsIncluded.length > 0
+    || experience.whatIsNotIncluded.length > 0;
+  const hasUsefulInformation = experience.languages.length > 0
     || Boolean(experience.difficulty)
     || Boolean(experience.accessibilityInformation)
     || Boolean(experience.cancellationPolicy);
@@ -201,133 +301,107 @@ export const ExperienceDetail = () => {
     setReservationOpen(true);
   };
 
-  const handleSchedulesUpdate = (updatedSchedules: ExperienceSchedule[]) => {
-    setResult((current) => current?.requestKey === requestKey
-      ? { ...current, schedules: updatedSchedules }
-      : current);
-  };
-
   return (
     <article className="container experience-detail animate-fade-in">
       <Link className="experience-detail__back" to={requestedReturnPath}>
         <ArrowLeft size={18} aria-hidden="true" /> Volver al catálogo
       </Link>
 
-      <div className="experience-detail__layout">
-        <div className="experience-detail__main">
-          <div className="experience-detail__gallery">
-            <div
-              className={`experience-detail__placeholder experience-detail__placeholder--${coverImage ? 'image' : getCategorySlug(experience.category)}`}
-              role="img"
-              aria-label={coverImage?.altText || `Imagen de ambiente de la categoría ${experience.category}`}
-              style={coverImage
-                ? { backgroundImage: `url("${resolveApiAssetUrl(coverImage.url)}")` }
-                : undefined}
-            >
-              {!coverImage && getCategoryIcon(experience.category)}
-              <span>{experience.category}</span>
+      <div className="experience-detail__hero-grid">
+        <div className="experience-detail__gallery">
+          <div className="experience-carousel">
+            <div className="experience-carousel__main">
+              {allImages.length > 0 ? (
+                <div
+                  className="experience-carousel__track"
+                  style={{ transform: `translateX(-${activeImageIndex * 100}%)` }}
+                >
+                  {allImages.map((img) => (
+                    <img
+                      key={img.id}
+                      src={resolveApiAssetUrl(img.url)}
+                      alt={img.altText || experience.title}
+                      className="experience-carousel__slide"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div
+                  className={`experience-detail__placeholder experience-detail__placeholder--${getCategorySlug(experience.category)}`}
+                  role="img"
+                  aria-label={`Imagen de ambiente de la categoría ${experience.category}`}
+                >
+                  {getCategoryIcon(experience.category)}
+                </div>
+              )}
+              <span className="experience-carousel__badge">{experience.category}</span>
+
+              {allImages.length > 0 && (
+                <button
+                  type="button"
+                  className="experience-carousel__expand"
+                  onClick={() => {
+                    setUserHasInteracted(true);
+                    setIsLightboxOpen(true);
+                  }}
+                  aria-label="Ver imagen en tamaño completo"
+                  title="Ver imagen en tamaño completo"
+                >
+                  <Maximize2 size={18} aria-hidden="true" />
+                </button>
+              )}
+
+              {allImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="experience-carousel__control experience-carousel__control--prev"
+                    onClick={handlePrevImage}
+                    aria-label="Imagen anterior"
+                  >
+                    <ChevronLeft size={22} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="experience-carousel__control experience-carousel__control--next"
+                    onClick={handleNextImage}
+                    aria-label="Siguiente imagen"
+                  >
+                    <ChevronRight size={22} aria-hidden="true" />
+                  </button>
+                  <div className="experience-carousel__indicators">
+                    {allImages.map((img, idx) => (
+                      <button
+                        key={img.id}
+                        type="button"
+                        className={`experience-carousel__indicator ${idx === activeImageIndex ? 'is-active' : ''}`}
+                        onClick={() => handleSelectImage(idx)}
+                        aria-label={`Foto ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
-            {galleryImages.length > 0 && (
+
+            {allImages.length > 1 && (
               <div className="experience-detail__thumbnails" aria-label="Galería de la experiencia">
-                {galleryImages.map((image) => (
-                  <img
+                {allImages.map((image, index) => (
+                  <button
+                    type="button"
                     key={image.id}
-                    src={resolveApiAssetUrl(image.url)}
-                    alt={image.altText || `Foto de ${experience.title}`}
-                  />
+                    className={`experience-detail__thumbnail ${index === activeImageIndex ? 'is-active' : ''}`}
+                    onClick={() => handleSelectImage(index)}
+                  >
+                    <img
+                      src={resolveApiAssetUrl(image.url)}
+                      alt={image.altText || `Foto ${index + 1} de ${experience.title}`}
+                    />
+                  </button>
                 ))}
               </div>
             )}
           </div>
-
-          <header className="experience-detail__header">
-            <h1>{experience.title}</h1>
-            <div className="experience-detail__location">
-              <MapPin size={18} aria-hidden="true" />
-              <span>{experience.location}</span>
-            </div>
-          </header>
-
-          <section className="experience-detail__description" aria-labelledby="experience-description-title">
-            <h2 id="experience-description-title">Sobre esta experiencia</h2>
-            {experience.shortDescription && <p><strong>{experience.shortDescription}</strong></p>}
-            <p>{experience.description}</p>
-          </section>
-          <div className="experience-detail__catalog-grid">
-            {hasPreparationInfo && (
-              <section>
-                <h2>Antes de ir</h2>
-                {experience.meetingPointInstructions && (
-                  <p><strong>Punto de encuentro:</strong> {experience.meetingPointInstructions}</p>
-                )}
-                {experience.pickupInformation && <p><strong>Recogida:</strong> {experience.pickupInformation}</p>}
-                {experience.guestRequirements && <p>{experience.guestRequirements}</p>}
-                {experience.minimumAge !== null && <p>Edad mínima: {experience.minimumAge} años</p>}
-              </section>
-            )}
-            {experience.whatToBring.length > 0 && (
-              <section>
-                <h2>Qué llevar</h2>
-                <ul>{experience.whatToBring.map((item) => <li key={item}>{item}</li>)}</ul>
-              </section>
-            )}
-            {(experience.whatIsIncluded.length > 0 || experience.whatIsNotIncluded.length > 0) && (
-              <section>
-                <h2>Incluido</h2>
-                {experience.whatIsIncluded.length > 0 && (
-                  <ul>{experience.whatIsIncluded.map((item) => <li key={item}>{item}</li>)}</ul>
-                )}
-                {experience.whatIsNotIncluded.length > 0 && (
-                  <>
-                    <h3>No incluido</h3>
-                    <ul>{experience.whatIsNotIncluded.map((item) => <li key={item}>{item}</li>)}</ul>
-                  </>
-                )}
-              </section>
-            )}
-            {hasUsefulInfo && (
-              <section>
-                <h2>Información útil</h2>
-                {experience.languages.length > 0 && <p>Idiomas: {experience.languages.join(', ')}</p>}
-                {experience.difficulty && <p>Dificultad: {getDifficultyLabel(experience.difficulty)}</p>}
-                {experience.accessibilityInformation && <p>{experience.accessibilityInformation}</p>}
-                {experience.cancellationPolicy && (
-                  <p>Política de cancelación: {getCancellationPolicyLabel(experience.cancellationPolicy)}</p>
-                )}
-              </section>
-            )}
-          </div>
-          {experience.itinerary.length > 0 && (
-            <section aria-labelledby="experience-itinerary-title">
-              <h2 id="experience-itinerary-title">Itinerario</h2>
-              <ol className="experience-detail__itinerary">
-                {experience.itinerary.map((item) => (
-                  <li key={item.id ?? item.sortOrder}>
-                    <strong>{item.title}</strong>
-                    <p>{item.description}</p>
-                    <small>{item.durationMinutes} minutos{item.location ? ` · ${item.location}` : ''}</small>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          )}
-          {experience.latitude !== null && experience.longitude !== null && (
-            <section className="experience-detail__map" aria-labelledby="experience-map-title">
-              <h2 id="experience-map-title">Dónde se realiza</h2>
-              <p>{experience.location}</p>
-              <Suspense fallback={<Skeleton className="experience-detail__map-loading" />}>
-                <ExperienceMap
-                  points={[{
-                    id: experience.id,
-                    title: experience.title,
-                    latitude: experience.latitude,
-                    longitude: experience.longitude,
-                  }]}
-                  label={`Ubicación de ${experience.title}`}
-                />
-              </Suspense>
-            </section>
-          )}
         </div>
 
         <aside className="experience-detail__summary surface-panel" aria-labelledby="experience-summary-title">
@@ -336,78 +410,341 @@ export const ExperienceDetail = () => {
             <span>Precio por persona</span>
             <strong>{formatPrice(experience.price)}</strong>
           </div>
-          <dl className="experience-detail__facts">
-            <div>
-              <dt><TicketCheck size={18} aria-hidden="true" /> Próximo horario</dt>
-              <dd>{nextSchedule ? formatDate(nextSchedule.startsAt) : 'Sin fecha'}</dd>
-            </div>
-            <div>
-              <dt><UsersRound size={18} aria-hidden="true" /> Cupos próximos</dt>
-              <dd>{nextSchedule
-                ? nextSchedule.isUnlimitedCapacity ? 'Sin límite' : nextSchedule.availableSpots
-                : 0}</dd>
-            </div>
-            <div>
-              <dt><CalendarDays size={18} aria-hidden="true" /> Fechas disponibles</dt>
-              <dd>{schedules.length}</dd>
-            </div>
-          </dl>
-          <Alert tone={availabilityTone}>
-            {!nextSchedule ? (
-              <>Actualmente no hay horarios futuros disponibles.</>
-            ) : (
-              nextSchedule.isUnlimitedCapacity
-                ? `La próxima fecha no tiene límite de cupos; puedes elegir entre ${schedules.length}.`
-                : `${nextSchedule.availableSpots} cupos en la próxima fecha; puedes elegir entre ${schedules.length}.`
-            )}
-          </Alert>
-          <Button
-            className="experience-detail__reserve"
-            variant="primary"
-            fullWidth
-            onClick={handleReserve}
-            disabled={!nextSchedule}
-          >
-            <TicketCheck size={18} aria-hidden="true" /> Reservar
-          </Button>
-          <p className="experience-detail__reservation-note">
-            {experience.price === 0
-              ? <>La reserva es gratis y quedará <strong>confirmada inmediatamente</strong>.</>
-              : <>La reserva se crea como <strong>Pendiente de pago</strong>; el pago todavía no está confirmado.</>}
-          </p>
+          {nextSchedule && (
+            <>
+              <dl className="experience-detail__facts">
+                <div>
+                  <dt><TicketCheck size={18} aria-hidden="true" /> Próxima fecha</dt>
+                  <dd>{formatDate(nextSchedule.startsAt)}</dd>
+                </div>
+                <div>
+                  <dt><UsersRound size={18} aria-hidden="true" /> Cupos</dt>
+                  <dd>{nextSchedule.isUnlimitedCapacity ? 'Sin límite' : nextSchedule.availableSpots}</dd>
+                </div>
+                <div>
+                  <dt><CalendarDays size={18} aria-hidden="true" /> Fechas disponibles</dt>
+                  <dd>{schedules.length}</dd>
+                </div>
+              </dl>
+              <Alert tone={canReserve ? 'info' : 'warning'}>
+                {nextSchedule.isUnlimitedCapacity
+                  ? `${schedules.length === 1 ? '1 fecha disponible' : `${schedules.length} fechas disponibles`} · Sin límite de cupos`
+                  : canReserve
+                    ? `${nextSchedule.availableSpots} cupos en la próxima fecha.`
+                    : 'La próxima fecha está completa.'}
+              </Alert>
+            </>
+          )}
+          {canReserve && (
+            <>
+              <Button
+                className="experience-detail__reserve"
+                variant="primary"
+                fullWidth
+                onClick={handleReserve}
+              >
+                <TicketCheck size={18} aria-hidden="true" /> Reservar
+              </Button>
+              <p className="experience-detail__reservation-note">
+                {experience.price === 0
+                  ? 'Confirmación inmediata.'
+                  : 'Después de reservar, podrás completar el pago.'}
+              </p>
+            </>
+          )}
         </aside>
       </div>
-      <section className="surface-panel experience-reviews" aria-labelledby="experience-reviews-title">
-        <div className="experience-reviews__heading">
-          <h2 id="experience-reviews-title">Reseñas verificadas</h2>
-          {experience.averageRating !== null && (
-            <p className="experience-reviews__average">
-              <RatingStars value={Math.round(experience.averageRating)} />
-              <strong>{experience.averageRating.toFixed(1)}</strong>
-              <span>
-                de 5 · {experience.reviewCount} {experience.reviewCount === 1 ? 'reseña' : 'reseñas'}
-              </span>
-            </p>
-          )}
-        </div>
-        {reviews.length === 0 ? (
-          <p className="experience-reviews__empty">
-            Todavía no hay reseñas. Solo quienes completaron la experiencia pueden escribir una.
-          </p>
-        ) : (
-          <ol>{reviews.map((review) => <li key={review.id} className="review-card">
-            <div><strong>{review.authorName}</strong><RatingStars value={review.rating} /></div>
-            <p>{review.comment}</p><small>{formatDate(review.createdAt)}</small>
-          </li>)}</ol>
+
+      <div className="experience-detail__full-content">
+        <header className="experience-detail__header">
+          <h1>{experience.title}</h1>
+          <div className="experience-detail__location">
+            <MapPin size={18} aria-hidden="true" />
+            <span>{formatLocationLabel(experience.location)}</span>
+          </div>
+        </header>
+
+        <section className="experience-detail__description" aria-labelledby="experience-description-title">
+          <h2 id="experience-description-title">Sobre esta experiencia</h2>
+          {experience.shortDescription && <p><strong>{experience.shortDescription}</strong></p>}
+          <p>{experience.description}</p>
+        </section>
+
+        {(hasBeforeGoing || experience.whatToBring.length > 0 || hasIncludedInformation || hasUsefulInformation) && (
+          <div className="experience-detail__catalog-grid">
+            {hasBeforeGoing && (
+              <div className="experience-info-card">
+                <div className="experience-info-card__header">
+                  <div className="experience-info-card__badge experience-info-card__badge--blue">
+                    <Info size={20} aria-hidden="true" />
+                  </div>
+                  <h2>Antes de ir</h2>
+                </div>
+                <div className="experience-info-card__content">
+                  {experience.meetingPointInstructions && (
+                    <p className="experience-info-card__row">
+                      <strong>Punto de encuentro:</strong> {experience.meetingPointInstructions}
+                    </p>
+                  )}
+                  {experience.pickupInformation && (
+                    <p className="experience-info-card__row">
+                      <strong>Recogida:</strong> {experience.pickupInformation}
+                    </p>
+                  )}
+                  {experience.guestRequirements && (
+                    <p className="experience-info-card__row">{experience.guestRequirements}</p>
+                  )}
+                  {experience.minimumAge !== null && (
+                    <p className="experience-info-card__row">
+                      <strong>Edad mínima:</strong> {experience.minimumAge} años
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            {experience.whatToBring.length > 0 && (
+              <div className="experience-info-card">
+                <div className="experience-info-card__header">
+                  <div className="experience-info-card__badge experience-info-card__badge--emerald">
+                    <Backpack size={20} aria-hidden="true" />
+                  </div>
+                  <h2>Qué llevar</h2>
+                </div>
+                <ul className="experience-info-card__list">
+                  {experience.whatToBring.map((item) => (
+                    <li key={item}>
+                      <span className="experience-info-card__bullet" /> {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {hasIncludedInformation && (
+              <div className="experience-info-card">
+                {experience.whatIsIncluded.length > 0 && (
+                  <>
+                    <div className="experience-info-card__header">
+                      <div className="experience-info-card__badge experience-info-card__badge--green">
+                        <CheckCircle2 size={20} aria-hidden="true" />
+                      </div>
+                      <h2>Incluido</h2>
+                    </div>
+                    <ul className="experience-info-card__list">
+                      {experience.whatIsIncluded.map((item) => (
+                        <li key={item}>
+                          <CheckCircle2 size={16} className="text-green" aria-hidden="true" /> {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {experience.whatIsNotIncluded.length > 0 && (
+                  <>
+                    <div className={`experience-info-card__header ${experience.whatIsIncluded.length > 0 ? 'experience-info-card__header--sub' : ''}`}>
+                      <div className="experience-info-card__badge experience-info-card__badge--amber">
+                        <XCircle size={20} aria-hidden="true" />
+                      </div>
+                      <h2>No incluido</h2>
+                    </div>
+                    <ul className="experience-info-card__list">
+                      {experience.whatIsNotIncluded.map((item) => (
+                        <li key={item}>
+                          <XCircle size={16} className="text-amber" aria-hidden="true" /> {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+            {hasUsefulInformation && (
+              <div className="experience-info-card">
+                <div className="experience-info-card__header">
+                  <div className="experience-info-card__badge experience-info-card__badge--purple">
+                    <Globe size={20} aria-hidden="true" />
+                  </div>
+                  <h2>Información útil</h2>
+                </div>
+                <div className="experience-info-card__content">
+                  {experience.languages.length > 0 && (
+                    <p className="experience-info-card__row">
+                      <strong>Idiomas:</strong> {experience.languages.join(', ')}
+                    </p>
+                  )}
+                  {experience.difficulty && (
+                    <p className="experience-info-card__row">
+                      <strong>Dificultad:</strong> {getDifficultyLabel(experience.difficulty)}
+                    </p>
+                  )}
+                  {experience.accessibilityInformation && (
+                    <p className="experience-info-card__row">
+                      <strong>Accesibilidad:</strong> {experience.accessibilityInformation}
+                    </p>
+                  )}
+                  {experience.cancellationPolicy && (
+                    <p className="experience-info-card__row">
+                      <strong>Política de cancelación:</strong> {getCancellationPolicyLabel(experience.cancellationPolicy)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         )}
-      </section>
+
+        {experience.itinerary.length > 0 && (
+          <section className="experience-detail__itinerary-section" aria-labelledby="experience-itinerary-title">
+            <div className="experience-detail__itinerary-header">
+              <h2 id="experience-itinerary-title">Itinerario de la experiencia</h2>
+              <span className="experience-detail__itinerary-count">
+                {experience.itinerary.length} {experience.itinerary.length === 1 ? 'parada' : 'paradas'}
+              </span>
+            </div>
+            <div className="itinerary-cards-flow">
+              {experience.itinerary.map((item, index) => (
+                <div key={item.id ?? item.sortOrder ?? index} className="itinerary-card-step">
+                  <div className="itinerary-card">
+                    <div className="itinerary-card__top">
+                      <span className="itinerary-card__number">{index + 1}</span>
+                      <div className="itinerary-card__badges">
+                        <span className="itinerary-card__duration">
+                          <Clock size={13} aria-hidden="true" /> {item.durationMinutes} min
+                        </span>
+                        {item.location && (
+                          <span className="itinerary-card__location">
+                            <MapPin size={13} aria-hidden="true" /> {item.location}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <h3 className="itinerary-card__title">{item.title}</h3>
+                    <p className="itinerary-card__description">{item.description}</p>
+                  </div>
+                  {index < experience.itinerary.length - 1 && (
+                    <div className="itinerary-card-step__arrow" aria-hidden="true">
+                      <ArrowRight size={20} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {experience.latitude !== null && experience.longitude !== null && (
+          <section className="experience-detail__map" aria-labelledby="experience-map-title">
+            <h2 id="experience-map-title">Dónde se realiza</h2>
+            <p>{formatLocationLabel(experience.location)}</p>
+            <a
+              className="button-link button-link--outline experience-detail__map-action"
+              href={experience.latitude !== null && experience.longitude !== null
+                ? `https://www.google.com/maps/search/?api=1&query=${experience.latitude},${experience.longitude}`
+                : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(experience.location)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Navigation size={17} aria-hidden="true" /> Ir al lugar
+            </a>
+            <Suspense fallback={<Skeleton className="experience-detail__map-loading" />}>
+              <ExperienceMap
+                points={[{
+                  id: experience.id,
+                  title: experience.title,
+                  latitude: experience.latitude,
+                  longitude: experience.longitude,
+                }]}
+                label={`Ubicación de ${experience.title}`}
+              />
+            </Suspense>
+          </section>
+        )}
+
+        <section className="surface-panel experience-reviews" aria-labelledby="experience-reviews-title">
+          <div className="experience-reviews__heading">
+            <h2 id="experience-reviews-title">Reseñas verificadas</h2>
+            {experience.averageRating !== null && (
+              <p className="experience-reviews__average">
+                <RatingStars value={Math.round(experience.averageRating)} />
+                <strong>{experience.averageRating.toFixed(1)}</strong>
+                <span>
+                  de 5 · {experience.reviewCount} {experience.reviewCount === 1 ? 'reseña' : 'reseñas'}
+                </span>
+              </p>
+            )}
+          </div>
+          {reviews.length === 0 ? (
+            <p className="experience-reviews__empty">
+              Todavía no hay reseñas.
+            </p>
+          ) : (
+            <ol>{reviews.map((review) => <li key={review.id} className="review-card">
+              <div><strong>{review.authorName}</strong><RatingStars value={review.rating} /></div>
+              <p>{review.comment}</p><small>{formatDate(review.createdAt)}</small>
+            </li>)}</ol>
+          )}
+        </section>
+      </div>
       {reservationOpen && (
         <ReservationDialog
           experience={experience}
           schedules={schedules}
           onClose={() => setReservationOpen(false)}
-          onSchedulesUpdate={handleSchedulesUpdate}
         />
+      )}
+
+      {isLightboxOpen && allImages.length > 0 && (
+        <div
+          className="experience-lightbox animate-fade-in"
+          onClick={() => setIsLightboxOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Visualizador de imágenes a pantalla completa"
+        >
+          <div className="experience-lightbox__container" onClick={(e) => e.stopPropagation()}>
+            <div className="experience-lightbox__header">
+              <span className="experience-lightbox__count">
+                Foto {activeImageIndex + 1} de {allImages.length}
+              </span>
+              <button
+                type="button"
+                className="experience-lightbox__close"
+                onClick={() => setIsLightboxOpen(false)}
+                aria-label="Cerrar vista ampliada"
+              >
+                <X size={22} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="experience-lightbox__stage">
+              <img
+                src={resolveApiAssetUrl(allImages[activeImageIndex].url)}
+                alt={allImages[activeImageIndex].altText || experience.title}
+                className="experience-lightbox__image"
+              />
+
+              {allImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="experience-lightbox__control experience-lightbox__control--prev"
+                    onClick={handlePrevImage}
+                    aria-label="Imagen anterior"
+                  >
+                    <ChevronLeft size={28} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="experience-lightbox__control experience-lightbox__control--next"
+                    onClick={handleNextImage}
+                    aria-label="Siguiente imagen"
+                  >
+                    <ChevronRight size={28} aria-hidden="true" />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </article>
   );

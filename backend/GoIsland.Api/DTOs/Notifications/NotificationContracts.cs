@@ -1,7 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using System.Net;
+using GoIsland.Api.DTOs.Common;
 
 namespace GoIsland.Api.DTOs.Notifications;
+
+public sealed class NotificationListRequest : PaginationRequest
+{
+    public bool UnreadOnly { get; set; }
+}
 
 public class NotificationResponse
 {

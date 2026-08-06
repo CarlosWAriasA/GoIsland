@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Payments;
 using GoIsland.Api.DTOs.Reservations;
 using GoIsland.Api.Models;
@@ -93,7 +94,7 @@ public class ReservationsController : ControllerBase
     };
 
     [HttpPost("{id:int}/payments")]
-    public async Task<ActionResult<PaymentResponse>> CreatePayment(int id)
+    public async Task<ActionResult<PaymentCheckoutResponse>> CreatePayment(int id)
     {
         if (!TryGetUserId(out var userId))
         {
@@ -111,11 +112,17 @@ public class ReservationsController : ControllerBase
             PaymentOperationStatus.Success => CreatedAtRoute(
                 PaymentsController.GetPaymentByIdRouteName,
                 new { id = result.Payment!.Id },
-                result.Payment),
+                new PaymentCheckoutResponse
+                {
+                    Payment = result.Payment,
+                    ClientSecret = result.ClientSecret
+                }),
             PaymentOperationStatus.ReservationNotFound => NotFound(
                 new { message = "No se encontro la reserva." }),
             PaymentOperationStatus.InvalidTransition => Conflict(
                 new { message = "La reserva no admite un pago en su estado actual o ya tiene un pago vigente." }),
+            PaymentOperationStatus.ReservationExpired => Conflict(
+                new { message = "El tiempo para completar el pago terminó. Reserva nuevamente si todavía hay disponibilidad." }),
             PaymentOperationStatus.IdempotencyConflict => Conflict(
                 new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
             PaymentOperationStatus.ConcurrencyConflict => Conflict(
@@ -142,14 +149,15 @@ public class ReservationsController : ControllerBase
     }
 
     [HttpGet("my")]
-    public async Task<ActionResult<IReadOnlyCollection<ReservationResponse>>> GetMy()
+    public async Task<ActionResult<PagedResponse<ReservationResponse>>> GetMy(
+        [FromQuery] ReservationListRequest request)
     {
         if (!TryGetUserId(out var userId))
         {
             return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         }
 
-        return Ok(await _reservationService.GetByUserIdAsync(userId));
+        return Ok(await _reservationService.GetByUserIdAsync(userId, request));
     }
 
     [HttpGet("{id:int}")]

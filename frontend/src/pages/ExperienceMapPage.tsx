@@ -1,15 +1,17 @@
-import axios from 'axios';
 import { LocateFixed, MapPinned, Navigation } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import Alert from '../components/Alert';
+import { useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import ExperienceMap from '../components/ExperienceMap';
 import Skeleton from '../components/Skeleton';
+import ToastFeedback from '../components/ToastFeedback';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
+import { formatLocationLabel } from '../services/googleMapsService';
+import { experienceKeys, queryRefresh } from '../queries/queryKeys';
 import type { Experience } from '../types';
 
 const formatPrice = (price: number) => price === 0
@@ -18,29 +20,27 @@ const formatPrice = (price: number) => price === 0
 
 export const ExperienceMapPage = () => {
   const navigate = useNavigate();
-  const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedExperienceId = Number(searchParams.get('experience'));
+  const focusedExperienceId = Number.isInteger(requestedExperienceId) && requestedExperienceId > 0
+    ? requestedExperienceId
+    : undefined;
+  const mapQuery = useQuery({
+    queryKey: experienceKeys.map(),
+    queryFn: ({ signal }) => experienceService.getExperiences(signal, { pageSize: 100 }),
+    refetchInterval: queryRefresh.catalog,
+    refetchOnMount: 'always',
+  });
+  const catalogExperiences = useMemo(() => mapQuery.data?.items.filter(
+    (item) => item.latitude !== null && item.longitude !== null,
+  ) ?? [], [mapQuery.data]);
+  const [nearbyExperiences, setNearbyExperiences] = useState<Experience[] | null>(null);
+  const experiences = nearbyExperiences ?? catalogExperiences;
   const [userPoint, setUserPoint] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [retry, setRetry] = useState(0);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    experienceService.getExperiences(controller.signal)
-      .then((items) => {
-        setExperiences(items.filter((item) => item.latitude !== null && item.longitude !== null));
-        setError(null);
-      })
-      .catch((requestError: unknown) => {
-        if (!axios.isCancel(requestError)) setError(toApiError(requestError).message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [retry]);
+  const loading = mapQuery.isPending;
+  const error = !mapQuery.data && mapQuery.error ? toApiError(mapQuery.error).message : null;
 
   const findNearby = () => {
     if (!navigator.geolocation) {
@@ -49,6 +49,7 @@ export const ExperienceMapPage = () => {
     }
     setLocating(true);
     setNotice(null);
+    setSearchParams(new URLSearchParams(), { replace: true });
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const point = {
@@ -57,10 +58,10 @@ export const ExperienceMapPage = () => {
         };
         setUserPoint(point);
         experienceService.getNearby(point.latitude, point.longitude, 50)
-          .then((items) => {
-            setExperiences(items);
-            setNotice(items.length
-              ? `Encontramos ${items.length} experiencia${items.length === 1 ? '' : 's'} a menos de 50 km.`
+          .then((page) => {
+            setNearbyExperiences(page.items);
+            setNotice(page.totalItems
+              ? `Encontramos ${page.totalItems} experiencia${page.totalItems === 1 ? '' : 's'} a menos de 50 km.`
               : 'No encontramos experiencias a menos de 50 km. Puedes explorar el mapa completo.');
           })
           .catch((requestError: unknown) => setNotice(toApiError(
@@ -78,17 +79,23 @@ export const ExperienceMapPage = () => {
   };
 
   const openExperience = useCallback((id: string | number) => {
-    navigate(`/experiences/${id}`, { state: { from: '/experiences/map' } });
-  }, [navigate]);
+    const experience = experiences.find((item) => item.id === Number(id));
+    navigate(`/experiences/${experience?.slug ?? id}`, { state: { from: '/experiences/map' } });
+  }, [experiences, navigate]);
 
-  const points = experiences
+  const points = useMemo(() => experiences
     .filter((item) => item.latitude !== null && item.longitude !== null)
     .map((item) => ({
       id: item.id,
       title: item.title,
       latitude: item.latitude!,
       longitude: item.longitude!,
-    }));
+    })), [experiences]);
+  const displayedExperiences = useMemo(() => focusedExperienceId
+    ? [...experiences].sort((first, second) => (
+      Number(second.id === focusedExperienceId) - Number(first.id === focusedExperienceId)
+    ))
+    : experiences, [experiences, focusedExperienceId]);
 
   return (
     <div className="container map-page animate-fade-in">
@@ -96,41 +103,43 @@ export const ExperienceMapPage = () => {
         <div>
           <span className="page-heading__eyebrow">Explora por ubicación</span>
           <h1>Experiencias en el mapa</h1>
-          <p>Descubre actividades con una ubicación confirmada por sus anfitriones.</p>
+          <p>Encuentra experiencias cerca de ti o explora cada región.</p>
         </div>
         <Button onClick={findNearby} isLoading={locating}>
           <LocateFixed size={18} aria-hidden="true" /> Cerca de mí
         </Button>
       </header>
-      {notice && <Alert tone="info">{notice}</Alert>}
+      <ToastFeedback message={notice} tone="info" />
       {loading ? <Skeleton className="map-page__loading" />
-        : error ? <ErrorState description={error} onRetry={() => {
-          setLoading(true);
-          setRetry((current) => current + 1);
-        }} />
+        : error ? <ErrorState description={error} onRetry={() => void mapQuery.refetch()} />
         : (
           <div className="map-page__layout">
             <ExperienceMap
               points={points}
               userPoint={userPoint}
+              focusedPointId={focusedExperienceId}
               onPointClick={openExperience}
               label="Mapa de experiencias disponibles"
             />
             {experiences.length === 0 ? (
               <EmptyState
                 title="Sin experiencias ubicadas"
-                description="Los anfitriones todavía no han señalado sus experiencias en el mapa."
+                description="Todavía no hay experiencias para mostrar en el mapa."
                 action={<Link className="button-link button-link--outline" to="/experiences">Ver catálogo</Link>}
               />
             ) : (
               <ol className="map-results">
-                {experiences.map((experience) => (
+                {displayedExperiences.map((experience) => (
                   <li key={experience.id}>
-                    <Link to={`/experiences/${experience.id}`} state={{ from: '/experiences/map' }}>
+                    <Link
+                      to={`/experiences/${experience.slug}`}
+                      state={{ from: '/experiences/map' }}
+                      aria-current={experience.id === focusedExperienceId ? 'location' : undefined}
+                    >
                       <span className="map-results__icon"><MapPinned aria-hidden="true" /></span>
                       <span>
                         <strong>{experience.title}</strong>
-                        <small>{experience.location}</small>
+                        <small>{formatLocationLabel(experience.location)}</small>
                         {experience.distanceKm !== null && (
                           <small><Navigation size={14} aria-hidden="true" /> A {experience.distanceKm.toFixed(1)} km</small>
                         )}

@@ -304,6 +304,10 @@ public class ExperienceImageService : IExperienceImageService
                 SourceUrl = candidate.SecureUrl
                     ?? $"/uploads/experiences/{experienceId}/{candidate.FileName}",
                 AltText = candidate.AltText,
+                CreditText = candidate.CreditText,
+                CreditUrl = candidate.CreditUrl,
+                LicenseName = candidate.LicenseName,
+                LicenseUrl = candidate.LicenseUrl,
                 IsCover = candidate.IsCover,
                 SortOrder = candidate.SortOrder
             })
@@ -365,6 +369,10 @@ public class ExperienceImageService : IExperienceImageService
                 SourceUrl = image.SecureUrl
                     ?? $"/uploads/experiences/{experience.Id}/{image.FileName}",
                 AltText = image.AltText,
+                CreditText = image.CreditText,
+                CreditUrl = image.CreditUrl,
+                LicenseName = image.LicenseName,
+                LicenseUrl = image.LicenseUrl,
                 IsCover = image.IsCover,
                 SortOrder = image.SortOrder
             })

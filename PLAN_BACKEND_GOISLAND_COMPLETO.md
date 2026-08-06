@@ -1,5 +1,8 @@
 # Plan de Implementacion Backend Completo - GoIsland
 
+> **Documento histórico.** Conserva las decisiones y entregas del backend. El plan activo de
+> preparación y despliegue es `PLAN_PREPARACION_CATALOGO_Y_DESPLIEGUE.md`.
+
 ## Proposito
 
 Este documento continua los bloques 0-6 del MVP y organiza el trabajo necesario para que el

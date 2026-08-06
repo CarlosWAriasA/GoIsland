@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Experiences;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Experiences;
@@ -52,9 +53,10 @@ public class ExperiencesController : ControllerBase
 
     [HttpGet]
     [AllowAnonymous]
-    public async Task<ActionResult<IReadOnlyCollection<ExperienceResponse>>> GetAll()
+    public async Task<ActionResult<PagedResponse<ExperienceResponse>>> GetAll(
+        [FromQuery] SearchExperiencesRequest request)
     {
-        return Ok(await _experienceService.GetAllAsync());
+        return Ok(await _experienceService.GetAllAsync(request));
     }
 
     [HttpGet("{id:int}")]
@@ -70,9 +72,22 @@ public class ExperiencesController : ControllerBase
         return Ok(experience);
     }
 
+    [HttpGet("by-slug/{slug}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ExperienceResponse>> GetBySlug(string slug)
+    {
+        var experience = await _experienceService.GetBySlugAsync(slug);
+        if (experience is null)
+        {
+            return NotFound(new { message = "No se encontro la experiencia." });
+        }
+
+        return Ok(experience);
+    }
+
     [HttpGet("search")]
     [AllowAnonymous]
-    public async Task<ActionResult<IReadOnlyCollection<ExperienceResponse>>> Search(
+    public async Task<ActionResult<PagedResponse<ExperienceResponse>>> Search(
         [FromQuery] SearchExperiencesRequest request)
     {
         return Ok(await _experienceService.SearchAsync(request));
@@ -80,7 +95,7 @@ public class ExperiencesController : ControllerBase
 
     [HttpGet("nearby")]
     [AllowAnonymous]
-    public async Task<ActionResult<IReadOnlyCollection<ExperienceResponse>>> Nearby(
+    public async Task<ActionResult<PagedResponse<ExperienceResponse>>> Nearby(
         [FromQuery] NearbyExperiencesRequest request)
     {
         return Ok(await _experienceService.GetNearbyAsync(request));

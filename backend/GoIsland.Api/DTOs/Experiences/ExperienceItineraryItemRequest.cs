@@ -4,15 +4,13 @@ namespace GoIsland.Api.DTOs.Experiences;
 
 public class ExperienceItineraryItemRequest
 {
-    [Required]
-    [StringLength(120, MinimumLength = 3)]
+    [StringLength(120)]
     public string Title { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(800, MinimumLength = 5)]
+    [StringLength(800)]
     public string Description { get; set; } = string.Empty;
 
-    [Range(1, 1440)]
+    [Range(0, 1440)]
     public int DurationMinutes { get; set; }
 
     [StringLength(160)]

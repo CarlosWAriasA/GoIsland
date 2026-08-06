@@ -9,7 +9,10 @@ export const Footer = () => (
       <nav className="site-footer__nav" aria-label="Navegación secundaria">
         <Link to="/">Inicio</Link>
         <Link to="/experiences">Experiencias</Link>
-        <Link to="/host-profile">Ser anfitrión</Link>
+        <Link to="/contacto">Contacto</Link>
+        <Link to="/privacidad">Privacidad</Link>
+        <Link to="/terminos">Términos</Link>
+        <Link to="/cancelaciones">Cancelaciones</Link>
       </nav>
 
       <p className="site-footer__copyright">© 2026 GoIsland</p>

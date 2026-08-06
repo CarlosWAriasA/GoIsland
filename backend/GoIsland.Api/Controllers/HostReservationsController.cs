@@ -19,10 +19,10 @@ public class HostReservationsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] ReservationListRequest request)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
-        var reservations = await _service.GetForHostAsync(userId);
+        var reservations = await _service.GetForHostAsync(userId, request);
         return reservations is null
             ? StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrion no esta aprobado o fue suspendido." })
             : Ok(reservations);

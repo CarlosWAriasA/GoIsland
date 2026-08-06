@@ -1,16 +1,29 @@
 import type {
   CreateScheduleRequest,
+  CopyScheduleWeekRequest,
   ExperienceSchedule,
   ExperienceImage,
+  ManagedExperienceListParams,
   ManagedExperience,
   ManagedExperienceRequest,
   UpdateScheduleRequest,
+  PagedResponse,
+  RecurringScheduleGeneration,
+  RecurringSchedulePreview,
+  RecurringScheduleRequest,
+  ScheduleBatchResponse,
 } from '../types';
 import { api } from './api';
 
 export const hostExperienceService = {
-  getMine: async (signal?: AbortSignal): Promise<ManagedExperience[]> => {
-    const response = await api.get<ManagedExperience[]>('/host/experiences', { signal });
+  getMine: async (
+    params: ManagedExperienceListParams = {},
+    signal?: AbortSignal,
+  ): Promise<PagedResponse<ManagedExperience>> => {
+    const response = await api.get<PagedResponse<ManagedExperience>>('/host/experiences', {
+      params,
+      signal,
+    });
     return response.data;
   },
 
@@ -89,6 +102,73 @@ export const hostExperienceService = {
     const response = await api.post<ExperienceSchedule>(
       `/host/experiences/${experienceId}/schedules`,
       data,
+    );
+    return response.data;
+  },
+
+  previewRecurringSchedules: async (
+    experienceId: number,
+    data: RecurringScheduleRequest,
+  ): Promise<RecurringSchedulePreview> => {
+    const response = await api.post<RecurringSchedulePreview>(
+      `/host/experiences/${experienceId}/schedules/recurring/preview`,
+      data,
+    );
+    return response.data;
+  },
+
+  generateRecurringSchedules: async (
+    experienceId: number,
+    data: RecurringScheduleRequest,
+  ): Promise<RecurringScheduleGeneration> => {
+    const response = await api.post<RecurringScheduleGeneration>(
+      `/host/experiences/${experienceId}/schedules/recurring`,
+      data,
+    );
+    return response.data;
+  },
+
+  previewCopyWeek: async (
+    experienceId: number,
+    data: CopyScheduleWeekRequest,
+  ): Promise<RecurringSchedulePreview> => {
+    const response = await api.post<RecurringSchedulePreview>(
+      `/host/experiences/${experienceId}/schedules/copy-week/preview`,
+      data,
+    );
+    return response.data;
+  },
+
+  copyScheduleWeek: async (
+    experienceId: number,
+    data: CopyScheduleWeekRequest,
+  ): Promise<RecurringScheduleGeneration> => {
+    const response = await api.post<RecurringScheduleGeneration>(
+      `/host/experiences/${experienceId}/schedules/copy-week`,
+      data,
+    );
+    return response.data;
+  },
+
+  closeSchedules: async (
+    experienceId: number,
+    scheduleIds: number[],
+  ): Promise<ScheduleBatchResponse> => {
+    const response = await api.patch<ScheduleBatchResponse>(
+      `/host/experiences/${experienceId}/schedules/batch/close`,
+      { scheduleIds },
+    );
+    return response.data;
+  },
+
+  updateSchedulesCapacity: async (
+    experienceId: number,
+    scheduleIds: number[],
+    capacity: number,
+  ): Promise<ScheduleBatchResponse> => {
+    const response = await api.patch<ScheduleBatchResponse>(
+      `/host/experiences/${experienceId}/schedules/batch/capacity`,
+      { scheduleIds, capacity },
     );
     return response.data;
   },

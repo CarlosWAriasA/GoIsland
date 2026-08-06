@@ -34,7 +34,7 @@ public class MockPaymentGateway : IPaymentGateway
             providerPaymentId,
             request.Amount,
             request.Currency);
-        return Task.FromResult(new GatewayPaymentResult(true, providerPaymentId, null));
+        return Task.FromResult(new GatewayPaymentResult(true, providerPaymentId, null, null));
     }
 
     public Task<GatewayRefundResult> RefundAsync(
@@ -52,4 +52,9 @@ public class MockPaymentGateway : IPaymentGateway
             request.Currency);
         return Task.FromResult(new GatewayRefundResult(true, providerRefundId, null));
     }
+
+    public Task<GatewayPaymentSessionResult> GetPaymentSessionAsync(
+        string providerPaymentId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new GatewayPaymentSessionResult(true, null, null));
 }

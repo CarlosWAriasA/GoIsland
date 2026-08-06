@@ -32,18 +32,17 @@ export const UserMenu = ({ user, onLogout }: UserMenuProps) => {
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
 
-  const firstName = user.fullName.split(' ')[0];
-  const initial = firstName.charAt(0).toUpperCase();
-  const roleLabel = user.role === 'Admin'
+  const firstName = user?.fullName ? user.fullName.split(' ')[0] : '';
+  const initial = firstName ? firstName.charAt(0).toUpperCase() : '';
+  const roleLabel = user?.role === 'Admin'
     ? 'Administrador'
-    : user.role === 'Host'
+    : user?.role === 'Host'
       ? 'Anfitrión'
       : 'Viajero';
 
   const refreshUnreadCount = useCallback(async () => {
     try {
-      const items = await notificationService.getAll();
-      setUnreadCount(items.filter((item) => !item.readAt).length);
+      setUnreadCount(await notificationService.getUnreadCount());
     } catch {
       // La navegación de la cuenta debe seguir disponible si los avisos fallan.
     }

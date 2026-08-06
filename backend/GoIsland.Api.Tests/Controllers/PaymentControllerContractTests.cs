@@ -34,7 +34,8 @@ public class PaymentControllerContractTests
         var created = Assert.IsType<CreatedAtRouteResult>(response.Result);
         Assert.Equal(PaymentsController.GetPaymentByIdRouteName, created.RouteName);
         Assert.Equal(payment.Id, created.RouteValues!["id"]);
-        Assert.Same(payment, created.Value);
+        var checkout = Assert.IsType<PaymentCheckoutResponse>(created.Value);
+        Assert.Same(payment, checkout.Payment);
     }
 
     private sealed class SuccessfulPaymentService : IPaymentService
@@ -53,6 +54,14 @@ public class PaymentControllerContractTests
             int userId, int reservationId, bool isAdmin) => throw new NotSupportedException();
 
         public Task<PaymentResponse?> GetByIdAsync(int id, int userId, bool isAdmin) =>
+            throw new NotSupportedException();
+
+        public Task<PaymentOperationResult> GetCheckoutAsync(int id, int userId) =>
+            throw new NotSupportedException();
+
+        public Task<WebhookProcessingStatus> ProcessWebhookAsync(
+            GatewayWebhookEvent webhookEvent,
+            CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<PaymentOperationResult> MockConfirmAsync(int id, int actorUserId, bool isAdmin) =>

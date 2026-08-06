@@ -9,6 +9,7 @@ import Input from '../components/Input';
 import Skeleton from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
 import TextAreaField from '../components/TextAreaField';
+import ToastFeedback from '../components/ToastFeedback';
 import { useAuth } from '../hooks/useAuth';
 import { getFieldError, toApiError } from '../services/apiError';
 import { hostService } from '../services/hostService';
@@ -163,8 +164,8 @@ export const HostProfile = () => {
           </div>
         </div>
 
-        {success && <Alert tone="success">{success}</Alert>}
-        {requestError && <Alert tone="error">{requestError.message}</Alert>}
+        <ToastFeedback message={success} tone="success" />
+        <ToastFeedback message={requestError?.message} tone="error" />
 
         <form onSubmit={handleSubmit} noValidate>
           <Input

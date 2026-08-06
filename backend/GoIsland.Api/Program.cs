@@ -2,6 +2,8 @@ using System.Text;
 using System.Net;
 using System.Threading.RateLimiting;
 using GoIsland.Api.Data;
+using GoIsland.Api.DTOs.Common;
+using GoIsland.Api.Middleware;
 using GoIsland.Api.Repositories;
 using GoIsland.Api.Services.Auth;
 using GoIsland.Api.Services.Email;
@@ -39,7 +41,11 @@ if (!string.IsNullOrWhiteSpace(platformPort))
 }
 
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
+builder.Logging.AddJsonConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.TimestampFormat = "yyyy-MM-dd'T'HH:mm:ss.fffK";
+});
 
 // Add services to the container.
 
@@ -55,11 +61,10 @@ builder.Services
                     entry => entry.Key,
                     entry => entry.Value!.Errors.Select(error => error.ErrorMessage).ToArray());
 
-            return new BadRequestObjectResult(new
-            {
-                message = "Revisa los datos indicados e inténtalo nuevamente.",
-                errors
-            });
+            return new BadRequestObjectResult(ApiProblemDetailsFactory.CreateValidation(
+                context.HttpContext,
+                errors,
+                "Revisa los datos indicados e inténtalo nuevamente."));
         };
     });
 var frontendUrl = SecurityConfiguration.ResolveFrontendOrigin(
@@ -122,13 +127,11 @@ builder.Services.AddRateLimiter(options =>
         }
 
         context.HttpContext.Response.ContentType = "application/problem+json";
-        var problem = new ProblemDetails
-        {
-            Status = StatusCodes.Status429TooManyRequests,
-            Title = "Demasiadas solicitudes",
-            Detail = "Espera un momento antes de intentarlo nuevamente."
-        };
-        problem.Extensions["message"] = problem.Detail;
+        var problem = ApiProblemDetailsFactory.Create(
+            context.HttpContext,
+            StatusCodes.Status429TooManyRequests,
+            "Demasiadas solicitudes",
+            "Espera un momento antes de intentarlo nuevamente.");
         await context.HttpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
     };
 
@@ -188,14 +191,20 @@ else
     throw new InvalidOperationException("Email:Provider debe ser Smtp o Resend.");
 }
 // El proveedor se resuelve antes de registrar servicios: Production no puede arrancar con
-// Mock y un proveedor desconocido detiene la aplicacion, por lo que los endpoints mock jamas
-// quedan mapeados fuera de Development/QA.
+// Mock, Stripe solo acepta modo Sandbox y cualquier clave live detiene la aplicacion.
 var paymentsProvider = PaymentProviderStartup.ResolveProvider(
     builder.Configuration["Payments:Provider"],
-    builder.Environment.EnvironmentName);
+    builder.Configuration["Payments:Mode"],
+    builder.Environment.EnvironmentName,
+    builder.Configuration["Stripe:SecretKey"],
+    builder.Configuration["Stripe:WebhookSecret"]);
 if (paymentsProvider.Equals(PaymentProviderStartup.MockProvider, StringComparison.OrdinalIgnoreCase))
 {
     builder.Services.AddSingleton<IPaymentGateway, MockPaymentGateway>();
+}
+else
+{
+    builder.Services.AddSingleton<IPaymentGateway, StripePaymentGateway>();
 }
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -212,12 +221,24 @@ builder.Services.AddScoped<IOutboxProcessor, OutboxProcessor>();
 builder.Services.AddSingleton<IPushNotificationSender, WebPushSender>();
 builder.Services.AddHostedService<OutboxBackgroundService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddOptions<ReservationExpirationOptions>()
+    .Bind(builder.Configuration.GetSection(ReservationExpirationOptions.SectionName))
+    .Validate(options => options.HoldMinutes is >= 1 and <= 1440,
+        "Reservations:Expiration:HoldMinutes debe estar entre 1 y 1440.")
+    .Validate(options => options.PollIntervalSeconds is >= 5 and <= 3600,
+        "Reservations:Expiration:PollIntervalSeconds debe estar entre 5 y 3600.")
+    .Validate(options => options.BatchSize is >= 1 and <= 500,
+        "Reservations:Expiration:BatchSize debe estar entre 1 y 500.")
+    .ValidateOnStart();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IReservationExpirationService, ReservationExpirationService>();
 builder.Services.AddScoped<IReservationObserver, EmailNotificationObserver>();
 builder.Services.AddScoped<IReservationObserver, PushNotificationObserver>();
 builder.Services.AddScoped<IReservationObserver, CapacityManagerObserver>();
 builder.Services.AddScoped<IReservationObserver, DashboardObserver>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
+builder.Services.AddHostedService<ReservationExpirationBackgroundService>();
 
 var jwtKey = SecurityConfiguration.GetRequiredJwtKey(
     builder.Configuration,
@@ -281,6 +302,7 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseForwardedHeaders();
+app.UseMiddleware<CorrelationIdMiddleware>();
 
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -308,15 +330,42 @@ app.UseExceptionHandler(errorApplication =>
         context.Response.StatusCode = databaseUnavailable
             ? StatusCodes.Status503ServiceUnavailable
             : StatusCodes.Status500InternalServerError;
-        context.Response.ContentType = "application/json";
+        context.Response.ContentType = "application/problem+json";
 
-        await context.Response.WriteAsJsonAsync(new
-        {
-            message = databaseUnavailable
-                ? "GoIsland no está disponible temporalmente. Inténtalo de nuevo en unos minutos."
-                : "Ocurrió un error inesperado. Inténtalo nuevamente."
-        });
+        var message = databaseUnavailable
+            ? "GoIsland no está disponible temporalmente. Inténtalo de nuevo en unos minutos."
+            : "Ocurrió un error inesperado. Inténtalo nuevamente.";
+        var title = databaseUnavailable ? "Servicio no disponible" : "Error inesperado";
+        await context.Response.WriteAsJsonAsync(ApiProblemDetailsFactory.Create(
+            context,
+            context.Response.StatusCode,
+            title,
+            message));
     });
+});
+
+app.UseStatusCodePages(async statusCodeContext =>
+{
+    var context = statusCodeContext.HttpContext;
+    var (title, message) = context.Response.StatusCode switch
+    {
+        StatusCodes.Status401Unauthorized =>
+            ("Acceso requerido", "Inicia sesión para continuar."),
+        StatusCodes.Status403Forbidden =>
+            ("Acción no permitida", "No tienes permiso para realizar esta acción."),
+        StatusCodes.Status404NotFound =>
+            ("No encontrado", "No encontramos lo que buscas."),
+        StatusCodes.Status405MethodNotAllowed =>
+            ("Acción no disponible", "Esta acción no está disponible."),
+        _ => ("Solicitud no completada", "No pudimos completar la solicitud.")
+    };
+
+    context.Response.ContentType = "application/problem+json";
+    await context.Response.WriteAsJsonAsync(ApiProblemDetailsFactory.Create(
+        context,
+        context.Response.StatusCode,
+        title,
+        message));
 });
 
 if (app.Environment.IsDevelopment())

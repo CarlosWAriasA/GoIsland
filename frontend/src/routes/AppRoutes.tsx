@@ -19,6 +19,7 @@ import HostReservations from '../pages/HostReservations';
 import AdminModeration from '../pages/AdminModeration';
 import RoleRoute from './RoleRoute';
 import Notifications from '../pages/Notifications';
+import PublicInfoPage from '../pages/PublicInfoPage';
 
 const ExperienceMapPage = React.lazy(() => import('../pages/ExperienceMapPage'));
 const HostDashboard = React.lazy(() => import('../pages/HostDashboard'));
@@ -37,7 +38,11 @@ export const AppRoutes: React.FC = () => {
       <Route path="/experiences/map" element={
         <React.Suspense fallback={pageFallback}><ExperienceMapPage /></React.Suspense>
       } />
-      <Route path="/experiences/:id" element={<ExperienceDetail />} />
+      <Route path="/experiences/:identifier" element={<ExperienceDetail />} />
+      <Route path="/contacto" element={<PublicInfoPage page="contact" />} />
+      <Route path="/privacidad" element={<PublicInfoPage page="privacy" />} />
+      <Route path="/terminos" element={<PublicInfoPage page="terms" />} />
+      <Route path="/cancelaciones" element={<PublicInfoPage page="cancellations" />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />

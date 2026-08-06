@@ -75,6 +75,110 @@ public class ScheduleIntegrationTests : PostgresIntegrationTestBase
         Assert.Empty(availability!);
     }
 
+    [Fact]
+    public async Task RecurringGeneration_PreviewsExclusionsAndIsIdempotent()
+    {
+        var (host, experience) = await SeedApprovedHostAndExperienceAsync();
+        var service = GetRequiredService<IScheduleService>();
+        var startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
+        var excludedDate = startDate.AddDays(7);
+        var request = new RecurringScheduleRequest
+        {
+            StartDate = startDate,
+            EndDate = excludedDate,
+            StartsAt = new TimeOnly(9, 0),
+            EndsAt = new TimeOnly(11, 0),
+            Weekdays = [(int)startDate.DayOfWeek],
+            Capacity = 8,
+            ExcludedDates = [excludedDate]
+        };
+
+        var preview = await service.PreviewRecurringAsync(host.Id, experience.Id, request);
+        var first = await service.GenerateRecurringAsync(host.Id, experience.Id, request);
+        var repeated = await service.GenerateRecurringAsync(host.Id, experience.Id, request);
+
+        Assert.Equal(ScheduleOperationStatus.Success, preview.Status);
+        Assert.Equal("America/Santo_Domingo", preview.Preview!.TimeZoneId);
+        Assert.Equal(1, preview.Preview.ToCreate);
+        Assert.Equal(1, preview.Preview.Excluded);
+        Assert.Equal(1, first.Generation!.Created);
+        Assert.Equal(0, repeated.Generation!.Created);
+        Assert.Equal(1, repeated.Generation.Existing);
+        Assert.Equal(1, await Context.ExperienceSchedules.CountAsync(item =>
+            item.ExperienceId == experience.Id));
+    }
+
+    [Fact]
+    public async Task BatchOperations_AreAtomicAndRespectReservedSpots()
+    {
+        var (host, experience) = await SeedApprovedHostAndExperienceAsync();
+        var startsAt = DateTime.UtcNow.AddDays(10);
+        var first = NewSchedule(experience.Id, startsAt, 4, ScheduleStatuses.Scheduled);
+        var second = NewSchedule(experience.Id, startsAt.AddDays(1), 10, ScheduleStatuses.Scheduled);
+        Context.ExperienceSchedules.AddRange(first, second);
+        await Context.SaveChangesAsync();
+        var service = GetRequiredService<IScheduleService>();
+
+        var conflict = await service.UpdateCapacityBatchAsync(host.Id, experience.Id, new BulkCapacityRequest
+        {
+            ScheduleIds = [first.Id, second.Id],
+            Capacity = 5
+        });
+        Assert.Equal(ScheduleOperationStatus.CapacityConflict, conflict.Status);
+        Assert.Contains(first.Id, conflict.Batch!.ConflictingScheduleIds);
+        Assert.Equal(10, (await Context.ExperienceSchedules.FindAsync(second.Id))!.Capacity);
+
+        var updated = await service.UpdateCapacityBatchAsync(host.Id, experience.Id, new BulkCapacityRequest
+        {
+            ScheduleIds = [first.Id, second.Id],
+            Capacity = 8
+        });
+        Assert.Equal(ScheduleOperationStatus.Success, updated.Status);
+        Assert.Equal(2, (await Context.ExperienceSchedules.FindAsync(first.Id))!.AvailableSpots);
+        Assert.Equal(8, (await Context.ExperienceSchedules.FindAsync(second.Id))!.AvailableSpots);
+
+        var closed = await service.CloseBatchAsync(host.Id, experience.Id, new ScheduleSelectionRequest
+        {
+            ScheduleIds = [first.Id, second.Id]
+        });
+        Assert.Equal(ScheduleOperationStatus.Success, closed.Status);
+        Assert.All(closed.Batch!.Schedules, item => Assert.Equal(ScheduleStatuses.Closed, item.Status));
+    }
+
+    [Fact]
+    public async Task CopyWeek_PreservesTimesAndCapacityWithoutDuplicatingSchedules()
+    {
+        var (host, experience) = await SeedApprovedHostAndExperienceAsync();
+        var sourceWeek = NextMonday(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)));
+        var targetWeek = sourceWeek.AddDays(14);
+        var firstStart = sourceWeek.ToDateTime(new TimeOnly(13, 0), DateTimeKind.Utc);
+        var secondStart = sourceWeek.AddDays(2).ToDateTime(new TimeOnly(18, 30), DateTimeKind.Utc);
+        Context.ExperienceSchedules.AddRange(
+            NewSchedule(experience.Id, firstStart, 7, ScheduleStatuses.Completed),
+            NewSchedule(experience.Id, secondStart, 4, ScheduleStatuses.Closed));
+        await Context.SaveChangesAsync();
+        var request = new CopyScheduleWeekRequest
+        {
+            SourceWeekStart = sourceWeek,
+            TargetWeekStart = targetWeek
+        };
+        var service = GetRequiredService<IScheduleService>();
+
+        var preview = await service.PreviewCopyWeekAsync(host.Id, experience.Id, request);
+        var copied = await service.CopyWeekAsync(host.Id, experience.Id, request);
+        var repeated = await service.CopyWeekAsync(host.Id, experience.Id, request);
+
+        Assert.Equal(ScheduleOperationStatus.Success, preview.Status);
+        Assert.Equal(2, preview.Preview!.ToCreate);
+        Assert.Equal(2, copied.Generation!.Created);
+        Assert.Equal(0, repeated.Generation!.Created);
+        Assert.Equal(2, repeated.Generation.Existing);
+        Assert.All(copied.Generation.Schedules, item => Assert.Equal(ScheduleStatuses.Scheduled, item.Status));
+        Assert.Equal([10, 10], copied.Generation.Schedules.Select(item => item.Capacity));
+        Assert.Contains(copied.Generation.Schedules, item => item.StartsAt.TimeOfDay == firstStart.TimeOfDay);
+        Assert.Contains(copied.Generation.Schedules, item => item.StartsAt.TimeOfDay == secondStart.TimeOfDay);
+    }
+
     private async Task<(User Host, Experience Experience)> SeedApprovedHostAndExperienceAsync()
     {
         var marker = Guid.NewGuid().ToString("N");
@@ -126,4 +230,10 @@ public class ScheduleIntegrationTests : PostgresIntegrationTestBase
         AvailableSpots = available,
         Status = status
     };
+
+    private static DateOnly NextMonday(DateOnly date)
+    {
+        var days = ((int)DayOfWeek.Monday - (int)date.DayOfWeek + 7) % 7;
+        return date.AddDays(days);
+    }
 }

@@ -10,6 +10,7 @@ public class Reservation
     public string Status { get; set; } = ReservationStatuses.PendingPayment;
     public decimal TotalAmount { get; set; }
     public DateTime ReservationDate { get; set; } = DateTime.UtcNow;
+    public DateTime? ExpiresAt { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? CancelledAt { get; set; }
 }

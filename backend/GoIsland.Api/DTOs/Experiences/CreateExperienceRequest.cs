@@ -5,13 +5,15 @@ namespace GoIsland.Api.DTOs.Experiences;
 
 public abstract class ExperienceRequestBase : IValidatableObject
 {
-    [Required, StringLength(160, MinimumLength = 3)]
+    [Required(ErrorMessage = "Escribe un título para la experiencia.")]
+    [StringLength(160, MinimumLength = 3,
+        ErrorMessage = "El título debe tener entre 3 y 160 caracteres.")]
     public string Title { get; set; } = string.Empty;
-    [StringLength(300)]
+    [StringLength(300, ErrorMessage = "El resumen puede tener hasta 300 caracteres.")]
     public string ShortDescription { get; set; } = string.Empty;
-    [Required, StringLength(4000, MinimumLength = 10)]
+    [StringLength(4000, ErrorMessage = "La descripción puede tener hasta 4000 caracteres.")]
     public string Description { get; set; } = string.Empty;
-    [Range(1, 10080)]
+    [Range(1, 10080, ErrorMessage = "La duración debe estar entre 1 y 10080 minutos.")]
     public int? DurationMinutes { get; set; }
     [StringLength(80)]
     public string TimeZoneId { get; set; } = "America/Santo_Domingo";
@@ -36,13 +38,13 @@ public abstract class ExperienceRequestBase : IValidatableObject
     public string[] Tags { get; set; } = [];
     public List<ExperienceItineraryItemRequest> Itinerary { get; set; } = [];
 
-    [Required, StringLength(160, MinimumLength = 2)]
+    [StringLength(160, ErrorMessage = "El lugar puede tener hasta 160 caracteres.")]
     public string Location { get; set; } = string.Empty;
     [Range(typeof(decimal), "-90", "90")]
     public decimal? Latitude { get; set; }
     [Range(typeof(decimal), "-180", "180")]
     public decimal? Longitude { get; set; }
-    [Required, StringLength(80, MinimumLength = 2)]
+    [StringLength(80, ErrorMessage = "La categoría puede tener hasta 80 caracteres.")]
     public string Category { get; set; } = string.Empty;
     [Range(typeof(decimal), "0", "99999999.99")]
     public decimal Price { get; set; }
@@ -53,7 +55,7 @@ public abstract class ExperienceRequestBase : IValidatableObject
     {
         if (Latitude.HasValue != Longitude.HasValue)
             yield return new("Selecciona un punto completo en el mapa.", [nameof(Latitude), nameof(Longitude)]);
-        if (!ExperienceCategories.All.Contains(Category.Trim()))
+        if (!string.IsNullOrWhiteSpace(Category) && !ExperienceCategories.All.Contains(Category.Trim()))
             yield return new("Selecciona una categoría válida.", [nameof(Category)]);
         if (!IsUnlimitedCapacity && Capacity < 1)
             yield return new("La capacidad debe ser mayor que cero.", [nameof(Capacity)]);

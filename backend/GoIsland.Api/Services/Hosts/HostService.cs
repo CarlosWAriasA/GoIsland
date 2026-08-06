@@ -1,4 +1,5 @@
 using GoIsland.Api.Data;
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Hosts;
 using GoIsland.Api.Models;
 using Microsoft.EntityFrameworkCore;
@@ -73,15 +74,37 @@ public class HostService : IHostService
         return new(HostOperationStatus.Success, await ToResponseAsync(profile));
     }
 
-    public async Task<IReadOnlyCollection<HostProfileResponse>> GetForAdminAsync(string? status)
+    public async Task<PagedResponse<HostProfileResponse>> GetForAdminAsync(
+        HostApplicationListRequest request)
     {
         var query = QueryResponses();
-        if (!string.IsNullOrWhiteSpace(status))
+        var status = Normalize(request.Status);
+        if (status is not null)
         {
             query = query.Where(profile => profile.VerificationStatus == status);
         }
 
-        return await query.OrderBy(profile => profile.SubmittedAt).ToArrayAsync();
+        var search = Normalize(request.Query);
+        if (search is not null)
+        {
+            var pattern = $"%{EscapeLikePattern(search)}%";
+            query = query.Where(profile =>
+                EF.Functions.ILike(profile.DisplayName, pattern, "\\")
+                || EF.Functions.ILike(profile.UserFullName, pattern, "\\")
+                || EF.Functions.ILike(profile.UserEmail, pattern, "\\"));
+        }
+
+        var totalItems = await query.CountAsync();
+        var items = await query
+            .OrderBy(profile => profile.SubmittedAt)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToArrayAsync();
+        return PagedResponse<HostProfileResponse>.Create(
+            items,
+            request.Page,
+            request.PageSize,
+            totalItems);
     }
 
     public Task<HostProfileResponse?> GetByIdForAdminAsync(int id)
@@ -176,4 +199,12 @@ public class HostService : IHostService
     {
         return QueryResponses().SingleOrDefaultAsync(item => item.Id == profile.Id);
     }
+
+    private static string? Normalize(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string EscapeLikePattern(string value) => value
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("%", "\\%", StringComparison.Ordinal)
+        .Replace("_", "\\_", StringComparison.Ordinal);
 }

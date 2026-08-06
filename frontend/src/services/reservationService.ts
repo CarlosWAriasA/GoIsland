@@ -1,5 +1,10 @@
 import { api } from './api';
-import type { CreateReservationRequest, Reservation } from '../types';
+import type {
+  CreateReservationRequest,
+  PagedResponse,
+  Reservation,
+  ReservationListParams,
+} from '../types';
 
 export const reservationService = {
   create: async (data: CreateReservationRequest): Promise<Reservation> => {
@@ -9,8 +14,14 @@ export const reservationService = {
     return response.data;
   },
 
-  getMy: async (signal?: AbortSignal): Promise<Reservation[]> => {
-    const response = await api.get<Reservation[]>('/reservations/my', { signal });
+  getMy: async (
+    params: ReservationListParams = {},
+    signal?: AbortSignal,
+  ): Promise<PagedResponse<Reservation>> => {
+    const response = await api.get<PagedResponse<Reservation>>('/reservations/my', {
+      params,
+      signal,
+    });
     return response.data;
   },
 
@@ -33,8 +44,14 @@ export const reservationService = {
     return response.data;
   },
 
-  getForHost: async (signal?: AbortSignal): Promise<Reservation[]> => {
-    const response = await api.get<Reservation[]>('/host/reservations', { signal });
+  getForHost: async (
+    params: ReservationListParams = {},
+    signal?: AbortSignal,
+  ): Promise<PagedResponse<Reservation>> => {
+    const response = await api.get<PagedResponse<Reservation>>('/host/reservations', {
+      params,
+      signal,
+    });
     return response.data;
   },
 

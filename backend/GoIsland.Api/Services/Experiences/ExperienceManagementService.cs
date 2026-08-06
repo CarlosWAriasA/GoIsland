@@ -1,4 +1,5 @@
 using GoIsland.Api.Data;
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Experiences;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Images;
@@ -55,12 +56,14 @@ public class ExperienceManagementService : IExperienceManagementService
         return new(ExperienceManagementStatus.Success, await ToResponseAsync(experience.Id));
     }
 
-    public async Task<IReadOnlyCollection<HostExperienceResponse>> GetMineAsync(int hostUserId)
+    public Task<PagedResponse<HostExperienceResponse>> GetMineAsync(
+        int hostUserId,
+        ManagedExperienceListRequest request)
     {
-        return await QueryResponses()
-            .Where(experience => experience.HostId == hostUserId)
-            .OrderByDescending(experience => experience.UpdatedAt)
-            .ToArrayAsync();
+        return GetPageAsync(
+            QueryResponses().Where(experience => experience.HostId == hostUserId),
+            request,
+            newestFirst: true);
     }
 
     public Task<HostExperienceResponse?> GetMineByIdAsync(int hostUserId, int id)
@@ -189,13 +192,14 @@ public class ExperienceManagementService : IExperienceManagementService
             return new(ExperienceManagementStatus.InvalidTransition, await ToResponseAsync(id));
         }
 
-        var missing = GetMissingPublicInformation(experience);
-        if (missing.Count > 0)
+        var errors = GetPublicValidationErrors(experience);
+        if (errors.Count > 0)
         {
             return new(
                 ExperienceManagementStatus.Incomplete,
                 await ToResponseAsync(id),
-                $"Completa antes de enviar: {string.Join(", ", missing)}.");
+                "Revisa los campos marcados antes de enviar la experiencia.",
+                errors);
         }
 
         experience.ApprovalStatus = ExperienceApprovalStatuses.PendingReview;
@@ -208,15 +212,48 @@ public class ExperienceManagementService : IExperienceManagementService
         return new(ExperienceManagementStatus.Success, await ToResponseAsync(id));
     }
 
-    public async Task<IReadOnlyCollection<HostExperienceResponse>> GetForAdminAsync(string? status)
+    public Task<PagedResponse<HostExperienceResponse>> GetForAdminAsync(
+        ManagedExperienceListRequest request)
     {
-        var query = QueryResponses();
-        if (!string.IsNullOrWhiteSpace(status))
+        return GetPageAsync(QueryResponses(), request, newestFirst: false);
+    }
+
+    private static async Task<PagedResponse<HostExperienceResponse>> GetPageAsync(
+        IQueryable<HostExperienceResponse> query,
+        ManagedExperienceListRequest request,
+        bool newestFirst)
+    {
+        var status = NormalizeOptional(request.Status);
+        if (status is not null)
         {
             query = query.Where(experience => experience.ApprovalStatus == status);
         }
 
-        return await query.OrderBy(experience => experience.UpdatedAt).ToArrayAsync();
+        var search = NormalizeOptional(request.Query);
+        if (search is not null)
+        {
+            var pattern = $"%{EscapeLikePattern(search)}%";
+            query = query.Where(experience =>
+                EF.Functions.ILike(experience.Title, pattern, "\\")
+                || EF.Functions.ILike(experience.Location, pattern, "\\")
+                || EF.Functions.ILike(experience.Category, pattern, "\\")
+                || EF.Functions.ILike(experience.HostName, pattern, "\\"));
+        }
+
+        var totalItems = await query.CountAsync();
+        query = newestFirst
+            ? query.OrderByDescending(experience => experience.UpdatedAt)
+            : query.OrderBy(experience => experience.UpdatedAt);
+        var items = await query
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToArrayAsync();
+
+        return PagedResponse<HostExperienceResponse>.Create(
+            items,
+            request.Page,
+            request.PageSize,
+            totalItems);
     }
 
     public async Task<ExperienceManagementResult> ReviewAsync(
@@ -338,6 +375,10 @@ public class ExperienceManagementService : IExperienceManagementService
                            SourceUrl = image.SecureUrl
                                ?? $"/uploads/experiences/{experience.Id}/{image.FileName}",
                            AltText = image.AltText,
+                           CreditText = image.CreditText,
+                           CreditUrl = image.CreditUrl,
+                           LicenseName = image.LicenseName,
+                           LicenseUrl = image.LicenseUrl,
                            IsCover = image.IsCover,
                            SortOrder = image.SortOrder
                        })
@@ -420,21 +461,35 @@ public class ExperienceManagementService : IExperienceManagementService
         return candidate;
     }
 
-    private static IReadOnlyCollection<string> GetMissingPublicInformation(Experience experience)
+    private static IReadOnlyDictionary<string, string[]> GetPublicValidationErrors(Experience experience)
     {
-        var missing = new List<string>();
-        if (string.IsNullOrWhiteSpace(experience.ShortDescription)) missing.Add("resumen");
-        if (experience.DurationMinutes is null) missing.Add("duración");
-        if (string.IsNullOrWhiteSpace(experience.MeetingPointInstructions)) missing.Add("punto de encuentro");
-        if (experience.WhatIsIncluded.Length == 0) missing.Add("qué incluye");
-        if (experience.WhatToBring.Length == 0) missing.Add("qué llevar");
-        if (string.IsNullOrWhiteSpace(experience.GuestRequirements)) missing.Add("requisitos");
-        if (!ExperienceDifficulties.All.Contains(experience.Difficulty)) missing.Add("dificultad");
-        if (experience.Languages.Length == 0) missing.Add("idiomas");
-        if (!CancellationPolicies.All.Contains(experience.CancellationPolicy)) missing.Add("cancelación");
-        if (experience.Itinerary.Count == 0) missing.Add("itinerario");
-        if (!experience.Images.Any(image => image.IsCover)) missing.Add("foto de portada");
-        return missing;
+        var errors = new Dictionary<string, string[]>();
+        if (string.IsNullOrWhiteSpace(experience.Title))
+            errors[nameof(Experience.Title)] = ["Escribe un título para la experiencia."];
+        if (string.IsNullOrWhiteSpace(experience.ShortDescription))
+            errors[nameof(Experience.ShortDescription)] = ["Escribe un resumen de la experiencia."];
+        if (experience.Description.Trim().Length < 10)
+            errors[nameof(Experience.Description)] = ["Escribe una descripción de al menos 10 caracteres."];
+        if (string.IsNullOrWhiteSpace(experience.Category))
+            errors[nameof(Experience.Category)] = ["Selecciona una categoría."];
+        if (experience.Location.Trim().Length < 2)
+            errors[nameof(Experience.Location)] = ["Indica dónde se realiza la experiencia."];
+        if (!experience.Images.Any(image => image.IsCover))
+            errors["CoverImage"] = ["Agrega una foto de portada."];
+
+        var itinerary = experience.Itinerary.OrderBy(candidate => candidate.SortOrder).ToArray();
+        for (var index = 0; index < itinerary.Length; index++)
+        {
+            var item = itinerary[index];
+            if (item.Title.Trim().Length < 3)
+                errors[$"Itinerary[{index}].Title"] = ["Escribe el título de esta etapa."];
+            if (item.Description.Trim().Length < 5)
+                errors[$"Itinerary[{index}].Description"] = ["Describe esta etapa."];
+            if (item.DurationMinutes < 1)
+                errors[$"Itinerary[{index}].DurationMinutes"] = ["Indica la duración de esta etapa."];
+        }
+
+        return errors;
     }
 
     private static string[] NormalizeList(IEnumerable<string> values) => values
@@ -445,4 +500,9 @@ public class ExperienceManagementService : IExperienceManagementService
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string EscapeLikePattern(string value) => value
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("%", "\\%", StringComparison.Ordinal)
+        .Replace("_", "\\_", StringComparison.Ordinal);
 }

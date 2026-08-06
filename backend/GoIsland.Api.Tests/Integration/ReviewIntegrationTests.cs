@@ -48,10 +48,13 @@ public class ReviewIntegrationTests : PostgresIntegrationTestBase
             new ReviewRequest { Rating = 2, Comment = "La actividad necesita mejorar varios detalles." });
 
         var hidden = await service.HideAsync(admin.Id, created.Review!.Id, "Contenido reportado y revisado.");
-        var publicReviews = await service.GetForExperienceAsync(seed.Experience.Id);
+        var publicReviews = await service.GetForExperienceAsync(
+            seed.Experience.Id,
+            new ReviewListRequest { Query = "mejorar", PageSize = 1 });
 
         Assert.Equal(ReviewMutationStatus.Success, hidden.Status);
-        Assert.Empty(publicReviews);
+        Assert.Empty(publicReviews.Items);
+        Assert.Equal(0, publicReviews.TotalItems);
         Assert.True(await Context.AdminAuditLogs.AnyAsync(item => item.EntityType == "Review" && item.EntityId == created.Review.Id));
     }
 

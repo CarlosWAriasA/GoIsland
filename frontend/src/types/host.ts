@@ -71,6 +71,20 @@ export interface ManagedExperience extends ManagedExperienceRequest {
   updatedAt: string;
 }
 
+export interface ManagedExperienceListParams {
+  query?: string;
+  status?: ExperienceApprovalStatus;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface HostApplicationListParams {
+  query?: string;
+  status?: HostVerificationStatus;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface HostDashboardSchedule {
   id: number;
   experienceId: number;

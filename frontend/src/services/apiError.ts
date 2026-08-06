@@ -28,9 +28,8 @@ export const toApiError = (error: unknown, fallback = fallbackMessage): ApiError
   const firstValidationError = errors ? Object.values(errors).flat()[0] : undefined;
 
   return {
-    message: typeof payload.message === 'string'
-      ? payload.message
-      : firstValidationError ?? fallback,
+    message: firstValidationError
+      ?? (typeof payload.message === 'string' ? payload.message : fallback),
     errors,
     status: error.response?.status,
   };

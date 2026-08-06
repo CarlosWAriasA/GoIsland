@@ -2,11 +2,11 @@ import { LockKeyhole, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import AuthMosaic from '../components/AuthMosaic';
 import Logo from '../components/Logo';
+import ToastFeedback from '../components/ToastFeedback';
 import { getFieldError, toApiError } from '../services/apiError';
 import { authService } from '../services/authService';
 import { getPasswordPolicyError, PASSWORD_POLICY_HINT } from '../utils/passwordPolicy';
@@ -74,13 +74,18 @@ export const ResetPassword = () => {
           <p>Elige una contraseña diferente a la utilizada anteriormente.</p>
         </header>
 
-        {!token && <Alert tone="error">Este enlace de recuperación no es válido o está incompleto.</Alert>}
-        {fieldErrors.token && <Alert tone="error">{fieldErrors.token}</Alert>}
-        {error && <Alert tone="error">{error}</Alert>}
+        <ToastFeedback
+          message={!token ? 'Este enlace de recuperación no es válido o está incompleto.' : null}
+          tone="error"
+        />
+        <ToastFeedback message={fieldErrors.token} tone="error" />
+        <ToastFeedback message={error} tone="error" />
+        <ToastFeedback
+          message={success ? 'Contraseña actualizada. Ya puedes iniciar sesión.' : null}
+          tone="success"
+        />
         {success && (
-          <Alert tone="success">
-            Contraseña actualizada. Ya puedes iniciar sesión con tu nueva contraseña.
-          </Alert>
+          <p>Ya puedes iniciar sesión con tu nueva contraseña.</p>
         )}
 
         {!success && (
@@ -94,6 +99,7 @@ export const ResetPassword = () => {
               error={fieldErrors.newPassword}
               hint={fieldErrors.newPassword ? undefined : PASSWORD_POLICY_HINT}
               icon={<LockKeyhole size={18} />}
+              required
             />
             <Input
               label="Confirmar nueva contraseña"
@@ -103,6 +109,7 @@ export const ResetPassword = () => {
               onChange={(event) => setConfirmPassword(event.target.value)}
               error={fieldErrors.confirmPassword}
               icon={<ShieldCheck size={18} />}
+              required
             />
             <Button type="submit" fullWidth isLoading={isSubmitting} disabled={!token}>
               Restablecer contraseña

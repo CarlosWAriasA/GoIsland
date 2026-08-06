@@ -2,10 +2,10 @@ import { Mail, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import StatusBadge from '../components/StatusBadge';
+import ToastFeedback from '../components/ToastFeedback';
 import { useAuth } from '../hooks/useAuth';
 import { getFieldError, toApiError } from '../services/apiError';
 
@@ -57,6 +57,8 @@ export const Profile = () => {
     }
   };
 
+  if (!user) return null;
+
   return (
     <div className="container profile-page animate-fade-in">
       <header className="page-heading">
@@ -68,7 +70,7 @@ export const Profile = () => {
       <div className="profile-grid">
         <section className="profile-summary surface-panel" aria-labelledby="profile-summary-title">
           <div className="profile-avatar" aria-hidden="true">
-            {user?.fullName.charAt(0).toUpperCase()}
+            {user.fullName ? user.fullName.charAt(0).toUpperCase() : ''}
           </div>
           <h2 id="profile-summary-title">{user?.fullName}</h2>
           <StatusBadge tone="info">{getRoleLabel(user?.role || '')}</StatusBadge>
@@ -97,8 +99,8 @@ export const Profile = () => {
         <section className="profile-form surface-panel" aria-labelledby="profile-form-title">
           <h2 id="profile-form-title">Datos personales</h2>
           <p>El correo identifica tu cuenta y no puede modificarse.</p>
-          {success && <Alert tone="success">{success}</Alert>}
-          {error && <Alert tone="error">{error}</Alert>}
+          <ToastFeedback message={success} tone="success" />
+          <ToastFeedback message={error} tone="error" />
 
           <form onSubmit={handleSubmit} noValidate>
             <Input
@@ -108,6 +110,7 @@ export const Profile = () => {
               onChange={(event) => setFullName(event.target.value)}
               error={fieldError}
               icon={<UserRound size={18} />}
+              required
             />
             <Input
               label="Correo electrónico"

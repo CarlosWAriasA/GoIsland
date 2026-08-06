@@ -11,6 +11,10 @@ public class ExperienceImageResponse
     public string CardUrl => ImageDeliveryUrls.ForCard(SourceUrl);
     public string ThumbnailUrl => ImageDeliveryUrls.ForThumbnail(SourceUrl);
     public string AltText { get; set; } = string.Empty;
+    public string CreditText { get; set; } = string.Empty;
+    public string? CreditUrl { get; set; }
+    public string? LicenseName { get; set; }
+    public string? LicenseUrl { get; set; }
     public bool IsCover { get; set; }
     public int SortOrder { get; set; }
 }

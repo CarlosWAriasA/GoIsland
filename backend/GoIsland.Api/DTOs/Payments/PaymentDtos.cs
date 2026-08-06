@@ -20,6 +20,12 @@ public class PaymentResponse
     public DateTime UpdatedAt { get; set; }
 }
 
+public class PaymentCheckoutResponse
+{
+    public PaymentResponse Payment { get; set; } = null!;
+    public string? ClientSecret { get; set; }
+}
+
 public class MockRejectPaymentRequest
 {
     [StringLength(80, ErrorMessage = "El codigo de fallo no puede exceder 80 caracteres.")]

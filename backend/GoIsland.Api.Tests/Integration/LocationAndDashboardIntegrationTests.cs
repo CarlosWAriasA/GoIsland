@@ -26,7 +26,8 @@ public class LocationAndDashboardIntegrationTests : PostgresIntegrationTestBase
             RadiusKm = 25m
         });
 
-        var result = Assert.Single(results);
+        var result = Assert.Single(results.Items);
+        Assert.Equal(1, results.TotalItems);
         Assert.Equal("Zona Colonial", result.Title);
         Assert.NotNull(result.DistanceKm);
         Assert.InRange(result.DistanceKm!.Value, 4m, 7m);
@@ -164,6 +165,7 @@ public class LocationAndDashboardIntegrationTests : PostgresIntegrationTestBase
         bool approved) => new()
     {
         HostId = hostId,
+        Slug = $"location-test-{Guid.NewGuid():N}",
         Title = title,
         Description = "Experiencia con ubicación verificable.",
         Location = "República Dominicana",

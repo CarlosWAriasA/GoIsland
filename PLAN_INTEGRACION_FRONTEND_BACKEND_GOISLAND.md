@@ -1,5 +1,8 @@
 # Plan de Integracion Frontend-Backend y Mejora UX/UI - GoIsland
 
+> **Documento histórico.** Conserva las entregas de integración y UX. El plan activo de
+> preparación y despliegue es `PLAN_PREPARACION_CATALOGO_Y_DESPLIEGUE.md`.
+
 ## Estado de ejecucion
 
 Inicio: 19 de julio de 2026.

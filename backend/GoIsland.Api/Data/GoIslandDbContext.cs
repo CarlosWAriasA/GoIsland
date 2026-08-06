@@ -137,6 +137,10 @@ public class GoIslandDbContext : DbContext
             entity.Property(image => image.Height).HasColumnName("height");
             entity.Property(image => image.Format).HasColumnName("format").HasMaxLength(20);
             entity.Property(image => image.AltText).HasColumnName("alt_text").HasMaxLength(180).IsRequired();
+            entity.Property(image => image.CreditText).HasColumnName("credit_text").HasMaxLength(240).IsRequired();
+            entity.Property(image => image.CreditUrl).HasColumnName("credit_url").HasMaxLength(1000);
+            entity.Property(image => image.LicenseName).HasColumnName("license_name").HasMaxLength(80);
+            entity.Property(image => image.LicenseUrl).HasColumnName("license_url").HasMaxLength(1000);
             entity.Property(image => image.IsCover).HasColumnName("is_cover").IsRequired();
             entity.Property(image => image.FileName).HasColumnName("file_name").HasMaxLength(120).IsRequired();
             entity.Property(image => image.ContentType).HasColumnName("content_type").HasMaxLength(80).IsRequired();
@@ -183,6 +187,7 @@ public class GoIslandDbContext : DbContext
             entity.Property(reservation => reservation.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
             entity.Property(reservation => reservation.TotalAmount).HasColumnName("total_amount").HasPrecision(10, 2);
             entity.Property(reservation => reservation.ReservationDate).HasColumnName("reservation_date").IsRequired();
+            entity.Property(reservation => reservation.ExpiresAt).HasColumnName("expires_at");
             entity.Property(reservation => reservation.UpdatedAt).HasColumnName("updated_at").IsRequired();
             entity.Property(reservation => reservation.CancelledAt).HasColumnName("cancelled_at");
             entity.HasIndex(reservation => reservation.ScheduleId);
@@ -215,7 +220,7 @@ public class GoIslandDbContext : DbContext
             entity.Property(history => history.ReservationId).HasColumnName("reservation_id").IsRequired();
             entity.Property(history => history.FromStatus).HasColumnName("from_status").HasMaxLength(40);
             entity.Property(history => history.ToStatus).HasColumnName("to_status").HasMaxLength(40).IsRequired();
-            entity.Property(history => history.ChangedByUserId).HasColumnName("changed_by_user_id").IsRequired();
+            entity.Property(history => history.ChangedByUserId).HasColumnName("changed_by_user_id");
             entity.Property(history => history.Reason).HasColumnName("reason").HasMaxLength(500);
             entity.Property(history => history.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.HasIndex(history => new { history.ReservationId, history.CreatedAt });

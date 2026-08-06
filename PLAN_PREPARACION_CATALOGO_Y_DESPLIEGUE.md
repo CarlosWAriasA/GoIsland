@@ -4,7 +4,7 @@
 
 Plan aprobado y en ejecución.
 
-Avance al 30 de julio de 2026:
+Avance al 1 de agosto de 2026:
 
 - Fase 0: Azure elegido como primer destino y base autorizada para migración inicial sin respaldo
   por no contener datos importantes; cuentas y URLs públicas todavía pendientes.
@@ -14,7 +14,31 @@ Avance al 30 de julio de 2026:
   de credenciales de Cloudinary. No hay imágenes existentes que trasladar.
 - Fase 3: implementada y migración `013` aplicada en Neon; contrato completo, itinerario,
   validación de revisión y presentación pública disponibles.
-- Fases 4 a 9: pendientes.
+- Fase 4: núcleo implementado; catálogo, cercanía, publicaciones del anfitrión, reservas,
+  moderación, reseñas y notificaciones usan el contrato paginado común. La búsqueda y los filtros
+  se ejecutan en servidor, las pantallas principales conservan filtros y página en la URL y
+  cancelan solicitudes anteriores. La migración de índices `014` fue aplicada a Neon el 4 de
+  agosto de 2026; queda pendiente la prueba con un catálogo amplio.
+- Fase 5: implementada; el anfitrión puede generar horarios recurrentes con vista previa y
+  exclusiones, copiar semanas y cerrar o ajustar la capacidad de varias fechas. Las operaciones
+  son idempotentes, respetan los cupos reservados y convierten la hora local a UTC. La migración
+  de unicidad `015` fue aplicada a Neon el 4 de agosto de 2026.
+- Fase 6: implementada; las reservas de pago vencen después de 15 minutos, liberan los cupos una
+  sola vez y rechazan pagos tardíos. La reconciliación se ejecuta al arrancar, periódicamente y
+  antes de consultar disponibilidad o pagar. La migración `016` fue aplicada a Neon el 4 de
+  agosto de 2026.
+- Fase 7: implementada; las experiencias aprobadas usan URLs públicas con `slug`, conservan
+  compatibilidad con IDs y publican metadatos, imagen social y datos estructurados basados en el
+  catálogo real. El build genera `robots.txt`, páginas sociales y un sitemap filtrado desde la API
+  pública. También están disponibles contacto, privacidad, términos y cancelaciones con alcance
+  de prototipo universitario.
+- Fase 8: implementada en código; PaymentIntent, Payment Element, webhooks firmados, reembolsos e
+  idempotencia están integrados y las claves live se rechazan. Queda pendiente activar las
+  credenciales del Sandbox y ejecutar la prueba externa de extremo a extremo.
+- Fase 9: implementada en código y documentación; logs JSON, correlation ID, errores uniformes,
+  readiness PostgreSQL, CI repetible y runbook de respaldo/restauración están listos. Quedan como
+  validaciones externas la rotación en proveedores, el simulacro con Neon y las pruebas sobre las
+  URLs públicas en móvil y escritorio.
 
 Decisiones confirmadas:
 
@@ -164,6 +188,7 @@ una demostración, siempre que las imágenes se optimicen.
 | Destino | Variable | Uso |
 |---|---|---|
 | Vercel | `VITE_API_URL` | URL pública de la API |
+| Vercel | `VITE_SITE_URL` | Origen público para canonical, sitemap y enlaces sociales |
 | Vercel | `VITE_GOOGLE_CLIENT_ID` | Inicio de sesión con Google |
 | Vercel | `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe Sandbox |
 | Backend | `ConnectionStrings__DefaultConnection` | PostgreSQL |
@@ -383,6 +408,9 @@ totalPages
 
 ## Fase 5 — Horarios recurrentes y operación por lotes
 
+Estado: implementada el 1 de agosto de 2026. La validación focalizada cubre generación repetida,
+exclusiones, copia de semanas y atomicidad de las operaciones por lotes.
+
 ### Alcance
 
 No se implementará un motor universal de calendarios. Se añadirá un generador sencillo:
@@ -412,6 +440,10 @@ El generador creará horarios individuales para conservar el modelo de reservas 
 - Las excepciones y fechas bloqueadas son visibles antes de confirmar.
 
 ## Fase 6 — Vencimiento de reservas pendientes
+
+Estado: implementada el 4 de agosto de 2026. Incluye bloqueo transaccional por reserva, historial,
+auditoría de capacidad, reconciliación al arrancar y durante la operación, y cuenta regresiva en
+el detalle de la reserva.
 
 ### Dominio
 
@@ -445,6 +477,9 @@ reservas vencidas antes de ofrecer los cupos.
 
 ## Fase 7 — SEO y presentación pública
 
+Estado: implementada el 4 de agosto de 2026. El sitemap y los HTML usados al compartir enlaces se
+regeneran durante el build de producción, después de consultar únicamente experiencias aprobadas.
+
 ### Trabajo
 
 - Usar `Slug` en las URLs públicas y mantener compatibilidad temporal con IDs.
@@ -468,6 +503,10 @@ reales. No se presentarán como asesoría ni como condiciones comerciales defini
 - El sitemap contiene solamente experiencias aprobadas.
 
 ## Fase 8 — Integrar Stripe Sandbox
+
+Estado: implementada en código el 4 de agosto de 2026. El gateway Mock permanece disponible en
+Development y QA. La activación pública requiere las credenciales de prueba y registrar el webhook
+en la cuenta de Stripe Sandbox.
 
 ### Papel del gateway Mock
 
@@ -552,31 +591,38 @@ No se deben registrar datos falsos de país, empresa o banco para activar Stripe
 
 ## Fase 9 — Operación, pruebas y documentación
 
+**Estado: implementada el 4 de agosto de 2026; activación externa pendiente.**
+
 ### Operación
 
-- Logs estructurados con correlation ID.
-- Readiness con PostgreSQL.
-- Manejo uniforme de errores.
-- Copia de seguridad antes de la presentación.
-- Procedimiento documentado de restauración.
-- Revisión de claves expuestas anteriormente y rotación.
-- Restricción de las claves de Google por dominio y API.
+- [x] Logs JSON estructurados con correlation ID.
+- [x] Readiness con PostgreSQL.
+- [x] Manejo uniforme de errores de infraestructura, validación y rutas sin respuesta.
+- [ ] Copia de seguridad antes de la presentación; requiere acceso a Neon.
+- [x] Procedimiento documentado de restauración segura sobre una base separada.
+- [ ] Revisión de claves expuestas anteriormente y rotación en proveedores.
+- [ ] Restricción de las claves de Google por dominio y API en Google Cloud.
 
 ### Calidad
 
-- Build Release del backend.
-- Lint y build del frontend.
-- Pruebas focalizadas de imágenes, búsqueda, horarios y expiración.
-- Corregir la ejecución conjunta de la suite PostgreSQL para que finalice de forma repetible.
-- Pruebas desde las URLs públicas en móvil y escritorio.
+- [x] Build Release del backend sin advertencias.
+- [x] Lint y build del frontend aprobados.
+- [x] Pruebas focalizadas de imágenes, búsqueda, horarios y expiración: 12/12.
+- [x] La suite PostgreSQL desactiva paralelismo, prepara un esquema vacío y tiene CI con PostgreSQL.
+- [ ] Pruebas desde las URLs públicas en móvil y escritorio; requieren despliegue.
+
+La suite conjunta finalizó con 104/104 pruebas en Release el 4 de agosto de 2026. Una desconexión
+transitoria de Neon observada durante la matriz focalizada motivó reintentos breves y acotados en
+la infraestructura de pruebas; la matriz y la suite completa finalizaron correctamente después
+del ajuste.
 
 ### Documentación
 
-- Convertir este documento en el plan activo.
-- Actualizar el README del frontend.
-- Marcar como históricos los planes anteriores o reconciliar su estado.
-- Documentar todas las variables de ambiente sin valores secretos.
-- Crear una guía breve de despliegue y recuperación.
+- [x] Este documento es el plan activo.
+- [x] README del frontend actualizado.
+- [x] Planes anteriores marcados como históricos y reconciliados.
+- [x] Variables de ambiente documentadas sin valores secretos.
+- [x] Guía de despliegue y runbook de recuperación creados.
 
 ## Orden de ejecución recomendado
 

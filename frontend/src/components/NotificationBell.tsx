@@ -24,9 +24,9 @@ export const NotificationBell = () => {
 
   useEffect(() => {
     const controller = new AbortController();
-    notificationService.getAll(controller.signal)
+      notificationService.getAll(controller.signal)
       .then((data) => {
-        setItems(data);
+        setItems(data.items);
         setFailed(false);
       })
       .catch((error: unknown) => {

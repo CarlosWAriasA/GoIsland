@@ -1,9 +1,16 @@
 import { api } from './api';
-import type { Review, ReviewInput } from '../types';
+import type { PagedResponse, Review, ReviewInput } from '../types';
 
 export const reviewService = {
-  forExperience: async (experienceId: number, signal?: AbortSignal): Promise<Review[]> =>
-    (await api.get<Review[]>(`/experiences/${experienceId}/reviews`, { signal })).data,
+  forExperience: async (
+    experienceId: number,
+    signal?: AbortSignal,
+    reservationId?: number,
+  ): Promise<PagedResponse<Review>> =>
+    (await api.get<PagedResponse<Review>>(`/experiences/${experienceId}/reviews`, {
+      params: { pageSize: reservationId ? 1 : 100, reservationId },
+      signal,
+    })).data,
   create: async (reservationId: number, input: ReviewInput): Promise<Review> =>
     (await api.post<Review>(`/reservations/${reservationId}/review`, input)).data,
   update: async (id: number, input: ReviewInput): Promise<Review> =>

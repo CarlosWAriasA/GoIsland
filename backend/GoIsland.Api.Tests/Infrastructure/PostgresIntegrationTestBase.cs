@@ -16,6 +16,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace GoIsland.Api.Tests.Infrastructure;
@@ -70,6 +71,10 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
         services.AddScoped<INotificationService>(provider => provider.GetRequiredService<NotificationService>());
         services.AddScoped<IOutboxWriter>(provider => provider.GetRequiredService<NotificationService>());
         services.AddScoped<IReviewService, ReviewService>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IOptions<ReservationExpirationOptions>>(
+            Options.Create(new ReservationExpirationOptions()));
+        services.AddScoped<IReservationExpirationService, ReservationExpirationService>();
         services.AddScoped<IReservationObserver, EmailNotificationObserver>();
         services.AddScoped<IReservationObserver, PushNotificationObserver>();
         services.AddScoped<IReservationObserver, CapacityManagerObserver>();
@@ -84,10 +89,17 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
         Context = _scope.ServiceProvider.GetRequiredService<GoIslandDbContext>();
 
         Assert.True(
-            await Context.Database.CanConnectAsync(),
-            "No fue posible conectar con la base PostgreSQL configurada.");
+            await CanConnectWithRetryAsync(),
+            "No fue posible conectar con la base PostgreSQL configurada después de tres intentos.");
 
         _transaction = await Context.Database.BeginTransactionAsync();
+
+        var initialSchemaScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "001_create_initial_schema.sql"));
+        await Context.Database.ExecuteSqlRawAsync(initialSchemaScript);
 
         var passwordResetScript = await File.ReadAllTextAsync(Path.Combine(
             configurationDirectory,
@@ -173,6 +185,27 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             "013_complete_experience_catalog.sql"));
         await Context.Database.ExecuteSqlRawAsync(catalogScript.Replace("{}", "{{}}"));
 
+        var imageAttributionScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "017_add_image_attribution.sql"));
+        await Context.Database.ExecuteSqlRawAsync(imageAttributionScript);
+
+        var uniqueScheduleScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "015_add_unique_schedule_start.sql"));
+        await Context.Database.ExecuteSqlRawAsync(uniqueScheduleScript);
+
+        var reservationExpirationScript = await File.ReadAllTextAsync(Path.Combine(
+            configurationDirectory,
+            "Database",
+            "Scripts",
+            "016_add_reservation_expiration.sql"));
+        await Context.Database.ExecuteSqlRawAsync(reservationExpirationScript);
+
         // Fuerza una consulta real y falla temprano si el esquema no esta aplicado.
         await Context.Users.AsNoTracking().AnyAsync();
     }
@@ -192,6 +225,34 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
     protected T GetRequiredService<T>() where T : notnull
     {
         return _scope.ServiceProvider.GetRequiredService<T>();
+    }
+
+    private async Task<bool> CanConnectWithRetryAsync()
+    {
+        const int maximumAttempts = 3;
+
+        for (var attempt = 1; attempt <= maximumAttempts; attempt++)
+        {
+            try
+            {
+                if (await Context.Database.CanConnectAsync())
+                {
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                // Neon puede reactivar o reemplazar una conexión entre pruebas. El assert del
+                // llamador conserva un diagnóstico estable si se agotan los intentos.
+            }
+
+            if (attempt < maximumAttempts)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(500 * attempt));
+            }
+        }
+
+        return false;
     }
 
     private static string FindConfigurationDirectory()

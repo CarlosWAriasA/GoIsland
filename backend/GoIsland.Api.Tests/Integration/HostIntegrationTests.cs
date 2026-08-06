@@ -131,4 +131,41 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
         Assert.Equal(HostOperationStatus.Forbidden, result.Status);
         Assert.False(await Context.HostProfiles.AnyAsync(profile => profile.UserId == admin.Id));
     }
+
+    [Fact]
+    public async Task AdminList_SearchesFiltersAndPaginatesApplicationsOnTheServer()
+    {
+        var authService = GetRequiredService<IAuthService>();
+        var hostService = GetRequiredService<IHostService>();
+        var marker = Guid.NewGuid().ToString("N");
+
+        foreach (var name in new[] { $"Bahía {marker}", $"Montaña {marker}" })
+        {
+            var registration = await authService.RegisterAsync(new()
+            {
+                FullName = $"Responsable {name}",
+                Email = $"{Guid.NewGuid():N}@goisland.test",
+                Password = "Password123"
+            });
+            await hostService.ApplyAsync(registration!.User.Id, new HostApplicationRequest
+            {
+                DisplayName = name,
+                Description = "Solicitud preparada para validar el listado administrativo.",
+                PhoneNumber = "+1 809 555 0110"
+            });
+        }
+
+        var page = await hostService.GetForAdminAsync(new HostApplicationListRequest
+        {
+            Query = marker,
+            Status = HostVerificationStatuses.Pending,
+            Page = 2,
+            PageSize = 1
+        });
+
+        Assert.Single(page.Items);
+        Assert.Equal(2, page.TotalItems);
+        Assert.Equal(2, page.TotalPages);
+        Assert.Contains(marker, page.Items.Single().DisplayName);
+    }
 }

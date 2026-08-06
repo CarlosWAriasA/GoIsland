@@ -1,6 +1,7 @@
 using GoIsland.Api.DTOs.Reservations;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Reservations;
+using GoIsland.Api.Services.Schedules;
 using GoIsland.Api.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,11 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
         Assert.Equal(ReservationCreationStatus.Success, result.Status);
         Assert.Equal(80m, result.Reservation!.TotalAmount);
         Assert.Equal(ReservationStatuses.PendingPayment, result.Reservation.Status);
+        Assert.NotNull(result.Reservation.ExpiresAt);
+        Assert.InRange(
+            result.Reservation.ExpiresAt!.Value - result.Reservation.ReservationDate,
+            TimeSpan.FromMinutes(14.9),
+            TimeSpan.FromMinutes(15.1));
         Assert.Single(result.Reservation.StatusHistory);
 
         Context.ChangeTracker.Clear();
@@ -36,6 +42,7 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
         Assert.Equal(ReservationCreationStatus.Success, result.Status);
         Assert.Equal(0m, result.Reservation!.TotalAmount);
         Assert.Equal(ReservationStatuses.Confirmed, result.Reservation.Status);
+        Assert.Null(result.Reservation.ExpiresAt);
         Assert.Equal(
             ReservationStatuses.Confirmed,
             await Context.Reservations
@@ -120,12 +127,72 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
+    public async Task Lists_SearchFilterAndPaginateForTouristAndHost()
+    {
+        var (owner, experience, schedule, _) = await SeedScenarioAsync(availableSpots: 5);
+        var service = GetRequiredService<IReservationService>();
+        await service.CreateAsync(owner.Id,
+            new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 1 }, "list-one");
+        await service.CreateAsync(owner.Id,
+            new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 1 }, "list-two");
+
+        Context.HostProfiles.Add(new HostProfile
+        {
+            UserId = experience.HostId,
+            DisplayName = "Anfitrión de reservas",
+            Description = "Perfil aprobado para consultar reservas recibidas.",
+            PhoneNumber = "+1 809 555 0130",
+            VerificationStatus = HostVerificationStatuses.Approved
+        });
+        await Context.SaveChangesAsync();
+
+        var request = new ReservationListRequest
+        {
+            Query = experience.Location,
+            Status = ReservationStatuses.PendingPayment,
+            Page = 2,
+            PageSize = 1
+        };
+        var touristPage = await service.GetByUserIdAsync(owner.Id, request);
+        var hostPage = await service.GetForHostAsync(experience.HostId, request);
+
+        Assert.Single(touristPage.Items);
+        Assert.Equal(2, touristPage.TotalItems);
+        Assert.Equal(2, touristPage.TotalPages);
+        Assert.NotNull(hostPage);
+        Assert.Single(hostPage.Items);
+        Assert.Equal(2, hostPage.TotalItems);
+    }
+
+    [Fact]
     public void ScheduleAvailableSpots_IsConfiguredAsConcurrencyToken()
     {
         var property = Context.Model.FindEntityType(typeof(ExperienceSchedule))!
             .FindProperty(nameof(ExperienceSchedule.AvailableSpots));
         Assert.NotNull(property);
         Assert.True(property.IsConcurrencyToken);
+    }
+
+    [Fact]
+    public async Task Availability_LazilyExpiresPendingReservationAndRestoresSpots()
+    {
+        var (user, experience, schedule, _) = await SeedScenarioAsync(availableSpots: 5);
+        var reservationService = GetRequiredService<IReservationService>();
+        var created = await reservationService.CreateAsync(user.Id,
+            new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 3 }, "lazy-expiration");
+        var stored = await Context.Reservations.SingleAsync(item => item.Id == created.Reservation!.Id);
+        stored.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+        await Context.SaveChangesAsync();
+        Context.ChangeTracker.Clear();
+
+        var availability = await GetRequiredService<IScheduleService>()
+            .GetAvailabilityAsync(experience.Id, null, null, quantity: 5);
+
+        Assert.Contains(availability!, item => item.Id == schedule.Id && item.AvailableSpots == 5);
+        Assert.Equal(
+            ReservationStatuses.Expired,
+            await Context.Reservations.Where(item => item.Id == created.Reservation!.Id)
+                .Select(item => item.Status).SingleAsync());
     }
 
     private async Task<(User User, Experience Experience, ExperienceSchedule Source, ExperienceSchedule Target)>

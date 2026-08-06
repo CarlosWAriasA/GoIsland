@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Payment } from '../types';
+import type { Payment, PaymentCheckout } from '../types';
 
 export const paymentService = {
   getById: async (id: number, signal?: AbortSignal): Promise<Payment> => {
@@ -12,17 +12,21 @@ export const paymentService = {
     return response.data;
   },
 
-  pay: async (reservationId: number, pendingPaymentId?: number): Promise<Payment> => {
-    let paymentId = pendingPaymentId;
-    if (!paymentId) {
-      const created = await api.post<Payment>(`/reservations/${reservationId}/payments`, null, {
-        headers: { 'Idempotency-Key': crypto.randomUUID() },
-      });
-      paymentId = created.data.id;
-    }
+  createCheckout: async (reservationId: number): Promise<PaymentCheckout> => {
+    const response = await api.post<PaymentCheckout>(`/reservations/${reservationId}/payments`, null, {
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+    });
+    return response.data;
+  },
 
-    const completed = await api.post<Payment>(`/payments/${paymentId}/mock-confirm`);
-    return completed.data;
+  resumeCheckout: async (paymentId: number): Promise<PaymentCheckout> => {
+    const response = await api.get<PaymentCheckout>(`/payments/${paymentId}/checkout`);
+    return response.data;
+  },
+
+  confirmMock: async (paymentId: number): Promise<Payment> => {
+    const response = await api.post<Payment>(`/payments/${paymentId}/mock-confirm`);
+    return response.data;
   },
 
   refund: async (id: number, reason: string): Promise<Payment> => {

@@ -11,6 +11,10 @@ public class ExperienceImage
     public int? Height { get; set; }
     public string? Format { get; set; }
     public string AltText { get; set; } = string.Empty;
+    public string CreditText { get; set; } = string.Empty;
+    public string? CreditUrl { get; set; }
+    public string? LicenseName { get; set; }
+    public string? LicenseUrl { get; set; }
     public bool IsCover { get; set; }
     public string FileName { get; set; } = string.Empty;
     public string ContentType { get; set; } = string.Empty;
@@ -23,4 +27,5 @@ public static class ImageStorageProviders
 {
     public const string Local = "Local";
     public const string Cloudinary = "Cloudinary";
+    public const string External = "External";
 }

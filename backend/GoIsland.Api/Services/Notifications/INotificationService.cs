@@ -1,3 +1,4 @@
+using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Notifications;
 using GoIsland.Api.Models;
 
@@ -5,7 +6,9 @@ namespace GoIsland.Api.Services.Notifications;
 
 public interface INotificationService
 {
-    Task<IReadOnlyCollection<NotificationResponse>> GetAsync(int userId, bool unreadOnly);
+    Task<PagedResponse<NotificationResponse>> GetAsync(
+        int userId,
+        NotificationListRequest request);
     Task<NotificationResponse?> MarkReadAsync(int userId, int id);
     Task<NotificationPreferenceResponse> GetPreferencesAsync(int userId);
     Task<NotificationPreferenceResponse> UpdatePreferencesAsync(int userId, UpdateNotificationPreferenceRequest request);

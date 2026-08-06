@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import AuthMosaic from '../components/AuthMosaic';
 import Logo from '../components/Logo';
 import GoogleSignInButton from '../components/GoogleSignInButton';
+import ToastFeedback from '../components/ToastFeedback';
 import { useAuth } from '../hooks/useAuth';
 import { getFieldError, toApiError } from '../services/apiError';
 import { isGoogleAuthConfigured } from '../services/googleAuthConfig';
@@ -97,7 +97,7 @@ export const Register = () => {
           <p>Regístrate como turista para descubrir experiencias dominicanas.</p>
         </header>
 
-        {formError && <Alert tone="error">{formError}</Alert>}
+        <ToastFeedback message={formError} tone="error" />
 
         {isGoogleAuthConfigured && (
           <>
@@ -119,6 +119,7 @@ export const Register = () => {
             onChange={(event) => setFullName(event.target.value)}
             error={fieldErrors.fullName}
             icon={<UserRound size={18} />}
+            required
           />
           <Input
             label="Correo electrónico"
@@ -129,6 +130,7 @@ export const Register = () => {
             onChange={(event) => setEmail(event.target.value)}
             error={fieldErrors.email}
             icon={<Mail size={18} />}
+            required
           />
           <Input
             label="Contraseña"
@@ -140,6 +142,7 @@ export const Register = () => {
             error={fieldErrors.password}
             hint={fieldErrors.password ? undefined : PASSWORD_POLICY_HINT}
             icon={<LockKeyhole size={18} />}
+            required
           />
           <Input
             label="Confirmar contraseña"
@@ -150,6 +153,7 @@ export const Register = () => {
             onChange={(event) => setConfirmPassword(event.target.value)}
             error={fieldErrors.confirmPassword}
             icon={<ShieldCheck size={18} />}
+            required
           />
           <Button type="submit" fullWidth isLoading={isLoading}>Crear cuenta</Button>
         </form>
