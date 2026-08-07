@@ -5,7 +5,7 @@ import Alert from './Alert';
 import Button from './Button';
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.trim() ?? '';
-const stripePromise = publishableKey.startsWith('pk_test_')
+const stripePromise = publishableKey.startsWith('pk_test_') || publishableKey.startsWith('pk_live_')
   ? loadStripe(publishableKey)
   : null;
 
@@ -80,9 +80,11 @@ export const StripePaymentForm = (props: StripePaymentFormProps) => {
         appearance: {
           theme: 'stripe',
           variables: {
-            colorPrimary: '#0d766e',
-            borderRadius: '10px',
-            fontFamily: 'Inter, system-ui, sans-serif',
+            colorPrimary: '#1C6FA5',
+            colorText: '#123B57',
+            colorDanger: '#BC4237',
+            borderRadius: '0.65rem',
+            fontFamily: 'Manrope, system-ui, sans-serif',
           },
         },
       }}

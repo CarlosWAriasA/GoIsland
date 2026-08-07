@@ -324,6 +324,9 @@ export const ExperienceMap = ({
       userCircle?.setMap(null);
       mapRef.current = null;
     };
+    // Las claves serializadas reemplazan a points/selectedPoint/userPoint: comparar por
+    // contenido evita recrear el mapa cuando solo cambia la referencia del arreglo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusedPointId, pointsKey, selectedPointKey, userPointKey, showInfoWindow, setQuery]);
 
   return (

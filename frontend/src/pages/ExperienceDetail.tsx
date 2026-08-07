@@ -23,7 +23,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
@@ -213,17 +213,17 @@ export const ExperienceDetail = () => {
     return () => clearInterval(interval);
   }, [userHasInteracted, allImages.length]);
 
-  const handlePrevImage = () => {
+  const handlePrevImage = useCallback(() => {
     if (allImages.length <= 1) return;
     setUserHasInteracted(true);
     setActiveImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
-  };
+  }, [allImages.length]);
 
-  const handleNextImage = () => {
+  const handleNextImage = useCallback(() => {
     if (allImages.length <= 1) return;
     setUserHasInteracted(true);
     setActiveImageIndex((prev) => (prev + 1) % allImages.length);
-  };
+  }, [allImages.length]);
 
   const handleSelectImage = (index: number) => {
     setUserHasInteracted(true);
@@ -247,7 +247,7 @@ export const ExperienceDetail = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [isLightboxOpen, allImages.length]);
+  }, [isLightboxOpen, handleNextImage, handlePrevImage]);
 
   if (loading) return <DetailSkeleton />;
 

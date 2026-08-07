@@ -49,7 +49,7 @@ export const Register = () => {
     if (!confirmPassword) errors.confirmPassword = 'Confirma tu contraseña.';
     else if (password !== confirmPassword) errors.confirmPassword = 'Las contraseñas no coinciden.';
     setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    return Object.values(errors).every((message) => !message);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
