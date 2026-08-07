@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// URL base de la API, tomada de las variables de entorno de Vite
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5057/api';
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
 
@@ -19,7 +18,6 @@ export const api = axios.create({
 let authToken: string | null = null;
 let unauthorizedHandler: (() => void) | null = null;
 
-// Actualiza el token guardado en memoria
 export const setAuthToken = (token: string | null) => {
   authToken = token;
 };
@@ -28,7 +26,6 @@ export const setUnauthorizedHandler = (handler: (() => void) | null) => {
   unauthorizedHandler = handler;
 };
 
-// Interceptor que adjunta el token JWT a cada petición si existe en memoria
 api.interceptors.request.use(
   (config) => {
     if (authToken) {

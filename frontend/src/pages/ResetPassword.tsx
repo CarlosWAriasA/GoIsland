@@ -37,7 +37,7 @@ export const ResetPassword = () => {
       errors.confirmPassword = 'La confirmacion no coincide con la nueva contrasena.';
     }
     setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    return Object.values(errors).every((message) => !message);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
