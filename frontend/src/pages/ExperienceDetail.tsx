@@ -41,6 +41,7 @@ import { reviewService } from '../services/reviewService';
 import { resolveApiAssetUrl } from '../services/api';
 import { formatLocationLabel } from '../services/googleMapsService';
 import { experienceKeys, queryRefresh } from '../queries/queryKeys';
+import { getReturnPath } from '../utils/navigation';
 
 const ExperienceMap = lazy(() => import('../components/ExperienceMap'));
 
@@ -108,11 +109,10 @@ export const ExperienceDetail = () => {
   const { isAuthenticated } = useAuth();
   const identifier = routeIdentifier?.trim() ?? '';
   const isValidIdentifier = identifier.length > 0 && identifier.length <= 180;
-  const requestedReturnPath = typeof location.state?.from === 'string'
-    && location.state.from.startsWith('/experiences')
-    && !location.state.from.startsWith('//')
-    ? location.state.from
-    : '/experiences';
+  const requestedReturnPath = getReturnPath(location.state, '/experiences');
+  const returnLabel = /^\/reservations\/\d+/.test(requestedReturnPath)
+    ? 'Volver a la reserva'
+    : requestedReturnPath.startsWith('/experiences') ? 'Volver al catálogo' : 'Volver';
   const [reservationOpen, setReservationOpen] = useState(false);
   const detailQuery = useQuery({
     queryKey: experienceKeys.detail(identifier),
@@ -257,7 +257,7 @@ export const ExperienceDetail = () => {
         <EmptyState
           title="Experiencia no disponible"
           description="Esta experiencia ya no está disponible."
-          action={<Link className="button-link button-link--outline" to={requestedReturnPath}>Volver al catálogo</Link>}
+          action={<Link className="button-link button-link--outline" to={requestedReturnPath}>{returnLabel}</Link>}
         />
       </div>
     );
@@ -277,13 +277,14 @@ export const ExperienceDetail = () => {
             void Promise.all([availabilityQuery.refetch(), reviewsQuery.refetch()]);
           }}
         />
-        <Link className="experience-detail-state__back" to={requestedReturnPath}>Volver al catálogo</Link>
+        <Link className="experience-detail-state__back" to={requestedReturnPath}>{returnLabel}</Link>
       </div>
     );
   }
 
+  const isSelfGuided = experience.schedulingMode === 'SelfGuided';
   const nextSchedule = schedules[0];
-  const canReserve = Boolean(nextSchedule
+  const canReserve = isSelfGuided || Boolean(nextSchedule
     && (nextSchedule.isUnlimitedCapacity || nextSchedule.availableSpots > 0));
 
   const hasBeforeGoing = Boolean(
@@ -314,7 +315,7 @@ export const ExperienceDetail = () => {
   return (
     <article className="container experience-detail animate-fade-in">
       <Link className="experience-detail__back" to={requestedReturnPath}>
-        <ArrowLeft size={18} aria-hidden="true" /> Volver al catálogo
+        <ArrowLeft size={18} aria-hidden="true" /> {returnLabel}
       </Link>
 
       <div className="experience-detail__hero-grid">
@@ -420,7 +421,7 @@ export const ExperienceDetail = () => {
             <span>Precio por persona</span>
             <strong>{formatPrice(experience.price)}</strong>
           </div>
-          {nextSchedule && (
+          {isSelfGuided ? null : nextSchedule ? (
             <>
               <dl className="experience-detail__facts">
                 <div>
@@ -444,7 +445,7 @@ export const ExperienceDetail = () => {
                     : 'La próxima fecha está completa.'}
               </Alert>
             </>
-          )}
+          ) : null}
           {canReserve && (
             <>
               <Button
@@ -453,13 +454,15 @@ export const ExperienceDetail = () => {
                 fullWidth
                 onClick={handleReserve}
               >
-                <TicketCheck size={18} aria-hidden="true" /> Reservar
+                <TicketCheck size={18} aria-hidden="true" /> {isSelfGuided ? 'Agendar visita' : 'Reservar'}
               </Button>
-              <p className="experience-detail__reservation-note">
-                {experience.price === 0
-                  ? 'Confirmación inmediata.'
-                  : 'Después de reservar, podrás completar el pago.'}
-              </p>
+              {!isSelfGuided && (
+                <p className="experience-detail__reservation-note">
+                  {experience.price === 0
+                    ? 'Confirmación inmediata.'
+                    : 'Después de reservar, podrás completar el pago.'}
+                </p>
+              )}
             </>
           )}
         </aside>

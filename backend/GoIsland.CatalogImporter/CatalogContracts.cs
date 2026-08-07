@@ -40,8 +40,25 @@ public sealed class CatalogExperience
     public decimal Longitude { get; set; }
     public string Category { get; set; } = string.Empty;
     public decimal Price { get; set; }
+    public string SchedulingMode { get; set; } = ExperienceSchedulingModes.SelfGuided;
+    public int Capacity { get; set; } = 1;
+    public CatalogSchedulePolicy? SchedulePolicy { get; set; }
     public List<CatalogItineraryItem> Itinerary { get; set; } = [];
     public List<CatalogImage> Images { get; set; } = [];
+}
+
+public sealed class CatalogSchedulePolicy
+{
+    /// <summary>Días de la semana en los que se generan horarios (0=domingo..6=sábado, como DayOfWeek).</summary>
+    public int[] Weekdays { get; set; } = [];
+    public TimeOnly StartsAt { get; set; }
+    public int WeeksAhead { get; set; } = 8;
+
+    /// <summary>
+    /// Fecha desde la que se empiezan a generar horarios. Útil para actividades de temporada
+    /// (por ejemplo avistamiento de ballenas). Si no se indica, se usa la fecha de hoy.
+    /// </summary>
+    public DateOnly? StartDate { get; set; }
 }
 
 public sealed class CatalogItineraryItem
@@ -121,6 +138,36 @@ public static partial class CatalogValidator
             if (item.Price < 0)
             {
                 errors.Add($"{prefix}.price no puede ser negativo.");
+            }
+
+            if (item.SchedulingMode != ExperienceSchedulingModes.SelfGuided
+                && item.SchedulingMode != ExperienceSchedulingModes.HostScheduled)
+            {
+                errors.Add($"{prefix}.schedulingMode debe ser SelfGuided o HostScheduled.");
+            }
+
+            if (item.SchedulingMode == ExperienceSchedulingModes.HostScheduled)
+            {
+                if (item.Price <= 0)
+                {
+                    errors.Add($"{prefix}.price debe ser mayor que cero para una experiencia HostScheduled.");
+                }
+                if (item.Capacity < 1)
+                {
+                    errors.Add($"{prefix}.capacity debe ser al menos 1 para una experiencia HostScheduled.");
+                }
+                if (item.SchedulePolicy is null || item.SchedulePolicy.Weekdays.Length == 0)
+                {
+                    errors.Add($"{prefix}.schedulePolicy debe indicar al menos un día de la semana.");
+                }
+                else if (item.SchedulePolicy.Weekdays.Any(day => day is < 0 or > 6))
+                {
+                    errors.Add($"{prefix}.schedulePolicy.weekdays debe contener valores entre 0 y 6.");
+                }
+                else if (item.SchedulePolicy.WeeksAhead is < 1 or > 26)
+                {
+                    errors.Add($"{prefix}.schedulePolicy.weeksAhead debe estar entre 1 y 26.");
+                }
             }
             if (item.DurationMinutes is <= 0 or > 1440)
             {

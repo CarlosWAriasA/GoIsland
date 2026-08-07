@@ -19,5 +19,6 @@ public interface INotificationService
 public interface IOutboxWriter
 {
     Task EnqueueAsync(int userId, string type, string title, string message,
-        Reservation? reservation = null, string? actionUrl = null);
+        Reservation? reservation = null, string? actionUrl = null, DateTime? deliverAt = null);
+    Task CancelPendingByReservationAsync(int reservationId, params string[] types);
 }

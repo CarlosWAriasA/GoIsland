@@ -181,6 +181,7 @@ public class ExperienceService : IExperienceService
             Capacity = experience.Capacity,
             AvailableSpots = experience.AvailableSpots,
             IsUnlimitedCapacity = experience.IsUnlimitedCapacity,
+            SchedulingMode = experience.SchedulingMode,
             Images = experience.Images
                 .OrderBy(image => image.SortOrder)
                 .Select(image => new ExperienceImageResponse

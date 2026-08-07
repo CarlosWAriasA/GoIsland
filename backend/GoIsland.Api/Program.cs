@@ -237,6 +237,7 @@ builder.Services.AddScoped<IReservationObserver, PushNotificationObserver>();
 builder.Services.AddScoped<IReservationObserver, CapacityManagerObserver>();
 builder.Services.AddScoped<IReservationObserver, DashboardObserver>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<IReservationChangeRequestService, ReservationChangeRequestService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddHostedService<ReservationExpirationBackgroundService>();
 

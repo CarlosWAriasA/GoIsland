@@ -25,7 +25,7 @@
       ],
       "guestRequirements": "Consulta los horarios y condiciones de cada museo antes de visitarlo.",
       "difficulty": "Easy",
-      "accessibilityInformation": "Las plazas principales tienen áreas accesibles; algunas calles conservan superficies irregulares.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "languages": [
         "Español"
       ],
@@ -114,7 +114,7 @@
       ],
       "guestRequirements": "Realiza el paseo durante horas de buena visibilidad y sigue la señalización del parque.",
       "difficulty": "Easy",
-      "accessibilityInformation": "Existen tramos pavimentados y áreas recreativas; las condiciones pueden variar entre accesos.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "languages": [
         "Español"
       ],
@@ -196,7 +196,7 @@
       ],
       "guestRequirements": "Verifica los horarios vigentes si deseas acceder al interior o al museo.",
       "difficulty": "Easy",
-      "accessibilityInformation": "La explanada cuenta con superficies amplias; consulta las condiciones de acceso al interior.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "languages": [
         "Español"
       ],
@@ -273,7 +273,7 @@
       ],
       "guestRequirements": "Consulta los horarios del museo si deseas acceder al interior de la fortaleza.",
       "difficulty": "Easy",
-      "accessibilityInformation": "El entorno exterior incluye áreas abiertas; algunas superficies históricas pueden ser irregulares.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "languages": [
         "Español"
       ],
@@ -360,7 +360,7 @@
       "guestRequirements": "Confirma las condiciones del tiempo, las reglas del área protegida y los servicios contratados antes de salir.",
       "minimumAge": 6,
       "difficulty": "Moderate",
-      "accessibilityInformation": "Los traslados en bote, cuevas y embarcaderos pueden presentar barreras de acceso.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "languages": [
         "Español"
       ],
@@ -446,7 +446,7 @@
       "guestRequirements": "Confirma el estado del sendero y evita acercarte a zonas resbaladizas o de corriente fuerte.",
       "minimumAge": 8,
       "difficulty": "Moderate",
-      "accessibilityInformation": "El sendero incluye pendientes, barro y superficies irregulares.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "languages": [
         "Español"
       ],
@@ -531,7 +531,7 @@
       ],
       "guestRequirements": "Revisa las condiciones marítimas y acuerda claramente el regreso antes de abordar.",
       "difficulty": "Easy",
-      "accessibilityInformation": "El embarque, desembarque y la arena pueden dificultar el acceso.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "languages": [
         "Español"
       ],
@@ -615,7 +615,7 @@
       ],
       "guestRequirements": "Respeta las indicaciones locales y evita entrar al mar cuando las condiciones no sean seguras.",
       "difficulty": "Easy",
-      "accessibilityInformation": "La arena y algunos accesos naturales pueden dificultar el desplazamiento.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "languages": [
         "Español"
       ],
@@ -701,7 +701,7 @@
       ],
       "guestRequirements": "Confirma las condiciones de acceso y respeta todas las normas del Parque Nacional Jaragua.",
       "difficulty": "Moderate",
-      "accessibilityInformation": "El traslado, el embarque y la arena pueden presentar barreras importantes.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "languages": [
         "Español"
       ],
@@ -786,7 +786,7 @@
       "guestRequirements": "Evita las horas de mayor calor y no abandones las rutas permitidas.",
       "minimumAge": 8,
       "difficulty": "Moderate",
-      "accessibilityInformation": "La arena suelta, el calor y la ausencia de sombra dificultan el recorrido.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "languages": [
         "Español"
       ],
@@ -865,7 +865,7 @@
       ],
       "guestRequirements": "Mantén distancia de la fauna y no accedas a zonas no autorizadas.",
       "difficulty": "Easy",
-      "accessibilityInformation": "La accesibilidad depende del mirador o acceso elegido; confirma las condiciones antes de salir.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "languages": [
         "Español"
       ],
@@ -946,7 +946,7 @@
       "guestRequirements": "Consulta el clima y las disposiciones del parque; evita salir si la ruta no es segura.",
       "minimumAge": 8,
       "difficulty": "Moderate",
-      "accessibilityInformation": "Los caminos de montaña y senderos naturales pueden limitar el acceso.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "languages": [
         "Español"
       ],
@@ -1034,7 +1034,7 @@
       "guestRequirements": "No inicies la ruta sin guía, registro, condición física adecuada y un plan confirmado para todo el trayecto.",
       "minimumAge": 16,
       "difficulty": "Demanding",
-      "accessibilityInformation": "La ruta incluye largas distancias, desnivel, terreno irregular y cambios de clima.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "languages": [
         "Español"
       ],
@@ -1105,7 +1105,7 @@
       "price": 0,
       "whatIsIncluded": [],
       "pickupInformation": "El traslado marítimo se contrata por separado.",
-      "accessibilityInformation": "El embarque, desembarque y la arena pueden presentar barreras de acceso.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "slug": "visita-isla-saona",
       "title": "Visita responsable a Isla Saona",
       "shortDescription": "Prepara un día entre playas, palmeras y aguas claras dentro del Parque Nacional Cotubanamá.",
@@ -1191,7 +1191,7 @@
       "price": 0,
       "whatIsIncluded": [],
       "pickupInformation": "El transporte acuático se contrata por separado.",
-      "accessibilityInformation": "El embarque y la arena pueden dificultar el acceso.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "slug": "dia-isla-catalina",
       "title": "Día de costa en Isla Catalina",
       "shortDescription": "Conoce las playas y el paisaje marino de esta isla cercana a La Romana.",
@@ -1275,7 +1275,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "Hay calles empedradas, desniveles y escaleras en parte del recorrido.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "slug": "recorrido-altos-de-chavon",
       "title": "Recorrido por Altos de Chavón",
       "shortDescription": "Camina entre plazas de piedra y miradores sobre el río Chavón.",
@@ -1358,7 +1358,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "La arena limita el desplazamiento; algunos accesos cercanos cuentan con superficies firmes.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "slug": "playa-boca-chica",
       "title": "Paseo por la playa de Boca Chica",
       "shortDescription": "Disfruta una costa de aguas tranquilas cerca de Santo Domingo.",
@@ -1442,7 +1442,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "Existen tramos con aceras amplias, aunque las condiciones cambian a lo largo de la avenida.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "slug": "paseo-malecon-santo-domingo",
       "title": "Paseo por el Malecón de Santo Domingo",
       "shortDescription": "Recorre la avenida costera y contempla el Caribe desde la ciudad.",
@@ -1519,7 +1519,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "El recorrido incluye numerosas escaleras y superficies húmedas.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "slug": "parque-los-tres-ojos",
       "title": "Recorrido por Los Tres Ojos",
       "shortDescription": "Descubre lagos subterráneos y formaciones de roca en Santo Domingo Este.",
@@ -1597,7 +1597,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "El terreno natural, el calor y algunas pendientes pueden dificultar el recorrido.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "slug": "mirador-el-morro-monte-cristi",
       "title": "Mirador de El Morro en Monte Cristi",
       "shortDescription": "Contempla una de las siluetas costeras más singulares del noroeste.",
@@ -1676,7 +1676,7 @@
       "price": 0,
       "whatIsIncluded": [],
       "minimumAge": 8,
-      "accessibilityInformation": "La actividad incluye senderismo, agua, rocas resbaladizas y desniveles.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "slug": "aventura-charcos-damajagua",
       "title": "Prepara la aventura en los Charcos de Damajagua",
       "shortDescription": "Organiza una ruta guiada entre cascadas y pozas naturales cerca de Imbert.",
@@ -1761,7 +1761,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "La arena limita el acceso; las condiciones de viento y oleaje cambian durante el día.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "slug": "playa-y-ambiente-cabarete",
       "title": "Playa y ambiente de Cabarete",
       "shortDescription": "Conoce una costa reconocida por el viento, los deportes y su ambiente relajado.",
@@ -1846,7 +1846,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "La arena y algunos accesos con pendiente pueden dificultar el desplazamiento.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "slug": "dia-playa-sosua",
       "title": "Día de playa en Sosúa",
       "shortDescription": "Descansa frente a una bahía protegida de la costa norte.",
@@ -1931,7 +1931,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "El centro incluye superficies firmes; las pendientes y aceras varían según la calle.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "slug": "paseo-urbano-constanza",
       "title": "Paseo urbano por Constanza",
       "shortDescription": "Descubre el ambiente de valle y montaña de una de las ciudades más altas del país.",
@@ -2016,7 +2016,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "Las aceras y cruces presentan condiciones variables a lo largo de la ruta.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "slug": "centro-historico-san-pedro-macoris",
       "title": "Centro histórico de San Pedro de Macorís",
       "shortDescription": "Recorre plazas y edificios que cuentan la historia urbana del este.",
@@ -2099,7 +2099,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "La plaza es amplia; el edificio histórico puede presentar barreras de acceso.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "slug": "visita-alcazar-de-colon",
       "title": "Visita al entorno del Alcázar de Colón",
       "shortDescription": "Observa uno de los edificios más emblemáticos de la Plaza de España.",
@@ -2176,7 +2176,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "Hay piedra, escalones y superficies históricas irregulares.",
+      "accessibilityInformation": "Sin acceso adaptado",
       "slug": "recorrido-fortaleza-ozama",
       "title": "Recorrido por la Fortaleza Ozama",
       "shortDescription": "Conoce una fortificación histórica junto al río Ozama.",
@@ -2253,7 +2253,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "El parque tiene superficies firmes; algunos accesos al edificio histórico pueden presentar desniveles.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "slug": "catedral-primada-y-parque-colon",
       "title": "Catedral Primada y Parque Colón",
       "shortDescription": "Descubre el corazón monumental de la Ciudad Colonial.",
@@ -2336,7 +2336,7 @@
       "price": 0,
       "whatIsIncluded": [],
       "pickupInformation": "El transporte o acceso disponible se contrata por separado.",
-      "accessibilityInformation": "La accesibilidad depende del medio de acceso; los jardines incluyen pendientes y superficies naturales.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "slug": "isabel-de-torres-puerto-plata",
       "title": "Paisaje de Isabel de Torres",
       "shortDescription": "Contempla Puerto Plata y su costa desde la montaña.",
@@ -2421,7 +2421,7 @@
       "cancellationPolicy": "",
       "price": 0,
       "whatIsIncluded": [],
-      "accessibilityInformation": "La explanada dispone de superficies amplias; confirma el acceso interior disponible.",
+      "accessibilityInformation": "Accesibilidad parcial",
       "slug": "basilica-de-higuey",
       "title": "Basílica de Higüey y su entorno",
       "shortDescription": "Conoce un referente de la arquitectura religiosa dominicana.",
@@ -2493,6 +2493,1436 @@
           "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
           "width": 2284,
           "height": 2304
+        }
+      ]
+    },
+    {
+      "slug": "faro-a-colon",
+      "title": "Faro a Colón",
+      "shortDescription": "Recorre la explanada del monumento en forma de cruz dedicado a Cristóbal Colón.",
+      "description": "El Faro a Colón es un monumento de 200 metros de largo construido en forma de cruz latina, inaugurado en 1992 junto al quinto centenario de la llegada de Colón a América. Puedes recorrer su explanada exterior y, según el horario vigente, acceder al museo y las galerías interiores.",
+      "durationMinutes": 90,
+      "meetingPointInstructions": "Comienza en la explanada principal del Faro a Colón, en Santo Domingo Este.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Entrada al museo",
+        "Transporte",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Protección solar"
+      ],
+      "guestRequirements": "Consulta el horario de apertura vigente antes de tu visita.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Accesibilidad parcial",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "faro a colon",
+        "santo domingo este",
+        "monumento",
+        "historia"
+      ],
+      "location": "Faro a Colón, Santo Domingo Este",
+      "latitude": 18.4786,
+      "longitude": -69.868156,
+      "category": "Historia",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Explanada exterior",
+          "description": "Observa la forma de cruz latina del monumento y su fachada de hormigón.",
+          "durationMinutes": 40,
+          "location": "Faro a Colón"
+        },
+        {
+          "title": "Galerías y museo",
+          "description": "Accede al interior si el horario lo permite y recorre las salas dedicadas a Colón.",
+          "durationMinutes": 50,
+          "location": "Faro a Colón"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Faro a Colon SD RD 01 2018 8076.jpg",
+          "altText": "Vista lateral trasera del Faro a Colón en Santo Domingo",
+          "creditText": "Foto: Mariordo (Mario Roberto Durán Ortiz)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Faro_a_Colon_SD_RD_01_2018_8076.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4240,
+          "height": 2832
+        },
+        {
+          "wikimediaFile": "Faro a Colón (14460247200).jpg",
+          "altText": "Faro a Colón visto desde su explanada",
+          "creditText": "Foto: Daniel Lobo",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Faro_a_Colón_(14460247200).jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "width": 4000,
+          "height": 3000
+        },
+        {
+          "wikimediaFile": "Dominican Republic, Santo Domingo, Columbus Lighthouse.jpg",
+          "altText": "El Faro a Colón visto en su conjunto",
+          "creditText": "Foto: Dr. Thomas Liptak",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Dominican_Republic,_Santo_Domingo,_Columbus_Lighthouse.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4199,
+          "height": 2362
+        }
+      ]
+    },
+    {
+      "slug": "museo-de-las-casas-reales",
+      "title": "Museo de las Casas Reales",
+      "shortDescription": "Descubre el antiguo palacio de gobierno colonial en el corazón de la Ciudad Colonial.",
+      "description": "Construido desde 1511 por orden de la Corona de Castilla, el edificio alojó la Real Audiencia y la residencia del gobernador. Hoy funciona como museo con nueve salas dedicadas al descubrimiento, la conquista y la vida cotidiana durante la época colonial.",
+      "durationMinutes": 90,
+      "meetingPointInstructions": "Comienza en la esquina de la calle Las Damas con Las Mercedes, Zona Colonial.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Entrada al museo",
+        "Transporte",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Calzado cómodo"
+      ],
+      "guestRequirements": "Consulta los horarios vigentes del museo antes de tu visita.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Accesibilidad parcial",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "casas reales",
+        "zona colonial",
+        "museo",
+        "historia"
+      ],
+      "location": "Calle Las Damas, Zona Colonial, Santo Domingo",
+      "latitude": 18.475883,
+      "longitude": -69.883208,
+      "category": "Historia",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Fachada y patio exterior",
+          "description": "Observa la arquitectura colonial de la antigua sede de la Real Audiencia.",
+          "durationMinutes": 30,
+          "location": "Museo de las Casas Reales"
+        },
+        {
+          "title": "Salas del museo",
+          "description": "Recorre las salas dedicadas a la conquista, la piratería y la vida cotidiana colonial.",
+          "durationMinutes": 60,
+          "location": "Museo de las Casas Reales"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Facade of Museo de Las Casas Reales - Santo Domingo - Dominican Republic 01.jpg",
+          "altText": "Fachada del Museo de las Casas Reales en Santo Domingo",
+          "creditText": "Foto: Adam Jones, Ph.D.",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Facade_of_Museo_de_Las_Casas_Reales_-_Santo_Domingo_-_Dominican_Republic_01.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 2272,
+          "height": 1704
+        },
+        {
+          "wikimediaFile": "Facade of the Museo de Las Casas Reales - Santo Domingo - Dominican Republic 02.jpg",
+          "altText": "Segunda vista de la fachada del Museo de las Casas Reales",
+          "creditText": "Foto: Adam Jones, Ph.D.",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Facade_of_the_Museo_de_Las_Casas_Reales_-_Santo_Domingo_-_Dominican_Republic_02.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 2272,
+          "height": 1704
+        },
+        {
+          "wikimediaFile": "Museo de las Casas Reales02.jpg",
+          "altText": "Patio interior del Museo de las Casas Reales",
+          "creditText": "Foto: Dr. Tillmann Bauer",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Museo_de_las_Casas_Reales02.jpg",
+          "licenseName": "CC BY 2.0 DE",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0/de/deed.en",
+          "width": 650,
+          "height": 551
+        }
+      ]
+    },
+    {
+      "slug": "panteon-nacional",
+      "title": "Panteón Nacional",
+      "shortDescription": "Visita el mausoleo que honra a próceres dominicanos en un antiguo templo jesuita.",
+      "description": "El Panteón Nacional ocupa la antigua iglesia de la Compañía de Jesús, construida en el siglo XVIII y restaurada en 1955 para albergar los restos de héroes dominicanos. El edificio combina arquitectura neoclásica con elementos coloniales hispanoamericanos.",
+      "durationMinutes": 60,
+      "meetingPointInstructions": "Comienza frente a la entrada del Panteón Nacional, en la calle Las Damas, Zona Colonial.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Ropa apropiada para un recinto solemne"
+      ],
+      "guestRequirements": "Mantén una conducta respetuosa dentro del recinto y sigue las indicaciones de la guardia ceremonial.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Accesibilidad parcial",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "panteon nacional",
+        "zona colonial",
+        "mausoleo",
+        "historia"
+      ],
+      "location": "Calle Las Damas, Zona Colonial, Santo Domingo",
+      "latitude": 18.475131,
+      "longitude": -69.883158,
+      "category": "Historia",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Fachada y acceso",
+          "description": "Observa la fachada neoclásica y la guardia ceremonial de entrada.",
+          "durationMinutes": 15,
+          "location": "Panteón Nacional"
+        },
+        {
+          "title": "Recorrido interior",
+          "description": "Camina entre los memoriales dedicados a los próceres dominicanos.",
+          "durationMinutes": 45,
+          "location": "Panteón Nacional"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Dominican Republic, Santo Domingo, National Pantheon (Calle Las Damas).jpg",
+          "altText": "Fachada del Panteón Nacional en la calle Las Damas",
+          "creditText": "Foto: Dr. Thomas Liptak",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Dominican_Republic,_Santo_Domingo,_National_Pantheon_(Calle_Las_Damas).jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3456,
+          "height": 5184
+        },
+        {
+          "wikimediaFile": "Dominican Republic, Santo Domingo, National Pantheon (inside).jpg",
+          "altText": "Interior del Panteón Nacional",
+          "creditText": "Foto: Dr. Thomas Liptak",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Dominican_Republic,_Santo_Domingo,_National_Pantheon_(inside).jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3456,
+          "height": 5184
+        },
+        {
+          "wikimediaFile": "National Pantheon CCSD RD 06 2017 2423.jpg",
+          "altText": "Vista del Panteón Nacional en la Ciudad Colonial",
+          "creditText": "Foto: Mariordo (Mario Roberto Durán Ortiz)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:National_Pantheon_CCSD_RD_06_2017_2423.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3000,
+          "height": 2000
+        }
+      ]
+    },
+    {
+      "slug": "casa-del-cordon",
+      "title": "Casa del Cordón",
+      "shortDescription": "Conoce la primera casa de piedra construida en el Nuevo Mundo.",
+      "description": "Construida a principios del siglo XVI, la Casa del Cordón fue residencia de Diego Colón antes de mudarse a su vivienda oficial y hoy alberga un centro cultural dedicado al patrimonio taíno. Su nombre proviene del cordón franciscano tallado sobre la puerta principal.",
+      "durationMinutes": 60,
+      "meetingPointInstructions": "Comienza en la esquina de la calle Isabel la Católica con Emiliano Tejera, Zona Colonial.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Entrada al centro cultural",
+        "Transporte",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua"
+      ],
+      "guestRequirements": "Consulta los horarios vigentes del centro cultural antes de tu visita.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Accesibilidad parcial",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "casa del cordon",
+        "zona colonial",
+        "historia",
+        "arquitectura"
+      ],
+      "location": "Calle Isabel la Católica, Zona Colonial, Santo Domingo",
+      "latitude": 18.476527,
+      "longitude": -69.88414,
+      "category": "Historia",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Fachada y cordón franciscano",
+          "description": "Observa el cordón tallado sobre la puerta y la arquitectura del siglo XVI.",
+          "durationMinutes": 20,
+          "location": "Casa del Cordón"
+        },
+        {
+          "title": "Centro cultural taíno",
+          "description": "Recorre la exhibición dedicada al patrimonio taíno si el horario lo permite.",
+          "durationMinutes": 40,
+          "location": "Casa del Cordón"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Casa del Cordon CCSD RD 11 2017 6568.jpg",
+          "altText": "Fachada de la Casa del Cordón en la Zona Colonial",
+          "creditText": "Foto: Mariordo (Mario Roberto Durán Ortiz)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Casa_del_Cordon_CCSD_RD_11_2017_6568.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3000,
+          "height": 2000
+        },
+        {
+          "wikimediaFile": "Centro Cultural Taíno Casa del Cordón.jpg",
+          "altText": "Nueva fachada del Centro Cultural Taíno Casa del Cordón",
+          "creditText": "Foto: Centro Cultural Taíno Casa del Cordón",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Centro_Cultural_Taíno_Casa_del_Cordón.jpg",
+          "licenseName": "CC0 1.0",
+          "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+          "width": 6106,
+          "height": 9159
+        },
+        {
+          "wikimediaFile": "HOUSE OF THE CORD, SANTO DOMINGO, DOMINICAN REPUBLIC.jpg",
+          "altText": "Casa del Cordón, la residencia privada más antigua del Nuevo Mundo",
+          "creditText": "Foto: Jerrye & Roy Klotz, MD",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:HOUSE_OF_THE_CORD,_SANTO_DOMINGO,_DOMINICAN_REPUBLIC.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 646,
+          "height": 436
+        }
+      ]
+    },
+    {
+      "slug": "salto-de-jimenoa",
+      "title": "Salto de Jimenoa",
+      "shortDescription": "Cruza puentes colgantes hasta una cascada de 60 metros cerca de Jarabacoa.",
+      "description": "El Salto de Jimenoa cae desde unos 60 metros de altura sobre el río Jimenoa, dentro del entorno del Parque Nacional Armando Bermúdez. Un sendero con puentes colgantes conduce hasta una plataforma cercana a la caída de agua.",
+      "durationMinutes": 150,
+      "meetingPointInstructions": "Comienza en la entrada del sendero al Salto de Jimenoa, sobre la carretera Jarabacoa-Constanza.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Entrada al sendero",
+        "Transporte",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Calzado cerrado",
+        "Ropa que se pueda mojar"
+      ],
+      "guestRequirements": "Respeta la señalización sobre zonas donde no está permitido nadar por la corriente.",
+      "minimumAge": 6,
+      "difficulty": "Moderate",
+      "accessibilityInformation": "Sin acceso adaptado",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "salto de jimenoa",
+        "jarabacoa",
+        "cascada",
+        "naturaleza"
+      ],
+      "location": "Salto de Jimenoa, Jarabacoa",
+      "latitude": 19.09359,
+      "longitude": -70.5941,
+      "category": "Naturaleza",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Sendero y puentes colgantes",
+          "description": "Camina por el sendero boscoso y cruza los puentes colgantes sobre el río.",
+          "durationMinutes": 60,
+          "location": "Salto de Jimenoa"
+        },
+        {
+          "title": "Mirador de la cascada",
+          "description": "Observa la caída de agua desde la plataforma cercana.",
+          "durationMinutes": 40,
+          "location": "Salto de Jimenoa"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Salto jimenoa.jpg",
+          "altText": "Cascada del Salto de Jimenoa rodeada de vegetación",
+          "creditText": "Foto: Will056t",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Salto_jimenoa.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3024,
+          "height": 4032
+        },
+        {
+          "wikimediaFile": "Salto Jimenoa 300.jpg",
+          "altText": "Vista del Salto de Jimenoa en Jarabacoa",
+          "creditText": "Foto: Jos1950",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Salto_Jimenoa_300.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4272,
+          "height": 2848
+        },
+        {
+          "wikimediaFile": "Saltos de Jimenoa.jpg",
+          "altText": "Salto de Jimenoa, Jarabacoa, República Dominicana",
+          "creditText": "Foto: Treeman",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Saltos_de_Jimenoa.jpg",
+          "licenseName": "Dominio público",
+          "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+          "width": 768,
+          "height": 1024
+        }
+      ]
+    },
+    {
+      "slug": "playa-macao",
+      "title": "Playa Macao",
+      "shortDescription": "Disfruta de una playa de arena blanca y oleaje intenso al norte de Bávaro.",
+      "description": "Playa Macao conserva un entorno más natural que otras playas de Punta Cana, con arena blanca, palmeras y un oleaje fuerte que atrae a surfistas. Es un punto de encuentro entre locales y visitantes, con el río Anamuya desembocando cerca de la costa.",
+      "durationMinutes": 180,
+      "meetingPointInstructions": "Comienza en el acceso público de Playa Macao, al norte de Bávaro.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Equipo de surf"
+      ],
+      "whatToBring": [
+        "Protección solar",
+        "Agua",
+        "Toalla"
+      ],
+      "guestRequirements": "Respeta las banderas de seguridad y evita nadar cuando el oleaje sea fuerte.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Sin acceso adaptado",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "playa macao",
+        "bavaro",
+        "punta cana",
+        "surf"
+      ],
+      "location": "Playa Macao, Bávaro",
+      "latitude": 18.773917,
+      "longitude": -68.537056,
+      "category": "Acuático",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Llegada a la playa",
+          "description": "Recorre la costa de arena blanca y observa el oleaje característico de la zona.",
+          "durationMinutes": 30,
+          "location": "Playa Macao"
+        },
+        {
+          "title": "Tiempo libre en la costa",
+          "description": "Disfruta del mar, la arena o el surf según las condiciones del día.",
+          "durationMinutes": 150,
+          "location": "Playa Macao"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Punta Cana Just Safari - extraordinary beauty of Macao Beach.jpg",
+          "altText": "Costa de Playa Macao con palmeras",
+          "creditText": "Foto: Punta Cana Just Safari",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Punta_Cana_Just_Safari_-_extraordinary_beauty_of_Macao_Beach.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 800,
+          "height": 600
+        },
+        {
+          "wikimediaFile": "Punta Cana Just Safari - Macao Beach scenery.jpg",
+          "altText": "Paisaje costero de Playa Macao",
+          "creditText": "Foto: Punta Cana Just Safari",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Punta_Cana_Just_Safari_-_Macao_Beach_scenery.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 800,
+          "height": 600
+        },
+        {
+          "wikimediaFile": "Playa Macao Dominican Republic.jpg",
+          "altText": "Orilla de Playa Macao en República Dominicana",
+          "creditText": "Foto: bogdix (Flickr)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Playa_Macao_Dominican_Republic.jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "width": 1600,
+          "height": 1181
+        }
+      ]
+    },
+    {
+      "slug": "isla-cabritos",
+      "title": "Isla Cabritos",
+      "shortDescription": "Descubre iguanas y cocodrilos americanos en una isla dentro de un lago hipersalino.",
+      "description": "Isla Cabritos se encuentra dentro del Lago Enriquillo, el mayor lago salado del Caribe y el punto más bajo de las Antillas. La isla protege una de las mayores poblaciones silvestres de cocodrilo americano y dos especies de iguana en peligro de extinción.",
+      "durationMinutes": 240,
+      "meetingPointInstructions": "Coordina la salida en bote desde el muelle autorizado del Parque Nacional Lago Enriquillo.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Traslado en bote",
+        "Entrada al parque",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Protección solar",
+        "Binoculares"
+      ],
+      "guestRequirements": "Confirma las condiciones de acceso y el horario de salidas en bote antes de tu visita.",
+      "minimumAge": 6,
+      "difficulty": "Moderate",
+      "accessibilityInformation": "Sin acceso adaptado",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "isla cabritos",
+        "lago enriquillo",
+        "cocodrilos",
+        "iguanas"
+      ],
+      "location": "Isla Cabritos, Lago Enriquillo",
+      "latitude": 18.4667,
+      "longitude": -71.6333,
+      "category": "Naturaleza",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Travesía por el lago",
+          "description": "Cruza en bote las aguas hipersalinas del Lago Enriquillo hacia la isla.",
+          "durationMinutes": 60,
+          "location": "Lago Enriquillo"
+        },
+        {
+          "title": "Observación de fauna",
+          "description": "Recorre la isla y observa cocodrilos e iguanas en su hábitat natural.",
+          "durationMinutes": 120,
+          "location": "Isla Cabritos"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Kroko-LagoEnriquillo-b.png",
+          "altText": "Cocodrilo americano en el Lago Enriquillo",
+          "creditText": "Foto: Jos1950",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Kroko-LagoEnriquillo-b.png",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 1200,
+          "height": 950
+        },
+        {
+          "wikimediaFile": "Leguanen LagoEnriquillo.png",
+          "altText": "Iguana en el centro informativo del Lago Enriquillo",
+          "creditText": "Foto: Jos1950",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Leguanen_LagoEnriquillo.png",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 2000,
+          "height": 1500
+        },
+        {
+          "wikimediaFile": "Lake Enriquillo.jpg",
+          "altText": "Vista del Lago Enriquillo",
+          "creditText": "Foto: Eric Carrasco-Núñez",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Lake_Enriquillo.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3888,
+          "height": 2592
+        }
+      ]
+    },
+    {
+      "slug": "museo-del-hombre-dominicano",
+      "title": "Museo del Hombre Dominicano",
+      "shortDescription": "Recorre la mayor colección de piezas taínas del Caribe en la Plaza de la Cultura.",
+      "description": "Inaugurado en 1973, el museo reúne piezas precolombinas, documentación de la colonización y una de las colecciones de máscaras de carnaval dominicano más antiguas del país. Su entrada está flanqueada por monumentos a Bartolomé de las Casas, Enriquillo y Lemba.",
+      "durationMinutes": 90,
+      "meetingPointInstructions": "Comienza en la Plaza de la Cultura, avenida Pedro Henríquez Ureña, Santo Domingo.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Entrada al museo",
+        "Transporte",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua"
+      ],
+      "guestRequirements": "Consulta los horarios vigentes del museo antes de tu visita.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Accesibilidad parcial",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "museo del hombre dominicano",
+        "plaza de la cultura",
+        "taino",
+        "historia"
+      ],
+      "location": "Plaza de la Cultura, Santo Domingo",
+      "latitude": 18.472222,
+      "longitude": -69.908056,
+      "category": "Arte y cultura",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Entrada y estatuas",
+          "description": "Observa los monumentos a Bartolomé de las Casas, Enriquillo y Lemba en la entrada.",
+          "durationMinutes": 15,
+          "location": "Museo del Hombre Dominicano"
+        },
+        {
+          "title": "Salas de exhibición",
+          "description": "Recorre las salas dedicadas a la vida taína y la época colonial.",
+          "durationMinutes": 75,
+          "location": "Museo del Hombre Dominicano"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Enriquillo Statue Santo Domingo.jpg",
+          "altText": "Estatua de Enriquillo en el Museo del Hombre Dominicano",
+          "creditText": "Foto: Ponytail88",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Enriquillo_Statue_Santo_Domingo.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 1200,
+          "height": 1600
+        },
+        {
+          "wikimediaFile": "MUSEUM OF THE DOMINICAN MAN, SANTO DOMINGO, DOMINICAN REPUBLIC.jpg",
+          "altText": "Edificio del Museo del Hombre Dominicano",
+          "creditText": "Foto: Jerrye & Roy Klotz, MD",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:MUSEUM_OF_THE_DOMINICAN_MAN,_SANTO_DOMINGO,_DOMINICAN_REPUBLIC.jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 650,
+          "height": 432
+        },
+        {
+          "wikimediaFile": "ARTEFACT IN THE MUSEUM OF THE DOMINICAN MAN, SANTO DOMINGO, DOMINICAN REP..jpg",
+          "altText": "Pieza taína exhibida en el Museo del Hombre Dominicano",
+          "creditText": "Foto: Jerrye & Roy Klotz, MD",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:ARTEFACT_IN_THE_MUSEUM_OF_THE_DOMINICAN_MAN,_SANTO_DOMINGO,_DOMINICAN_REP..jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 326,
+          "height": 494
+        }
+      ]
+    },
+    {
+      "slug": "playa-rincon",
+      "title": "Playa Rincón",
+      "shortDescription": "Camina por casi 4 kilómetros de arena blanca en un extremo apartado de Samaná.",
+      "description": "Playa Rincón se extiende en el extremo nororiental de la península de Samaná, cerca de Las Galeras, con arena fina y aguas generalmente tranquilas. El río Caño Frío desemboca en la playa y crea un contraste entre agua dulce y agua de mar.",
+      "durationMinutes": 210,
+      "meetingPointInstructions": "Comienza en el acceso a Playa Rincón, cerca de Las Galeras.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte o bote",
+        "Alimentos y bebidas"
+      ],
+      "whatToBring": [
+        "Protección solar",
+        "Agua",
+        "Calzado para caminar en arena"
+      ],
+      "guestRequirements": "Confirma el acceso disponible antes de salir; la señalización en la zona es limitada.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Sin acceso adaptado",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "playa rincon",
+        "las galeras",
+        "samana",
+        "playa"
+      ],
+      "location": "Playa Rincón, Las Galeras, Samaná",
+      "latitude": 19.288333,
+      "longitude": -69.248333,
+      "category": "Acuático",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Llegada a la playa",
+          "description": "Recorre la costa de arena blanca y observa la desembocadura del río Caño Frío.",
+          "durationMinutes": 30,
+          "location": "Playa Rincón"
+        },
+        {
+          "title": "Tiempo libre en la costa",
+          "description": "Disfruta del mar y la playa a tu propio ritmo.",
+          "durationMinutes": 180,
+          "location": "Playa Rincón"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Playa Rincón Dec 2020.jpg",
+          "altText": "Playa Rincón en Samaná",
+          "creditText": "Foto: Danu Widjajanto",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Playa_Rincón_Dec_2020.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 5184,
+          "height": 3456
+        },
+        {
+          "wikimediaFile": "Playa Rincón December 2020 2.jpg",
+          "altText": "Vista de la costa de Playa Rincón",
+          "creditText": "Foto: Danu Widjajanto",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Playa_Rincón_December_2020_2.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 5184,
+          "height": 3456
+        },
+        {
+          "wikimediaFile": "Playa de Rincón, en la Bahía de Rincón, Dominican Republic.jpg",
+          "altText": "Playa de Rincón en la Bahía de Rincón",
+          "creditText": "Foto: Pierre Mangin",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Playa_de_Rincón,_en_la_Bahía_de_Rincón,_Dominican_Republic.jpg",
+          "licenseName": "CC BY-SA 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+          "width": 1600,
+          "height": 898
+        }
+      ]
+    },
+    {
+      "slug": "bayahibe",
+      "title": "Bayahíbe",
+      "shortDescription": "Recorre el paseo marítimo de un antiguo pueblo de pescadores frente al Caribe.",
+      "description": "Bayahíbe conserva el ambiente de pueblo de pescadores fundado en 1874, hoy convertido en punto de partida hacia sitios de buceo y las islas cercanas. Puedes caminar por su malecón, observar los barcos pesqueros y disfrutar del atardecer sobre el mar Caribe.",
+      "durationMinutes": 150,
+      "meetingPointInstructions": "Comienza en el malecón de Bayahíbe, frente al muelle de pescadores.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Excursiones en bote"
+      ],
+      "whatToBring": [
+        "Protección solar",
+        "Agua"
+      ],
+      "guestRequirements": "Respeta las áreas de trabajo de los pescadores locales.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Accesibilidad parcial",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "bayahibe",
+        "la altagracia",
+        "pueblo de pescadores",
+        "malecon"
+      ],
+      "location": "Bayahíbe, La Altagracia",
+      "latitude": 18.366667,
+      "longitude": -68.833333,
+      "category": "Acuático",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Malecón y muelle",
+          "description": "Camina por el paseo marítimo y observa los barcos pesqueros locales.",
+          "durationMinutes": 60,
+          "location": "Bayahíbe"
+        },
+        {
+          "title": "Atardecer en la costa",
+          "description": "Encuentra un buen punto sobre el malecón para ver el atardecer frente al Caribe.",
+          "durationMinutes": 90,
+          "location": "Bayahíbe"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "2023 - Bayahíbe - 01.jpg",
+          "altText": "Vista de Bayahíbe y su costa",
+          "creditText": "Foto: Oleg Yunakov",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:2023_-_Bayahíbe_-_01.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4032,
+          "height": 3024
+        },
+        {
+          "wikimediaFile": "Atardecer bayahibe.jpg",
+          "altText": "Atardecer en la playa de Bayahíbe",
+          "creditText": "Foto: Cochoncarlos",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Atardecer_bayahibe.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 2048,
+          "height": 1363
+        },
+        {
+          "wikimediaFile": "Bayahibe Village.jpg",
+          "altText": "Paseo marítimo del pueblo de Bayahíbe",
+          "creditText": "Foto: Travelguideworldwide",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Bayahibe_Village.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 6000,
+          "height": 4000
+        }
+      ]
+    },
+    {
+      "slug": "puerta-del-conde",
+      "title": "Puerta del Conde",
+      "shortDescription": "Visita el monumento donde se proclamó la independencia dominicana en 1844.",
+      "description": "La Puerta del Conde es un baluarte del siglo XVII convertido en símbolo de la independencia dominicana, declarada en este lugar el 27 de febrero de 1844. El conjunto incluye el Parque Independencia y el Altar de la Patria.",
+      "durationMinutes": 60,
+      "meetingPointInstructions": "Comienza en el Parque Independencia, al final de la calle El Conde, Zona Colonial.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Guía presencial"
+      ],
+      "whatToBring": [
+        "Agua",
+        "Protección solar"
+      ],
+      "guestRequirements": "Mantén una conducta respetuosa; el lugar resguarda un monumento nacional.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Accesibilidad parcial",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "puerta del conde",
+        "zona colonial",
+        "independencia",
+        "historia"
+      ],
+      "location": "Parque Independencia, Zona Colonial, Santo Domingo",
+      "latitude": 18.471499,
+      "longitude": -69.89155,
+      "category": "Historia",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Baluarte y plaza",
+          "description": "Observa el baluarte del siglo XVII y su entorno en el Parque Independencia.",
+          "durationMinutes": 25,
+          "location": "Puerta del Conde"
+        },
+        {
+          "title": "Altar de la Patria",
+          "description": "Recorre el conjunto conmemorativo dedicado a los Padres de la Patria.",
+          "durationMinutes": 35,
+          "location": "Puerta del Conde"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Puerta del Conde (2007).jpg",
+          "altText": "Puerta del Conde en la Zona Colonial de Santo Domingo",
+          "creditText": "Foto: Denisseag6",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Puerta_del_Conde_(2007).jpg",
+          "licenseName": "CC BY 2.5",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.5",
+          "width": 3680,
+          "height": 2760
+        },
+        {
+          "wikimediaFile": "Puerta del Conde CCSD 09 2018 1540.jpg",
+          "altText": "Vista contemporánea de la Puerta del Conde",
+          "creditText": "Foto: Mariordo (Mario Roberto Durán Ortiz)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Puerta_del_Conde_CCSD_09_2018_1540.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 3000,
+          "height": 2000
+        },
+        {
+          "wikimediaFile": "Proclamación de la República Dominicana en la Puerta del Conde.jpg",
+          "altText": "Ilustración histórica de la proclamación de la independencia en la Puerta del Conde",
+          "creditText": "Autor desconocido",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Proclamación_de_la_República_Dominicana_en_la_Puerta_del_Conde.jpg",
+          "licenseName": "CC0 1.0",
+          "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+          "width": 500,
+          "height": 335
+        }
+      ]
+    },
+    {
+      "slug": "playa-bonita-las-terrenas",
+      "title": "Playa Bonita",
+      "shortDescription": "Relájate en una de las playas menos concurridas cerca de Las Terrenas.",
+      "description": "Playa Bonita se extiende junto a Las Terrenas, en la península de Samaná, con arena clara y un entorno más tranquilo que otras playas cercanas. Cocoteros y pequeños restaurantes bordean la costa.",
+      "durationMinutes": 180,
+      "meetingPointInstructions": "Comienza en el acceso público de Playa Bonita, cerca de Las Terrenas.",
+      "pickupInformation": null,
+      "whatIsIncluded": [],
+      "whatIsNotIncluded": [
+        "Transporte",
+        "Alimentos y bebidas"
+      ],
+      "whatToBring": [
+        "Protección solar",
+        "Agua",
+        "Toalla"
+      ],
+      "guestRequirements": "Respeta las zonas de baño señalizadas.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Sin acceso adaptado",
+      "languages": [
+        "Español"
+      ],
+      "cancellationPolicy": "",
+      "tags": [
+        "playa bonita",
+        "las terrenas",
+        "samana",
+        "playa"
+      ],
+      "location": "Playa Bonita, Las Terrenas, Samaná",
+      "latitude": 19.32,
+      "longitude": -69.53,
+      "category": "Acuático",
+      "price": 0,
+      "itinerary": [
+        {
+          "title": "Llegada a la costa",
+          "description": "Camina por la arena y observa los cocoteros que bordean la playa.",
+          "durationMinutes": 30,
+          "location": "Playa Bonita"
+        },
+        {
+          "title": "Tiempo libre en la playa",
+          "description": "Disfruta del mar en un entorno más tranquilo que otras playas de la zona.",
+          "durationMinutes": 150,
+          "location": "Playa Bonita"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Playa Bonita Beach, Las Terrenas, Samana Peninsula, Dominican Republic (52757385491).jpg",
+          "altText": "Playa Bonita cerca de Las Terrenas",
+          "creditText": "Foto: travelmag.com (Roy Duffield)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Playa_Bonita_Beach,_Las_Terrenas,_Samana_Peninsula,_Dominican_Republic_(52757385491).jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "width": 4608,
+          "height": 2592
+        },
+        {
+          "wikimediaFile": "Las Terrenas beach 7.JPG",
+          "altText": "Costa de Las Terrenas, Samaná",
+          "creditText": "Foto: Captain-tucker",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Las_Terrenas_beach_7.JPG",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 3264,
+          "height": 2448
+        },
+        {
+          "wikimediaFile": "Playa Bonita DR banner.jpg",
+          "altText": "Panorámica de Playa Bonita cerca de Las Terrenas",
+          "creditText": "Foto: travelmag.com (Roy Duffield)",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Playa_Bonita_DR_banner.jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "width": 3686,
+          "height": 527
+        }
+      ]
+    },
+    {
+      "slug": "buceo-en-bayahibe",
+      "title": "Buceo en Bayahíbe",
+      "shortDescription": "Explora arrecifes, cuevas y naufragios del Parque Nacional del Este con un guía certificado.",
+      "description": "Un guía de buceo certificado te lleva a los sitios más conocidos frente a Bayahíbe, dentro del Parque Nacional del Este: arrecifes de coral, cuevas de agua dulce y naufragios artificiales. La salida incluye equipo completo y dos inmersiones guiadas.",
+      "durationMinutes": 240,
+      "meetingPointInstructions": "Preséntate en el muelle de salida de Bayahíbe 30 minutos antes de la hora de salida.",
+      "pickupInformation": null,
+      "whatIsIncluded": [
+        "Equipo de buceo completo",
+        "Guía certificado",
+        "Dos inmersiones",
+        "Traslado en bote"
+      ],
+      "whatIsNotIncluded": [
+        "Curso de certificación",
+        "Alimentos y bebidas"
+      ],
+      "whatToBring": [
+        "Traje de baño",
+        "Toalla",
+        "Protector solar biodegradable"
+      ],
+      "guestRequirements": "Debes contar con certificación de buceo vigente; consulta opciones de curso introductorio si no tienes una.",
+      "minimumAge": 12,
+      "difficulty": "Moderate",
+      "accessibilityInformation": "Sin acceso adaptado",
+      "languages": [
+        "Español",
+        "Inglés"
+      ],
+      "cancellationPolicy": "Moderate",
+      "tags": [
+        "buceo",
+        "bayahibe",
+        "parque nacional del este"
+      ],
+      "location": "Bayahíbe, La Altagracia",
+      "latitude": 18.366667,
+      "longitude": -68.833333,
+      "category": "Deportes",
+      "price": 95,
+      "schedulingMode": "HostScheduled",
+      "capacity": 8,
+      "schedulePolicy": {
+        "weekdays": [
+          2,
+          4,
+          6
+        ],
+        "startsAt": "08:00:00",
+        "weeksAhead": 8
+      },
+      "itinerary": [
+        {
+          "title": "Salida en bote",
+          "description": "Navega hacia los sitios de buceo dentro del Parque Nacional del Este.",
+          "durationMinutes": 30,
+          "location": "Bayahíbe"
+        },
+        {
+          "title": "Primera inmersión",
+          "description": "Desciende con tu guía en un arrecife o naufragio según las condiciones del día.",
+          "durationMinutes": 60,
+          "location": "Parque Nacional del Este"
+        },
+        {
+          "title": "Segunda inmersión",
+          "description": "Explora un segundo sitio de menor profundidad tras el intervalo de superficie.",
+          "durationMinutes": 60,
+          "location": "Parque Nacional del Este"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Ciudad de los peces 220102.jpg",
+          "altText": "Escena submarina en el sitio de buceo Ciudad de los Peces",
+          "creditText": "Foto: Pc.wiki4",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Ciudad_de_los_peces_220102.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 2400,
+          "height": 1800
+        },
+        {
+          "wikimediaFile": "Parque 3 220206.jpg",
+          "altText": "Cardumen de peces en un sitio de buceo cerca de Bayahíbe",
+          "creditText": "Foto: Pc.wiki4",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Parque_3_220206.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 1600,
+          "height": 1200
+        },
+        {
+          "wikimediaFile": "Mergulho com Tubarões em Bávaro - panoramio - Cid Penteado Jr (1).jpg",
+          "altText": "Inmersión con tiburones en la costa dominicana",
+          "creditText": "Foto: Cid Penteado Jr",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Mergulho_com_Tubarões_em_Bávaro_-_panoramio_-_Cid_Penteado_Jr_(1).jpg",
+          "licenseName": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "width": 1280,
+          "height": 960
+        }
+      ]
+    },
+    {
+      "slug": "avistamiento-ballenas-samana",
+      "title": "Avistamiento de ballenas en Samaná",
+      "shortDescription": "Observa ballenas jorobadas durante su temporada de apareamiento en la Bahía de Samaná.",
+      "description": "Entre mediados de enero y finales de marzo, miles de ballenas jorobadas llegan a la Bahía de Samaná y el Banco de la Plata tras migrar desde el Atlántico Norte. Un capitán autorizado por el Ministerio de Medio Ambiente conduce la salida siguiendo las distancias de observación reguladas.",
+      "durationMinutes": 180,
+      "meetingPointInstructions": "Preséntate en el muelle de Samaná 30 minutos antes de la salida.",
+      "pickupInformation": null,
+      "whatIsIncluded": [
+        "Traslado en bote",
+        "Capitán autorizado",
+        "Chaleco salvavidas"
+      ],
+      "whatIsNotIncluded": [
+        "Alimentos y bebidas",
+        "Transporte hasta Samaná"
+      ],
+      "whatToBring": [
+        "Protección solar",
+        "Ropa de abrigo ligero para el mar",
+        "Cámara"
+      ],
+      "guestRequirements": "La salida depende de las condiciones del mar y de la presencia confirmada de ballenas en la bahía.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Accesibilidad parcial",
+      "languages": [
+        "Español",
+        "Inglés"
+      ],
+      "cancellationPolicy": "Flexible",
+      "tags": [
+        "ballenas jorobadas",
+        "samana",
+        "avistamiento",
+        "banco de la plata"
+      ],
+      "location": "Bahía de Samaná, Samaná",
+      "latitude": 19.2058,
+      "longitude": -69.3328,
+      "category": "Naturaleza",
+      "price": 65,
+      "schedulingMode": "HostScheduled",
+      "capacity": 20,
+      "schedulePolicy": {
+        "weekdays": [
+          2,
+          4,
+          6
+        ],
+        "startsAt": "09:00:00",
+        "weeksAhead": 11,
+        "startDate": "2027-01-15"
+      },
+      "itinerary": [
+        {
+          "title": "Salida desde el muelle",
+          "description": "Navega hacia las zonas de mayor actividad de ballenas en la bahía.",
+          "durationMinutes": 40,
+          "location": "Bahía de Samaná"
+        },
+        {
+          "title": "Observación de ballenas",
+          "description": "Sigue el comportamiento de las ballenas jorobadas a la distancia regulada.",
+          "durationMinutes": 100,
+          "location": "Bahía de Samaná"
+        },
+        {
+          "title": "Regreso a puerto",
+          "description": "Vuelve al muelle de Samaná al finalizar la observación.",
+          "durationMinutes": 40,
+          "location": "Samaná"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Mother Humpback Whale in Samaná Bay, Dominican Republic.jpg",
+          "altText": "Ballena jorobada madre en la Bahía de Samaná",
+          "creditText": "Foto: Caballero1967",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Mother_Humpback_Whale_in_Samaná_Bay,_Dominican_Republic.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 720,
+          "height": 540
+        },
+        {
+          "wikimediaFile": "Humpback Whales - Flickr - Christopher.Michel.jpg",
+          "altText": "Ballenas jorobadas nadando en aguas dominicanas",
+          "creditText": "Foto: Christopher Michel",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Humpback_Whales_-_Flickr_-_Christopher.Michel.jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "wikimediaFile": "Silver Bank Outtakes - Flickr - Christopher.Michel (1).jpg",
+          "altText": "Ballenas en el Banco de la Plata, santuario de mamíferos marinos",
+          "creditText": "Foto: Christopher Michel",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Silver_Bank_Outtakes_-_Flickr_-_Christopher.Michel_(1).jpg",
+          "licenseName": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "width": 1280,
+          "height": 753
+        }
+      ]
+    },
+    {
+      "slug": "clase-de-surf-cabarete",
+      "title": "Clase de surf en Playa Encuentro",
+      "shortDescription": "Aprende a surfear con instructores certificados en la meca del surf dominicano.",
+      "description": "Playa Encuentro, entre Cabarete y Sosúa, ofrece olas suaves por las mañanas ideales para principiantes. Un instructor certificado guía la clase, con tabla y todo el equipo necesario incluido.",
+      "durationMinutes": 120,
+      "meetingPointInstructions": "Preséntate en la escuela de surf de Playa Encuentro 15 minutos antes de la clase.",
+      "pickupInformation": null,
+      "whatIsIncluded": [
+        "Tabla de surf",
+        "Traje de neopreno si se necesita",
+        "Instructor certificado"
+      ],
+      "whatIsNotIncluded": [
+        "Transporte hasta Playa Encuentro",
+        "Fotos o video de la sesión"
+      ],
+      "whatToBring": [
+        "Traje de baño",
+        "Protector solar biodegradable",
+        "Toalla"
+      ],
+      "guestRequirements": "No se necesita experiencia previa; debes saber nadar.",
+      "minimumAge": 8,
+      "difficulty": "Moderate",
+      "accessibilityInformation": "Sin acceso adaptado",
+      "languages": [
+        "Español",
+        "Inglés"
+      ],
+      "cancellationPolicy": "Moderate",
+      "tags": [
+        "surf",
+        "playa encuentro",
+        "cabarete",
+        "clases de surf"
+      ],
+      "location": "Playa Encuentro, Cabarete",
+      "latitude": 19.752282,
+      "longitude": -70.413091,
+      "category": "Deportes",
+      "price": 55,
+      "schedulingMode": "HostScheduled",
+      "capacity": 6,
+      "schedulePolicy": {
+        "weekdays": [
+          2,
+          4,
+          6
+        ],
+        "startsAt": "08:00:00",
+        "weeksAhead": 8
+      },
+      "itinerary": [
+        {
+          "title": "Introducción en la arena",
+          "description": "Aprende la postura básica y las señales de seguridad antes de entrar al agua.",
+          "durationMinutes": 30,
+          "location": "Playa Encuentro"
+        },
+        {
+          "title": "Práctica en el agua",
+          "description": "Practica remada y despegue en olas suaves con apoyo del instructor.",
+          "durationMinutes": 90,
+          "location": "Playa Encuentro"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "Playa Encuentro.jpg",
+          "altText": "Vista de Playa Encuentro, meca del surf dominicano",
+          "creditText": "Foto: Rock Cohen",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Playa_Encuentro.jpg",
+          "licenseName": "CC BY-SA 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+          "width": 2576,
+          "height": 1952
+        },
+        {
+          "wikimediaFile": "Surf lessons at Swell surf Camp at Encuentro 05.jpg",
+          "altText": "Clase de surf para principiantes en Playa Encuentro",
+          "creditText": "Foto: Swell Surf Camp",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Surf_lessons_at_Swell_surf_Camp_at_Encuentro_05.jpg",
+          "licenseName": "CC BY-SA 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+          "width": 1200,
+          "height": 900
+        },
+        {
+          "wikimediaFile": "Surf lessons at Swell surf Camp at Encuentro 08.jpg",
+          "altText": "Instrucción de surf en el agua en Playa Encuentro",
+          "creditText": "Foto: Swell Surf Camp",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Surf_lessons_at_Swell_surf_Camp_at_Encuentro_08.jpg",
+          "licenseName": "CC BY-SA 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+          "width": 1200,
+          "height": 900
+        }
+      ]
+    },
+    {
+      "slug": "catamaran-isla-saona",
+      "title": "Catamarán a Isla Saona",
+      "shortDescription": "Navega en catamarán hasta Isla Saona con parada para nadar y almuerzo incluido.",
+      "description": "La excursión organizada zarpa desde Bayahíbe en catamarán hacia Isla Saona, con una parada en aguas poco profundas para nadar cerca del santuario de estrellas de mar. En la isla dispones de tiempo libre en la playa antes del almuerzo tipo bufé con platos dominicanos.",
+      "durationMinutes": 360,
+      "meetingPointInstructions": "Preséntate en el muelle de salida de Bayahíbe 30 minutos antes de zarpar.",
+      "pickupInformation": null,
+      "whatIsIncluded": [
+        "Traslado en catamarán",
+        "Almuerzo bufé",
+        "Bebidas a bordo",
+        "Parada para nadar"
+      ],
+      "whatIsNotIncluded": [
+        "Transporte hasta Bayahíbe",
+        "Propinas"
+      ],
+      "whatToBring": [
+        "Traje de baño",
+        "Protector solar biodegradable",
+        "Toalla"
+      ],
+      "guestRequirements": "Confirma tu asistencia con anticipación; la salida depende del cupo del catamarán.",
+      "minimumAge": null,
+      "difficulty": "Easy",
+      "accessibilityInformation": "Sin acceso adaptado",
+      "languages": [
+        "Español",
+        "Inglés"
+      ],
+      "cancellationPolicy": "Moderate",
+      "tags": [
+        "catamaran",
+        "isla saona",
+        "bayahibe",
+        "excursion"
+      ],
+      "location": "Bayahíbe, La Altagracia",
+      "latitude": 18.366667,
+      "longitude": -68.833333,
+      "category": "Cruceros",
+      "price": 89,
+      "schedulingMode": "HostScheduled",
+      "capacity": 40,
+      "schedulePolicy": {
+        "weekdays": [
+          2,
+          4,
+          6
+        ],
+        "startsAt": "09:00:00",
+        "weeksAhead": 8
+      },
+      "itinerary": [
+        {
+          "title": "Zarpe desde Bayahíbe",
+          "description": "Navega en catamarán hacia Isla Saona con música y bebidas a bordo.",
+          "durationMinutes": 60,
+          "location": "Bayahíbe"
+        },
+        {
+          "title": "Parada para nadar",
+          "description": "Detente en aguas poco profundas cerca del santuario de estrellas de mar.",
+          "durationMinutes": 40,
+          "location": "Ruta a Isla Saona"
+        },
+        {
+          "title": "Tiempo libre en la isla",
+          "description": "Disfruta de la playa y el almuerzo bufé en Isla Saona.",
+          "durationMinutes": 200,
+          "location": "Isla Saona"
+        },
+        {
+          "title": "Regreso a Bayahíbe",
+          "description": "Navega de regreso al muelle de salida.",
+          "durationMinutes": 60,
+          "location": "Bayahíbe"
+        }
+      ],
+      "images": [
+        {
+          "wikimediaFile": "2023 - Saona Island - 01.jpg",
+          "altText": "Vista de Isla Saona",
+          "creditText": "Foto: Oleg Yunakov",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:2023_-_Saona_Island_-_01.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4032,
+          "height": 3024
+        },
+        {
+          "wikimediaFile": "2023 - Saona Island - 15.jpg",
+          "altText": "Costa de Isla Saona",
+          "creditText": "Foto: Oleg Yunakov",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:2023_-_Saona_Island_-_15.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 4032,
+          "height": 3024
+        },
+        {
+          "wikimediaFile": "Starfish in the Dominican Republic's coast.jpg",
+          "altText": "Estrella de mar en la costa dominicana",
+          "creditText": "Foto: Ronavni",
+          "creditUrl": "https://commons.wikimedia.org/wiki/File:Starfish_in_the_Dominican_Republic%27s_coast.jpg",
+          "licenseName": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "width": 972,
+          "height": 1296
         }
       ]
     }

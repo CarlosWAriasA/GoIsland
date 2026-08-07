@@ -30,6 +30,7 @@ public class Experience
     public int Capacity { get; set; }
     public int AvailableSpots { get; set; }
     public bool IsUnlimitedCapacity { get; set; }
+    public string SchedulingMode { get; set; } = ExperienceSchedulingModes.HostScheduled;
     public bool IsApproved { get; set; }
     public string ApprovalStatus { get; set; } = ExperienceApprovalStatuses.Draft;
     public string? RejectionReason { get; set; }

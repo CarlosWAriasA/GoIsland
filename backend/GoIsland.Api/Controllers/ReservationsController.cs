@@ -17,11 +17,16 @@ public class ReservationsController : ControllerBase
 {
     private readonly IReservationService _reservationService;
     private readonly IPaymentService _paymentService;
+    private readonly IReservationChangeRequestService _changeRequestService;
 
-    public ReservationsController(IReservationService reservationService, IPaymentService paymentService)
+    public ReservationsController(
+        IReservationService reservationService,
+        IPaymentService paymentService,
+        IReservationChangeRequestService changeRequestService)
     {
         _reservationService = reservationService;
         _paymentService = paymentService;
+        _changeRequestService = changeRequestService;
     }
 
     [HttpPost]
@@ -61,6 +66,43 @@ public class ReservationsController : ControllerBase
         };
     }
 
+    [HttpPost("self-scheduled")]
+    public async Task<ActionResult<ReservationResponse>> CreateSelfScheduled(CreateSelfScheduledReservationRequest request)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        }
+
+        if (!TryGetIdempotencyKey(out var idempotencyKey))
+        {
+            return BadRequest(new { message = "No pudimos validar esta operación. Actualiza la página e inténtalo de nuevo." });
+        }
+
+        var result = await _reservationService.CreateSelfScheduledAsync(userId, request, idempotencyKey);
+
+        return result.Status switch
+        {
+            ReservationCreationStatus.Success => CreatedAtAction(
+                nameof(GetById),
+                new { id = result.Reservation!.Id },
+                result.Reservation),
+            ReservationCreationStatus.ExperienceNotFound or ReservationCreationStatus.ScheduleNotFound => NotFound(
+                new { message = "No encontramos la experiencia indicada." }),
+            ReservationCreationStatus.ScheduleUnavailable => Conflict(
+                new { message = "La fecha y hora elegidas no están disponibles." }),
+            ReservationCreationStatus.InsufficientSpots => Conflict(
+                new { message = "La cantidad ingresada no es válida." }),
+            ReservationCreationStatus.PaymentRequired => Conflict(
+                new { message = "Esta experiencia requiere pago y no se puede agendar directamente." }),
+            ReservationCreationStatus.ConcurrencyConflict => Conflict(
+                new { message = "Ocurrió un conflicto al agendar la visita. Intenta nuevamente." }),
+            ReservationCreationStatus.IdempotencyConflict => Conflict(
+                new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
+            _ => StatusCode(StatusCodes.Status500InternalServerError)
+        };
+    }
+
     [HttpPost("{id:int}/cancel")]
     public async Task<ActionResult<ReservationResponse>> Cancel(int id, CancelReservationRequest request)
     {
@@ -70,6 +112,15 @@ public class ReservationsController : ControllerBase
         return MapMutation(await _reservationService.CancelAsync(id, userId, request, key));
     }
 
+    [HttpPost("{id:int}/complete")]
+    public async Task<ActionResult<ReservationResponse>> Complete(int id)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        if (!TryGetIdempotencyKey(out var key))
+            return BadRequest(new { message = "No pudimos validar esta operación. Actualiza la página e inténtalo de nuevo." });
+        return MapMutation(await _reservationService.CompleteByTouristAsync(id, userId, key));
+    }
+
     [HttpPost("{id:int}/reschedule")]
     public async Task<ActionResult<ReservationResponse>> Reschedule(int id, RescheduleReservationRequest request)
     {
@@ -77,6 +128,48 @@ public class ReservationsController : ControllerBase
         if (!TryGetIdempotencyKey(out var key))
             return BadRequest(new { message = "No pudimos validar esta operación. Actualiza la página e inténtalo de nuevo." });
         return MapMutation(await _reservationService.RescheduleAsync(id, userId, request, key));
+    }
+
+    [HttpPost("{id:int}/cancellation-requests")]
+    public async Task<ActionResult<ReservationChangeRequestResponse>> RequestCancellation(int id, CreateCancellationRequestRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        return MapChangeRequestMutation(await _changeRequestService.RequestCancellationAsync(userId, id, request.Reason));
+    }
+
+    [HttpPost("{id:int}/reschedule-requests")]
+    public async Task<ActionResult<ReservationChangeRequestResponse>> RequestReschedule(int id, CreateRescheduleRequestRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        return MapChangeRequestMutation(
+            await _changeRequestService.RequestRescheduleAsync(userId, id, request.ScheduleId, request.Reason));
+    }
+
+    private ActionResult<ReservationChangeRequestResponse> MapChangeRequestMutation(ReservationChangeRequestResult result) => result.Status switch
+    {
+        ReservationChangeRequestOperationStatus.Success => Ok(result.Request),
+        ReservationChangeRequestOperationStatus.ReservationNotFound or ReservationChangeRequestOperationStatus.ScheduleNotFound =>
+            NotFound(new { message = "No se encontro la reserva o el horario." }),
+        ReservationChangeRequestOperationStatus.InvalidTransition => Conflict(
+            new { message = "Esta reserva no admite esa solicitud en su estado actual." }),
+        ReservationChangeRequestOperationStatus.DuplicatePending => Conflict(
+            new { message = "Ya existe una solicitud pendiente para esta reserva." }),
+        ReservationChangeRequestOperationStatus.DifferentExperience => Conflict(
+            new { message = "Solo puedes solicitar una reprogramación dentro de la misma experiencia." }),
+        ReservationChangeRequestOperationStatus.ScheduleUnavailable => Conflict(
+            new { message = "El horario ya no esta disponible." }),
+        ReservationChangeRequestOperationStatus.InsufficientSpots => Conflict(
+            new { message = "El horario no tiene suficientes cupos." }),
+        _ => StatusCode(StatusCodes.Status500InternalServerError)
+    };
+
+    [HttpPost("{id:int}/reschedule-self-scheduled")]
+    public async Task<ActionResult<ReservationResponse>> RescheduleSelfScheduled(int id, RescheduleSelfScheduledReservationRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        if (!TryGetIdempotencyKey(out var key))
+            return BadRequest(new { message = "No pudimos validar esta operación. Actualiza la página e inténtalo de nuevo." });
+        return MapMutation(await _reservationService.RescheduleSelfScheduledAsync(id, userId, request.StartsAtLocal, request.Quantity, key));
     }
 
     private ActionResult<ReservationResponse> MapMutation(ReservationCreationResult result) => result.Status switch
@@ -90,6 +183,11 @@ public class ReservationsController : ControllerBase
         ReservationCreationStatus.InvalidTransition => Conflict(new { message = "La reserva no admite esa operacion en su estado o fecha actual." }),
         ReservationCreationStatus.ConcurrencyConflict => Conflict(new { message = "La disponibilidad cambio. Intenta nuevamente." }),
         ReservationCreationStatus.IdempotencyConflict => Conflict(new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
+        ReservationCreationStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { message = "Esta acción no está disponible para esta reserva." }),
+        ReservationCreationStatus.RequiresHostApproval => Conflict(new {
+            message = "Esta reserva ya está pagada; usa la solicitud al anfitrión para cancelarla o reprogramarla.",
+            code = "RequiresHostApproval"
+        }),
         _ => StatusCode(StatusCodes.Status500InternalServerError)
     };
 

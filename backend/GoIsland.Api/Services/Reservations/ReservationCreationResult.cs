@@ -14,7 +14,9 @@ public enum ReservationCreationStatus
     InvalidTransition,
     DifferentExperience,
     IdempotencyConflict,
-    Forbidden
+    Forbidden,
+    PaymentRequired,
+    RequiresHostApproval
 }
 
 public record ReservationCreationResult(

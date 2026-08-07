@@ -15,7 +15,8 @@ public class PaymentControllerContractTests
         var payment = new PaymentResponse { Id = 42, ReservationId = 7 };
         var controller = new ReservationsController(
             null!,
-            new SuccessfulPaymentService(payment))
+            new SuccessfulPaymentService(payment),
+            null!)
         {
             ControllerContext = new ControllerContext
             {
@@ -71,6 +72,9 @@ public class PaymentControllerContractTests
             int id, int actorUserId, bool isAdmin, string? failureCode) => throw new NotSupportedException();
 
         public Task<PaymentOperationResult> RefundAsync(int id, int adminUserId, string reason) =>
+            throw new NotSupportedException();
+
+        public Task<PaymentOperationResult> RefundByHostAsync(int id, int hostUserId, string reason) =>
             throw new NotSupportedException();
     }
 }

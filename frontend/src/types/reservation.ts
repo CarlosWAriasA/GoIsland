@@ -15,6 +15,27 @@ export interface ReservationStatusHistory {
   createdAt: string;
 }
 
+export type ReservationChangeRequestType = 'Cancel' | 'Reschedule';
+export type ReservationChangeRequestStatus = 'Pending' | 'Approved' | 'Rejected';
+
+export interface ReservationChangeRequest {
+  id: number;
+  reservationId: number;
+  requestedByUserId: number;
+  type: ReservationChangeRequestType;
+  status: ReservationChangeRequestStatus;
+  reason: string;
+  requestedScheduleId: number | null;
+  requestedScheduleStartsAt: string | null;
+  reviewedByUserId: number | null;
+  reviewedAt: string | null;
+  decisionReason: string | null;
+  createdAt: string;
+  experienceTitle: string;
+  reservationStartsAt: string;
+  quantity: number;
+}
+
 export interface Reservation {
   id: number;
   userId: number;
@@ -23,6 +44,9 @@ export interface Reservation {
   experienceSlug: string;
   experienceTitle: string;
   experienceLocation: string;
+  latitude: number | null;
+  longitude: number | null;
+  schedulingMode: string;
   startsAt: string;
   endsAt: string;
   quantity: number;
@@ -33,10 +57,17 @@ export interface Reservation {
   updatedAt: string;
   cancelledAt: string | null;
   statusHistory: ReservationStatusHistory[];
+  pendingChangeRequest: ReservationChangeRequest | null;
 }
 
 export interface CreateReservationRequest {
   scheduleId: number;
+  quantity: number;
+}
+
+export interface CreateSelfScheduledReservationRequest {
+  experienceId: number;
+  startsAtLocal: string;
   quantity: number;
 }
 

@@ -356,6 +356,7 @@ export const ExperienceMap = ({
             {query && (
               <button
                 type="button"
+                className="experience-map__search-clear"
                 onClick={() => {
                   setQuery('');
                   setSuggestions([]);
@@ -371,7 +372,7 @@ export const ExperienceMap = ({
               {suggestions.map((suggestion, index) => (
                 <li
                   key={suggestion.placeId}
-                  className={index === activeIndex ? 'is-active' : ''}
+                  className={`experience-map__suggestion${index === activeIndex ? ' is-active' : ''}`}
                   onClick={() => void selectSuggestion(suggestion)}
                   role="option"
                   aria-selected={index === activeIndex}

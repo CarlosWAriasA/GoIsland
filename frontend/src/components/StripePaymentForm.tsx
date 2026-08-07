@@ -48,7 +48,7 @@ const PaymentForm = ({ reservationId, onSubmitted, onCancel }: StripePaymentForm
 
   return (
     <form className="stripe-payment-form" onSubmit={(event) => void submit(event)}>
-      <Alert tone="info">Pago de prueba. No se realizarán cargos reales.</Alert>
+      <Alert tone="info">Pago seguro procesado por Stripe.</Alert>
       <PaymentElement options={{ layout: 'tabs' }} />
       {error && <Alert tone="error">{error}</Alert>}
       <div className="stripe-payment-form__actions">
@@ -56,7 +56,7 @@ const PaymentForm = ({ reservationId, onSubmitted, onCancel }: StripePaymentForm
           Volver
         </Button>
         <Button type="submit" isLoading={submitting} disabled={!stripe || !elements || submitting}>
-          Completar pago de prueba
+          Completar pago
         </Button>
       </div>
     </form>
@@ -67,7 +67,7 @@ export const StripePaymentForm = (props: StripePaymentFormProps) => {
   if (!stripePromise) {
     return (
       <Alert tone="error">
-        El pago de prueba no está disponible en este momento. Inténtalo nuevamente más tarde.
+        El pago no está disponible en este momento. Inténtalo nuevamente más tarde.
       </Alert>
     );
   }

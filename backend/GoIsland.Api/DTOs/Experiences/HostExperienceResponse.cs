@@ -1,3 +1,5 @@
+using GoIsland.Api.Models;
+
 namespace GoIsland.Api.DTOs.Experiences;
 
 public class HostExperienceResponse
@@ -32,6 +34,7 @@ public class HostExperienceResponse
     public int Capacity { get; set; }
     public int AvailableSpots { get; set; }
     public bool IsUnlimitedCapacity { get; set; }
+    public string SchedulingMode { get; set; } = ExperienceSchedulingModes.HostScheduled;
     public IReadOnlyCollection<ExperienceImageResponse> Images { get; set; } = [];
     public string ApprovalStatus { get; set; } = string.Empty;
     public string? RejectionReason { get; set; }

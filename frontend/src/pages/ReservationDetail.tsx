@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { ArrowLeft, CalendarDays, CreditCard, MapPin, ReceiptText, ShieldCheck, TicketCheck, UsersRound } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { ArrowLeft, CalendarDays, CreditCard, MapPin, MapPinned, ReceiptText, ShieldCheck, TicketCheck, UsersRound } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
@@ -22,6 +22,9 @@ import { paymentService } from '../services/paymentService';
 import { reservationService } from '../services/reservationService';
 import { getPaymentStatusLabel, getPaymentStatusTone } from '../utils/paymentStatus';
 import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
+import { getChangeRequestStatusLabel, getChangeRequestTypeLabel } from '../utils/reservationChangeRequestStatus';
+import { buildGoogleMapsUrl, getReturnPath } from '../utils/navigation';
+import { getMinDateTimeLocal, isoToDateTimeLocalValue } from '../utils/dateTimeLocal';
 import { reviewService } from '../services/reviewService';
 import type { ExperienceSchedule, Payment, PaymentCheckout, Reservation, Review } from '../types';
 
@@ -63,11 +66,15 @@ export const ReservationDetail = () => {
   const { user } = useAuth();
   const [result, setResult] = useState<ReservationDetailResult | null>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
-  const [busyAction, setBusyAction] = useState<'cancel' | 'reschedule' | 'review' | PaymentAction | null>(null);
+  const [newStartsAtLocal, setNewStartsAtLocal] = useState('');
+  const [newQuantity, setNewQuantity] = useState('1');
+  const [busyAction, setBusyAction] = useState<'complete' | 'cancel' | 'reschedule' | 'review' | 'requestCancel' | 'requestReschedule' | PaymentAction | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<'cancel' | 'deleteReview' | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [refundReason, setRefundReason] = useState('');
+  const [cancelRequestReason, setCancelRequestReason] = useState('');
+  const [rescheduleRequestReason, setRescheduleRequestReason] = useState('');
   const [rating, setRating] = useState('5');
   const [reviewComment, setReviewComment] = useState('');
   const [stripeCheckout, setStripeCheckout] = useState<PaymentCheckout | null>(null);
@@ -75,9 +82,22 @@ export const ReservationDetail = () => {
   const loading = isValidId && result?.requestKey !== requestKey;
   const currentResult = result?.requestKey === requestKey ? result : null;
   const created = location.state?.created === true;
+  const focusEdit = location.state?.focusEdit === true;
+  const editSectionRef = useRef<HTMLDivElement | null>(null);
   const refreshAfterExpiration = useCallback(() => {
     setRetryCount((current) => current + 1);
   }, []);
+
+  useEffect(() => {
+    const reservation = result?.requestKey === requestKey ? result.reservation : null;
+    if (!focusEdit || !reservation || !editSectionRef.current) return;
+    const canEditNow = reservation.schedulingMode === 'SelfGuided'
+      && reservation.status === 'Confirmed'
+      && new Date(reservation.startsAt) > new Date();
+    if (canEditNow) {
+      editSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [result, requestKey, focusEdit]);
 
   useEffect(() => {
     if (!isValidId) return;
@@ -104,6 +124,8 @@ export const ReservationDetail = () => {
         if (!controller.signal.aborted) {
           setResult({ requestKey, reservation, schedules, payments, review, error: null, notFound: false });
           setSelectedScheduleId(String(schedules.find((item) => item.id !== reservation.scheduleId)?.id ?? ''));
+          setNewStartsAtLocal(isoToDateTimeLocalValue(reservation.startsAt));
+          setNewQuantity(String(reservation.quantity));
           setRating(String(review?.rating ?? 5));
           setReviewComment(review?.comment ?? '');
           const latestPayment = payments[0];
@@ -196,6 +218,64 @@ export const ReservationDetail = () => {
     }
   };
 
+  const requestCancellation = async () => {
+    const reason = cancelRequestReason.trim();
+    if (reason.length < 3) {
+      setActionError('Indica el motivo de la cancelación (mínimo 3 caracteres).');
+      return;
+    }
+    setBusyAction('requestCancel');
+    setActionError(null);
+    try {
+      await reservationService.requestCancellation(parsedId, reason);
+      setActionMessage('Tu solicitud de cancelación fue enviada al anfitrión.');
+      setCancelRequestReason('');
+      setRetryCount((current) => current + 1);
+    } catch (error: unknown) {
+      setActionError(toApiError(error, 'No fue posible enviar la solicitud.').message);
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const requestReschedule = async () => {
+    const scheduleId = Number(selectedScheduleId);
+    if (!Number.isInteger(scheduleId) || scheduleId < 1) return;
+    const reason = rescheduleRequestReason.trim();
+    if (reason.length < 3) {
+      setActionError('Indica el motivo de la reprogramación (mínimo 3 caracteres).');
+      return;
+    }
+    setBusyAction('requestReschedule');
+    setActionError(null);
+    try {
+      await reservationService.requestReschedule(parsedId, scheduleId, reason);
+      setActionMessage('Tu solicitud de reprogramación fue enviada al anfitrión.');
+      setRescheduleRequestReason('');
+      setRetryCount((current) => current + 1);
+    } catch (error: unknown) {
+      setActionError(toApiError(error, 'No fue posible enviar la solicitud.').message);
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const rescheduleSelfGuided = async () => {
+    const parsedQuantity = Number(newQuantity);
+    if (!newStartsAtLocal || !Number.isInteger(parsedQuantity) || parsedQuantity < 1) return;
+    setBusyAction('reschedule');
+    setActionError(null);
+    try {
+      const updated = await reservationService.rescheduleSelfScheduled(parsedId, newStartsAtLocal, parsedQuantity);
+      replaceReservation(updated);
+      setActionMessage('Tu visita fue actualizada.');
+    } catch (error: unknown) {
+      setActionError(toApiError(error, 'No fue posible actualizar la visita.').message);
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
   const runPaymentAction = async (action: PaymentAction, execute: () => Promise<unknown>, message: string) => {
     setBusyAction(action);
     setActionError(null);
@@ -239,7 +319,7 @@ export const ReservationDetail = () => {
       } else if (checkout.payment.provider === 'Stripe' && checkout.clientSecret) {
         setStripeCheckout(checkout);
       } else {
-        setActionError('El pago de prueba no está disponible en este momento.');
+        setActionError('El pago no está disponible en este momento.');
       }
     } catch (requestError: unknown) {
       setActionError(toApiError(requestError, 'No fue posible preparar el pago.').message);
@@ -291,6 +371,22 @@ export const ReservationDetail = () => {
     } finally { setBusyAction(null); }
   };
 
+  const completeReservation = async () => {
+    setBusyAction('complete');
+    setActionError(null);
+    try {
+      const updated = await reservationService.complete(parsedId);
+      setResult((current) => current?.requestKey === requestKey
+        ? { ...current, reservation: updated }
+        : current);
+      setActionMessage('Visita marcada como realizada. ¡Ya puedes compartir tu reseña!');
+    } catch (requestError: unknown) {
+      setActionError(toApiError(requestError, 'No fue posible marcar la visita como realizada.').message);
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
   const confirmPendingAction = async () => {
     const action = pendingConfirmation;
     if (!action) return;
@@ -304,7 +400,7 @@ export const ReservationDetail = () => {
     return (
       <div className="container reservation-detail-state animate-fade-in">
         <EmptyState title="Reserva no disponible" description="La reserva no existe o no pertenece a tu cuenta."
-          action={<Link className="button-link button-link--outline" to="/reservations">Volver a mis reservas</Link>} />
+          action={<Link className="button-link button-link--outline" to={getReturnPath(location.state, '/reservations')}>Volver</Link>} />
       </div>
     );
   }
@@ -316,6 +412,9 @@ export const ReservationDetail = () => {
 
   const { reservation, schedules, payments } = currentResult;
   const active = reservation.status === 'PendingPayment' || reservation.status === 'Confirmed';
+  const needsHostApproval = reservation.status === 'Confirmed' && reservation.totalAmount > 0;
+  const isSelfGuided = reservation.schedulingMode === 'SelfGuided';
+  const canRescheduleSelfGuided = isSelfGuided && new Date(reservation.startsAt) > new Date();
   const isOwner = user?.id === reservation.userId;
   const isAdmin = user?.role === 'Admin';
   const latestPayment = payments[0] ?? null;
@@ -326,7 +425,9 @@ export const ReservationDetail = () => {
 
   return (
     <div className="container reservation-detail animate-fade-in">
-      <Link className="reservation-detail__back" to="/reservations"><ArrowLeft size={18} /> Volver a mis reservas</Link>
+      <Link className="reservation-detail__back" to={getReturnPath(location.state, '/reservations')}>
+        <ArrowLeft size={18} /> Volver
+      </Link>
       <ToastFeedback
         message={created ? `Reserva creada. Estado actual: ${getReservationStatusLabel(reservation.status)}.` : null}
         tone="success"
@@ -357,7 +458,21 @@ export const ReservationDetail = () => {
           <div>
             <span>Experiencia reservada</span><h2 id="reserved-experience-title">{reservation.experienceTitle}</h2>
             <p><MapPin size={17} /> {reservation.experienceLocation}</p>
-            <Link to={`/experiences/${reservation.experienceSlug || reservation.experienceId}`}>Ver experiencia</Link>
+            <div className="reservation-detail__experience-links">
+              <Link
+                to={`/experiences/${reservation.experienceSlug || reservation.experienceId}`}
+                state={{ from: `${location.pathname}${location.search}` }}
+              >
+                Ver experiencia
+              </Link>
+              <a
+                href={buildGoogleMapsUrl(reservation.latitude, reservation.longitude, reservation.experienceLocation)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MapPinned size={16} aria-hidden="true" /> Ver ubicación
+              </a>
+            </div>
           </div>
         </section>
         <section className="surface-panel reservation-detail__summary" aria-labelledby="reservation-summary-title">
@@ -445,17 +560,21 @@ export const ReservationDetail = () => {
               </dl>
               {isAdmin && (
                 <div className="reservation-payment__refund">
-                  <Input
-                    label="Motivo del reembolso"
-                    value={refundReason}
-                    onChange={(event) => setRefundReason(event.target.value)}
-                    hint="Este motivo quedará guardado para futuras consultas (mínimo 3 caracteres)."
-                    required
-                  />
-                  <Button variant="danger" onClick={() => refundPayment(currentPayment.id)}
-                    isLoading={busyAction === 'refund'} disabled={busyAction !== null}>
-                    <ShieldCheck size={18} /> Reembolsar pago
-                  </Button>
+                  <div className="reservation-payment__refund-row">
+                    <Input
+                      label="Motivo del reembolso"
+                      value={refundReason}
+                      onChange={(event) => setRefundReason(event.target.value)}
+                      required
+                    />
+                    <Button variant="danger" onClick={() => refundPayment(currentPayment.id)}
+                      isLoading={busyAction === 'refund'} disabled={busyAction !== null}>
+                      <ShieldCheck size={18} /> Reembolsar pago
+                    </Button>
+                  </div>
+                  <span className="field-hint">
+                    Este motivo quedará guardado para futuras consultas (mínimo 3 caracteres).
+                  </span>
                 </div>
               )}
             </>
@@ -470,23 +589,104 @@ export const ReservationDetail = () => {
         </section>
       )}
 
+      {isOwner && isSelfGuided && reservation.status === 'Confirmed' && new Date(reservation.endsAt) <= new Date() && (
+        <section className="surface-panel reservation-actions" aria-labelledby="reservation-complete-title">
+          <h2 id="reservation-complete-title">¿Ya realizaste esta visita?</h2>
+          <p>Confirma tu asistencia a esta visita autoguiada para compartir tu reseña y opinión.</p>
+          <Button
+            variant="primary"
+            onClick={() => void completeReservation()}
+            isLoading={busyAction === 'complete'}
+            disabled={busyAction !== null}
+          >
+            <TicketCheck size={18} aria-hidden="true" /> Marcar como realizada
+          </Button>
+        </section>
+      )}
+
       {active && (
         <section className="surface-panel reservation-actions" aria-labelledby="reservation-actions-title">
           <h2 id="reservation-actions-title">Gestionar reserva</h2>
-          {schedules.some((schedule) => schedule.id !== reservation.scheduleId) && (
-            <div className="reservation-actions__reschedule">
-              <SelectField label="Nuevo horario" value={selectedScheduleId} required
-                onChange={(event) => setSelectedScheduleId(event.target.value)}>
-                {schedules.filter((schedule) => schedule.id !== reservation.scheduleId).map((schedule) => (
-                  <option key={schedule.id} value={schedule.id}>{formatDate(schedule.startsAt)} · {schedule.availableSpots} cupos</option>
-                ))}
-              </SelectField>
-              <Button onClick={() => void rescheduleReservation()} isLoading={busyAction === 'reschedule'}
-                disabled={!selectedScheduleId || busyAction !== null}>Reprogramar</Button>
-            </div>
+
+          {needsHostApproval && reservation.pendingChangeRequest && (
+            <Alert tone="info">
+              Solicitud de {getChangeRequestTypeLabel(reservation.pendingChangeRequest.type).toLowerCase()} enviada
+              al anfitrión ({getChangeRequestStatusLabel(reservation.pendingChangeRequest.status).toLowerCase()}).
+              {' '}Motivo: {reservation.pendingChangeRequest.reason}
+            </Alert>
           )}
-          <Button variant="danger" onClick={() => setPendingConfirmation('cancel')}
-            isLoading={busyAction === 'cancel'} disabled={busyAction !== null}>Cancelar reserva</Button>
+
+          {isSelfGuided ? (
+            canRescheduleSelfGuided && (
+              <div className="reservation-actions__reschedule" ref={editSectionRef}>
+                <Input
+                  label="Nueva fecha y hora"
+                  type="datetime-local"
+                  min={getMinDateTimeLocal()}
+                  value={newStartsAtLocal}
+                  onChange={(event) => setNewStartsAtLocal(event.target.value)}
+                  required
+                />
+                <Input
+                  label="Cantidad de personas"
+                  type="number" min="1" step="1" inputMode="numeric"
+                  value={newQuantity}
+                  onChange={(event) => setNewQuantity(event.target.value)}
+                  required
+                />
+                <Button onClick={() => void rescheduleSelfGuided()} isLoading={busyAction === 'reschedule'}
+                  disabled={!newStartsAtLocal || busyAction !== null}>Guardar cambios</Button>
+              </div>
+            )
+          ) : (
+            !reservation.pendingChangeRequest
+            && schedules.some((schedule) => schedule.id !== reservation.scheduleId)
+            && (
+              needsHostApproval ? (
+                <div className="reservation-actions__request">
+                  <SelectField label="Nuevo horario" value={selectedScheduleId} required
+                    onChange={(event) => setSelectedScheduleId(event.target.value)}>
+                    {schedules.filter((schedule) => schedule.id !== reservation.scheduleId).map((schedule) => (
+                      <option key={schedule.id} value={schedule.id}>{formatDate(schedule.startsAt)} · {schedule.availableSpots} cupos</option>
+                    ))}
+                  </SelectField>
+                  <TextAreaField label="Motivo de la reprogramación" value={rescheduleRequestReason}
+                    onChange={(event) => setRescheduleRequestReason(event.target.value)}
+                    hint="El anfitrión revisará esta solicitud antes de aplicar el cambio." required />
+                  <Button onClick={() => void requestReschedule()} isLoading={busyAction === 'requestReschedule'}
+                    disabled={!selectedScheduleId || busyAction !== null}>Solicitar reprogramación</Button>
+                </div>
+              ) : (
+                <div className="reservation-actions__reschedule">
+                  <SelectField label="Nuevo horario" value={selectedScheduleId} required
+                    onChange={(event) => setSelectedScheduleId(event.target.value)}>
+                    {schedules.filter((schedule) => schedule.id !== reservation.scheduleId).map((schedule) => (
+                      <option key={schedule.id} value={schedule.id}>{formatDate(schedule.startsAt)} · {schedule.availableSpots} cupos</option>
+                    ))}
+                  </SelectField>
+                  <Button onClick={() => void rescheduleReservation()} isLoading={busyAction === 'reschedule'}
+                    disabled={!selectedScheduleId || busyAction !== null}>Reprogramar</Button>
+                </div>
+              )
+            )
+          )}
+
+          {needsHostApproval ? (
+            !reservation.pendingChangeRequest && (
+              <div className="reservation-actions__request">
+                <TextAreaField label="Motivo de la cancelación" value={cancelRequestReason}
+                  onChange={(event) => setCancelRequestReason(event.target.value)}
+                  hint="Si el anfitrión aprueba, la reserva se cancela y el pago se reembolsa." required />
+                <Button variant="danger" onClick={() => void requestCancellation()}
+                  isLoading={busyAction === 'requestCancel'} disabled={busyAction !== null}>
+                  Solicitar cancelación y reembolso
+                </Button>
+              </div>
+            )
+          ) : (
+            <Button variant="danger" onClick={() => setPendingConfirmation('cancel')}
+              isLoading={busyAction === 'cancel'} disabled={busyAction !== null}>Cancelar reserva</Button>
+          )}
         </section>
       )}
 

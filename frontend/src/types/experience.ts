@@ -42,6 +42,7 @@ export interface Experience {
   capacity: number;
   availableSpots: number;
   isUnlimitedCapacity: boolean;
+  schedulingMode?: string;
   images: ExperienceImage[];
   isApproved: boolean;
   createdAt: string;

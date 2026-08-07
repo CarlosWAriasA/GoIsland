@@ -7,6 +7,7 @@ using GoIsland.Api.Models;
 using GoIsland.Api.Services.Notifications;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace GoIsland.Api.Services.Reservations;
 
@@ -154,6 +155,131 @@ public class ReservationService : IReservationService
         return new(ReservationCreationStatus.Success, response);
     }
 
+    public async Task<ReservationCreationResult> CreateSelfScheduledAsync(
+        int userId,
+        CreateSelfScheduledReservationRequest request,
+        string? idempotencyKey = null)
+    {
+        if (request.Quantity < 1)
+        {
+            return new(ReservationCreationStatus.InsufficientSpots);
+        }
+
+        var key = NormalizeKey(idempotencyKey);
+        var requestHash = Hash($"{request.ExperienceId}:{request.StartsAtLocal:O}:{request.Quantity}");
+
+        var repeatedResponse = await FindRepeatedAsync(userId, "Create", key, requestHash);
+        if (repeatedResponse is not null)
+        {
+            return repeatedResponse;
+        }
+
+        var experience = await _context.Experiences
+            .FirstOrDefaultAsync(e => e.Id == request.ExperienceId);
+
+        if (experience is null
+            || !experience.IsApproved
+            || experience.ApprovalStatus != ExperienceApprovalStatuses.Approved
+            || experience.SchedulingMode != ExperienceSchedulingModes.SelfGuided)
+        {
+            return new(ReservationCreationStatus.ExperienceNotFound);
+        }
+
+        if (experience.Price > 0)
+        {
+            return new(ReservationCreationStatus.PaymentRequired);
+        }
+
+        var now = DateTime.UtcNow;
+        var resolution = await ResolveSelfGuidedScheduleAsync(experience, request.StartsAtLocal, now);
+        if (resolution.Error.HasValue)
+        {
+            return new(resolution.Error.Value);
+        }
+        var schedule = resolution.Schedule!;
+
+        var reservation = new Reservation
+        {
+            UserId = userId,
+            ExperienceId = experience.Id,
+            ScheduleId = schedule.Id,
+            Quantity = request.Quantity,
+            Status = ReservationStatuses.Confirmed,
+            TotalAmount = 0m,
+            ReservationDate = now,
+            ExpiresAt = null,
+            UpdatedAt = now
+        };
+
+        await _context.Reservations.AddAsync(reservation);
+        await AddHistoryAsync(reservation, null, reservation.Status, userId, "Reserva autoguiada creada.", now);
+        await AddIdempotencyAsync(reservation, userId, "Create", key, requestHash, now);
+        await AddCapacityAuditAsync(reservation, schedule, schedule.AvailableSpots, "ReservationCreated", now);
+
+        await _outbox.EnqueueAsync(
+            userId,
+            "ReservationCreated",
+            "Reserva confirmada",
+            $"Tu visita a {experience.Title} quedó agendada y confirmada.",
+            reservation);
+
+        var startsAt24h = schedule.StartsAt.AddHours(-24);
+        var startsAt2h = schedule.StartsAt.AddHours(-2);
+        var endsAt2h = schedule.EndsAt.AddHours(2);
+
+        if (startsAt24h > now)
+        {
+            await _outbox.EnqueueAsync(
+                userId,
+                "VisitReminder",
+                "Recordatorio de visita",
+                $"Mañana tienes programada tu visita a {experience.Title}.",
+                reservation,
+                deliverAt: startsAt24h);
+        }
+
+        if (startsAt2h > now)
+        {
+            await _outbox.EnqueueAsync(
+                userId,
+                "VisitReminder",
+                "Tu visita es pronto",
+                $"En 2 horas comenzará tu visita a {experience.Title}.",
+                reservation,
+                deliverAt: startsAt2h);
+        }
+
+        if (endsAt2h > now)
+        {
+            await _outbox.EnqueueAsync(
+                userId,
+                "VisitFollowUp",
+                "¿Cómo estuvo tu visita?",
+                $"¿Qué tal tu experiencia en {experience.Title}? Cuéntanos tu opinión y comparte una reseña.",
+                reservation,
+                actionUrl: $"/reservations/{reservation.Id}",
+                deliverAt: endsAt2h);
+        }
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return new(ReservationCreationStatus.ConcurrencyConflict);
+        }
+
+        var response = await BuildResponseAsync(reservation.Id);
+        await NotifyAsync(new ReservationEvent(
+            ReservationEventType.Created,
+            response!,
+            schedule.AvailableSpots,
+            now));
+
+        return new(ReservationCreationStatus.Success, response);
+    }
+
     public async Task<PagedResponse<ReservationResponse>> GetByUserIdAsync(
         int userId,
         ReservationListRequest request)
@@ -182,7 +308,8 @@ public class ReservationService : IReservationService
         int id,
         int userId,
         RescheduleReservationRequest request,
-        string? idempotencyKey = null)
+        string? idempotencyKey = null,
+        bool bypassHostApprovalGate = false)
     {
         var key = NormalizeKey(idempotencyKey);
         var requestHash = Hash(request.ScheduleId.ToString());
@@ -195,6 +322,8 @@ public class ReservationService : IReservationService
         var reservation = await _context.Reservations.SingleOrDefaultAsync(item =>
             item.Id == id && item.UserId == userId);
         if (reservation is null) return new(ReservationCreationStatus.ExperienceNotFound);
+        if (!bypassHostApprovalGate && reservation.Status == ReservationStatuses.Confirmed && reservation.TotalAmount > 0)
+            return new(ReservationCreationStatus.RequiresHostApproval);
         if (!ReservationStatuses.IsActive(reservation.Status))
             return new(ReservationCreationStatus.InvalidTransition);
         if (reservation.ScheduleId == request.ScheduleId)
@@ -226,6 +355,145 @@ public class ReservationService : IReservationService
         await AddCapacityAuditAsync(reservation, target, previousTargetSpots, "ReservationRescheduledTo", now);
         await _outbox.EnqueueAsync(userId, "ReservationRescheduled", "Reserva reprogramada",
             "Tu reserva cambió de fecha y hora. Consulta los detalles actualizados.", reservation);
+
+        await _outbox.CancelPendingByReservationAsync(id, "VisitReminder", "VisitFollowUp");
+
+        var newStartsAt24h = target.StartsAt.AddHours(-24);
+        var newStartsAt2h = target.StartsAt.AddHours(-2);
+        var newEndsAt2h = target.EndsAt.AddHours(2);
+        var exp = await _context.Experiences.AsNoTracking().FirstOrDefaultAsync(e => e.Id == reservation.ExperienceId);
+        var expTitle = exp?.Title ?? "tu experiencia";
+
+        if (newStartsAt24h > now)
+        {
+            await _outbox.EnqueueAsync(
+                userId, "VisitReminder", "Recordatorio de visita",
+                $"Mañana tienes programada tu visita a {expTitle}.",
+                reservation, deliverAt: newStartsAt24h);
+        }
+
+        if (newStartsAt2h > now)
+        {
+            await _outbox.EnqueueAsync(
+                userId, "VisitReminder", "Tu visita es pronto",
+                $"En 2 horas comenzará tu visita a {expTitle}.",
+                reservation, deliverAt: newStartsAt2h);
+        }
+
+        if (newEndsAt2h > now)
+        {
+            await _outbox.EnqueueAsync(
+                userId, "VisitFollowUp", "¿Cómo estuvo tu visita?",
+                $"¿Qué tal tu experiencia en {expTitle}? Cuéntanos tu opinión y comparte una reseña.",
+                reservation, actionUrl: $"/reservations/{reservation.Id}", deliverAt: newEndsAt2h);
+        }
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return new(ReservationCreationStatus.ConcurrencyConflict);
+        }
+
+        var response = await BuildResponseAsync(id);
+        await NotifyAsync(new ReservationEvent(ReservationEventType.Updated, response!, target.AvailableSpots, now));
+        return new(ReservationCreationStatus.Success, response);
+    }
+
+    public async Task<ReservationCreationResult> RescheduleSelfScheduledAsync(
+        int id,
+        int userId,
+        DateTime startsAtLocal,
+        int quantity,
+        string? idempotencyKey = null)
+    {
+        if (quantity < 1)
+        {
+            return new(ReservationCreationStatus.InsufficientSpots);
+        }
+
+        var key = NormalizeKey(idempotencyKey);
+        var requestHash = Hash($"{startsAtLocal:O}:{quantity}");
+        var operation = $"RescheduleSelfScheduled:{id}";
+        var repeated = await FindRepeatedAsync(userId, operation, key, requestHash);
+        if (repeated is not null) return repeated;
+
+        var reservation = await _context.Reservations.SingleOrDefaultAsync(item =>
+            item.Id == id && item.UserId == userId);
+        if (reservation is null) return new(ReservationCreationStatus.ExperienceNotFound);
+        if (reservation.Status != ReservationStatuses.Confirmed)
+            return new(ReservationCreationStatus.InvalidTransition);
+
+        var experience = await _context.Experiences.SingleOrDefaultAsync(item => item.Id == reservation.ExperienceId);
+        if (experience is null) return new(ReservationCreationStatus.ExperienceNotFound);
+        if (experience.SchedulingMode != ExperienceSchedulingModes.SelfGuided)
+            return new(ReservationCreationStatus.Forbidden);
+
+        var currentSchedule = await _context.ExperienceSchedules.SingleAsync(item => item.Id == reservation.ScheduleId);
+        if (currentSchedule.StartsAt <= DateTime.UtcNow)
+            return new(ReservationCreationStatus.InvalidTransition);
+
+        var now = DateTime.UtcNow;
+        var resolution = await ResolveSelfGuidedScheduleAsync(experience, startsAtLocal, now);
+        if (resolution.Error.HasValue)
+        {
+            return new(resolution.Error.Value);
+        }
+        var target = resolution.Schedule!;
+
+        var dateChanged = target.Id != reservation.ScheduleId;
+        var quantityChanged = quantity != reservation.Quantity;
+        if (!dateChanged && !quantityChanged)
+            return new(ReservationCreationStatus.InvalidTransition);
+
+        reservation.ScheduleId = target.Id;
+        reservation.Quantity = quantity;
+        reservation.UpdatedAt = now;
+        var reason = dateChanged && quantityChanged
+            ? "La fecha, hora y cantidad de personas de la visita fueron actualizadas."
+            : dateChanged
+                ? "La fecha y hora de la visita fueron actualizadas."
+                : "La cantidad de personas de la visita fue actualizada.";
+        await AddHistoryAsync(reservation, reservation.Status, reservation.Status, userId, reason, now);
+        await AddIdempotencyAsync(reservation, userId, operation, key, requestHash, now);
+        await AddCapacityAuditAsync(reservation, target, target.AvailableSpots, "ReservationRescheduled", now);
+        await _outbox.EnqueueAsync(userId, "ReservationRescheduled", "Visita actualizada",
+            $"Tu visita a {experience.Title} fue actualizada.", reservation);
+
+        if (dateChanged)
+        {
+            await _outbox.CancelPendingByReservationAsync(id, "VisitReminder", "VisitFollowUp");
+
+            var newStartsAt24h = target.StartsAt.AddHours(-24);
+            var newStartsAt2h = target.StartsAt.AddHours(-2);
+            var newEndsAt2h = target.EndsAt.AddHours(2);
+
+            if (newStartsAt24h > now)
+            {
+                await _outbox.EnqueueAsync(
+                    userId, "VisitReminder", "Recordatorio de visita",
+                    $"Mañana tienes programada tu visita a {experience.Title}.",
+                    reservation, deliverAt: newStartsAt24h);
+            }
+
+            if (newStartsAt2h > now)
+            {
+                await _outbox.EnqueueAsync(
+                    userId, "VisitReminder", "Tu visita es pronto",
+                    $"En 2 horas comenzará tu visita a {experience.Title}.",
+                    reservation, deliverAt: newStartsAt2h);
+            }
+
+            if (newEndsAt2h > now)
+            {
+                await _outbox.EnqueueAsync(
+                    userId, "VisitFollowUp", "¿Cómo estuvo tu visita?",
+                    $"¿Qué tal tu experiencia en {experience.Title}? Cuéntanos tu opinión y comparte una reseña.",
+                    reservation, actionUrl: $"/reservations/{reservation.Id}", deliverAt: newEndsAt2h);
+            }
+        }
 
         try
         {
@@ -303,6 +571,57 @@ public class ReservationService : IReservationService
         return new(ReservationCreationStatus.Success, await BuildResponseAsync(id));
     }
 
+    public async Task<ReservationCreationResult> CompleteByTouristAsync(
+        int id,
+        int userId,
+        string? idempotencyKey = null)
+    {
+        var key = NormalizeKey(idempotencyKey);
+        var operation = $"CompleteByTourist:{id}";
+        var requestHash = Hash(id.ToString());
+        var repeated = await FindRepeatedAsync(userId, operation, key, requestHash);
+        if (repeated is not null) return repeated;
+
+        var reservation = await _context.Reservations
+            .FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId);
+
+        if (reservation is null) return new(ReservationCreationStatus.ExperienceNotFound);
+
+        var schedule = await _context.ExperienceSchedules
+            .FirstOrDefaultAsync(s => s.Id == reservation.ScheduleId);
+        var experience = await _context.Experiences
+            .FirstOrDefaultAsync(e => e.Id == reservation.ExperienceId);
+
+        if (schedule is null || experience is null)
+            return new(ReservationCreationStatus.ExperienceNotFound);
+
+        if (experience.SchedulingMode != ExperienceSchedulingModes.SelfGuided)
+            return new(ReservationCreationStatus.Forbidden);
+
+        if (reservation.Status != ReservationStatuses.Confirmed || schedule.EndsAt > DateTime.UtcNow)
+            return new(ReservationCreationStatus.InvalidTransition);
+
+        var previous = reservation.Status;
+        var now = DateTime.UtcNow;
+        reservation.Status = ReservationStatuses.Completed;
+        reservation.UpdatedAt = now;
+
+        await AddHistoryAsync(reservation, previous, reservation.Status, userId,
+            "Marcada como completada por el visitante.", now);
+        await AddIdempotencyAsync(reservation, userId, operation, key, requestHash, now);
+
+        await _outbox.EnqueueAsync(userId, "ReservationCompleted", "Visita completada",
+            "Marcaste tu visita como completada. ¡Déjanos tu reseña sobre esta experiencia!", reservation,
+            actionUrl: $"/reservations/{reservation.Id}");
+
+        await _context.SaveChangesAsync();
+
+        var response = await BuildResponseAsync(id);
+        await NotifyAsync(new ReservationEvent(ReservationEventType.Updated, response!, schedule.AvailableSpots, now));
+
+        return new(ReservationCreationStatus.Success, response);
+    }
+
     private async Task<ReservationCreationResult> CancelCoreAsync(
         int id,
         int actorUserId,
@@ -341,6 +660,8 @@ public class ReservationService : IReservationService
 
         if (reservation is null || schedule is null)
             return new(ReservationCreationStatus.ExperienceNotFound);
+        if (!byHost && reservation.Status == ReservationStatuses.Confirmed && reservation.TotalAmount > 0)
+            return new(ReservationCreationStatus.RequiresHostApproval);
         if (!ReservationStatuses.IsActive(reservation.Status) || schedule.StartsAt <= DateTime.UtcNow)
             return new(ReservationCreationStatus.InvalidTransition);
 
@@ -368,6 +689,7 @@ public class ReservationService : IReservationService
             "Reserva cancelada",
             byHost ? "El anfitrión canceló la reserva." : "El turista canceló la reserva.",
             reservation, byHost ? null : "/host/reservations");
+        await _outbox.CancelPendingByReservationAsync(id, "VisitReminder", "VisitFollowUp");
 
         try
         {
@@ -396,6 +718,74 @@ public class ReservationService : IReservationService
         return existing.RequestHash == requestHash
             ? new(ReservationCreationStatus.Success, await BuildResponseAsync(existing.ReservationId))
             : new(ReservationCreationStatus.IdempotencyConflict);
+    }
+
+    private readonly record struct SelfGuidedScheduleResolution(
+        ExperienceSchedule? Schedule,
+        ReservationCreationStatus? Error);
+
+    private async Task<SelfGuidedScheduleResolution> ResolveSelfGuidedScheduleAsync(
+        Experience experience,
+        DateTime startsAtLocal,
+        DateTime now)
+    {
+        TimeZoneInfo timeZone;
+        try
+        {
+            timeZone = TimeZoneInfo.FindSystemTimeZoneById(experience.TimeZoneId);
+        }
+        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            timeZone = TimeZoneInfo.Utc;
+        }
+
+        var localStart = DateTime.SpecifyKind(startsAtLocal, DateTimeKind.Unspecified);
+        if (timeZone.IsInvalidTime(localStart))
+        {
+            return new(null, ReservationCreationStatus.ScheduleUnavailable);
+        }
+
+        var startsAt = TimeZoneInfo.ConvertTimeToUtc(localStart, timeZone);
+        if (startsAt <= now || startsAt > now.AddMonths(12))
+        {
+            return new(null, ReservationCreationStatus.ScheduleUnavailable);
+        }
+
+        var durationMinutes = experience.DurationMinutes ?? 120;
+        var endsAt = startsAt.AddMinutes(durationMinutes);
+
+        var schedule = await _context.ExperienceSchedules
+            .FirstOrDefaultAsync(s => s.ExperienceId == experience.Id && s.StartsAt == startsAt);
+
+        if (schedule is null)
+        {
+            schedule = new ExperienceSchedule
+            {
+                ExperienceId = experience.Id,
+                StartsAt = startsAt,
+                EndsAt = endsAt,
+                Capacity = ExperienceCapacity.UnlimitedValue,
+                AvailableSpots = ExperienceCapacity.UnlimitedValue,
+                Status = ScheduleStatuses.Scheduled,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            await _context.ExperienceSchedules.AddAsync(schedule);
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (
+                exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            {
+                _context.Entry(schedule).State = EntityState.Detached;
+                schedule = await _context.ExperienceSchedules
+                    .FirstAsync(s => s.ExperienceId == experience.Id && s.StartsAt == startsAt);
+            }
+        }
+
+        return new(schedule, null);
     }
 
     private async Task<(Reservation Reservation, ExperienceSchedule Schedule)?> FindForHostTrackingAsync(
@@ -473,6 +863,23 @@ public class ReservationService : IReservationService
                 Reason = history.Reason,
                 CreatedAt = history.CreatedAt
             }).ToArrayAsync();
+        response.PendingChangeRequest = await _context.ReservationChangeRequests.AsNoTracking()
+            .Where(item => item.ReservationId == id && item.Status == ReservationChangeRequestStatuses.Pending)
+            .Select(item => new ReservationChangeRequestResponse
+            {
+                Id = item.Id,
+                ReservationId = item.ReservationId,
+                RequestedByUserId = item.RequestedByUserId,
+                Type = item.Type,
+                Status = item.Status,
+                Reason = item.Reason,
+                RequestedScheduleId = item.RequestedScheduleId,
+                ReviewedByUserId = item.ReviewedByUserId,
+                ReviewedAt = item.ReviewedAt,
+                DecisionReason = item.DecisionReason,
+                CreatedAt = item.CreatedAt
+            })
+            .SingleOrDefaultAsync();
         return response;
     }
 
@@ -491,6 +898,9 @@ public class ReservationService : IReservationService
             ExperienceSlug = experience.Slug,
             ExperienceTitle = experience.Title,
             ExperienceLocation = experience.Location,
+            Latitude = experience.Latitude,
+            Longitude = experience.Longitude,
+            SchedulingMode = experience.SchedulingMode,
             StartsAt = schedule.StartsAt,
             EndsAt = schedule.EndsAt,
             Quantity = reservation.Quantity,

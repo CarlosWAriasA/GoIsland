@@ -1,4 +1,4 @@
-import { CalendarDays, CheckCheck, MapPin, UsersRound } from 'lucide-react';
+import { Check, CalendarDays, CheckCheck, MapPin, UsersRound, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Button from '../components/Button';
@@ -13,7 +13,12 @@ import ToastFeedback from '../components/ToastFeedback';
 import { toApiError } from '../services/apiError';
 import { reservationService } from '../services/reservationService';
 import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
-import type { Reservation, ReservationStatus } from '../types';
+import {
+  getChangeRequestStatusLabel,
+  getChangeRequestStatusTone,
+  getChangeRequestTypeLabel,
+} from '../utils/reservationChangeRequestStatus';
+import type { Reservation, ReservationChangeRequest, ReservationStatus } from '../types';
 
 const PAGE_SIZE = 15;
 const RESERVATION_STATUSES: ReservationStatus[] = [
@@ -36,6 +41,7 @@ export const HostReservations = () => {
   const statusValue = searchParams.get('status') as ReservationStatus | null;
   const currentStatus = statusValue && RESERVATION_STATUSES.includes(statusValue) ? statusValue : undefined;
   const currentQuery = searchParams.get('q')?.slice(0, 160).trim() || '';
+  const tab = searchParams.get('tab') === 'requests' ? 'requests' : 'reservations';
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const queryString = searchParams.toString();
   const [queryState, setQueryState] = useState({ source: queryString, value: currentQuery });
@@ -49,6 +55,19 @@ export const HostReservations = () => {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [reservationToCancel, setReservationToCancel] = useState<Reservation | null>(null);
+
+  const [changeRequests, setChangeRequests] = useState<ReservationChangeRequest[]>([]);
+  const [crLoading, setCrLoading] = useState(true);
+  const [crError, setCrError] = useState<string | null>(null);
+  const [crRetry, setCrRetry] = useState(0);
+  const [crBusyId, setCrBusyId] = useState<number | null>(null);
+  const [requestToReject, setRequestToReject] = useState<ReservationChangeRequest | null>(null);
+
+  const setTab = (nextTab: 'reservations' | 'requests') => {
+    const next = new URLSearchParams();
+    if (nextTab === 'requests') next.set('tab', 'requests');
+    setSearchParams(next);
+  };
 
   const updateParams = (values: { query?: string; status?: ReservationStatus; page?: number }) => {
     const next = new URLSearchParams();
@@ -81,6 +100,51 @@ export const HostReservations = () => {
     return () => controller.abort();
   }, [currentPage, currentQuery, currentStatus, retry]);
 
+  useEffect(() => {
+    if (tab !== 'requests') return;
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) setCrLoading(true);
+    });
+    reservationService.getChangeRequestsForHost({ status: 'Pending' }, controller.signal)
+      .then((data) => {
+        setChangeRequests(data.items);
+        setCrError(null);
+      })
+      .catch((requestError: unknown) => {
+        if (!controller.signal.aborted) setCrError(toApiError(requestError).message);
+      })
+      .finally(() => { if (!controller.signal.aborted) setCrLoading(false); });
+    return () => controller.abort();
+  }, [tab, crRetry]);
+
+  const approveRequest = async (request: ReservationChangeRequest) => {
+    setCrBusyId(request.id); setCrError(null); setSuccess(null);
+    try {
+      await reservationService.reviewChangeRequest(request.id, true);
+      setSuccess('Solicitud aprobada.');
+      setCrRetry((value) => value + 1);
+    } catch (requestError: unknown) {
+      setCrError(toApiError(requestError, 'No fue posible aprobar la solicitud.').message);
+    } finally {
+      setCrBusyId(null);
+    }
+  };
+
+  const rejectRequest = async (request: ReservationChangeRequest, reason: string) => {
+    setCrBusyId(request.id); setCrError(null); setSuccess(null);
+    try {
+      await reservationService.reviewChangeRequest(request.id, false, reason.trim());
+      setSuccess('Solicitud rechazada.');
+      setCrRetry((value) => value + 1);
+    } catch (requestError: unknown) {
+      setCrError(toApiError(requestError, 'No fue posible rechazar la solicitud.').message);
+    } finally {
+      setCrBusyId(null);
+      setRequestToReject(null);
+    }
+  };
+
   const cancel = async (reservation: Reservation, reason: string) => {
     setBusyId(reservation.id); setError(null); setSuccess(null);
     try {
@@ -111,6 +175,79 @@ export const HostReservations = () => {
       <p>Gestiona las reservas de tus experiencias: márcalas como completadas al terminar o cancélalas si hace falta.</p></header>
     <ToastFeedback message={success} tone="success" />
     <ToastFeedback message={error} tone="error" />
+    <ToastFeedback message={crError} tone="error" />
+    <div className="management-tabs" role="tablist">
+      <Button variant={tab === 'reservations' ? 'primary' : 'outline'} role="tab"
+        aria-selected={tab === 'reservations'} onClick={() => setTab('reservations')}>
+        Reservas
+      </Button>
+      <Button variant={tab === 'requests' ? 'primary' : 'outline'} role="tab"
+        aria-selected={tab === 'requests'} onClick={() => setTab('requests')}>
+        Solicitudes{changeRequests.length > 0 ? ` (${changeRequests.length})` : ''}
+      </Button>
+    </div>
+    {tab === 'requests' ? (
+      <>
+        {crLoading ? (
+          <div className="operations-list" role="status">
+            {[1, 2, 3].map((item) => <Skeleton key={item} className="operations-row operations-row--loading" />)}
+            <span className="visually-hidden">Cargando solicitudes…</span>
+          </div>
+        ) : crError && changeRequests.length === 0
+          ? <ErrorState description={crError} onRetry={() => { setCrLoading(true); setCrRetry((value) => value + 1); }} />
+          : changeRequests.length === 0
+            ? <EmptyState title="Sin solicitudes pendientes" description="Las solicitudes de reprogramación o cancelación aparecerán aquí." />
+            : <div className="operations-list" aria-label="Solicitudes de cambio">{changeRequests.map((request) => (
+              <article className="operations-row operations-row--reservations" key={request.id}>
+                <div className="operations-row__main">
+                  <div className="operations-row__primary">
+                    <span className="operations-row__reference">Reserva #{request.reservationId} · Turista #{request.requestedByUserId}</span>
+                    <h2>{request.experienceTitle}</h2>
+                    <small><CalendarDays size={14} aria-hidden="true" />{formatDate(request.reservationStartsAt)}</small>
+                  </div>
+                  <div className="operations-row__cell">
+                    <span>Solicitud</span>
+                    <strong>{getChangeRequestTypeLabel(request.type)}</strong>
+                    {request.type === 'Reschedule' && request.requestedScheduleStartsAt && (
+                      <small>Nueva fecha: {formatDate(request.requestedScheduleStartsAt)}</small>
+                    )}
+                  </div>
+                  <div className="operations-row__cell">
+                    <span>Motivo</span>
+                    <strong>{request.reason}</strong>
+                  </div>
+                  <StatusBadge tone={getChangeRequestStatusTone(request.status)}>
+                    {getChangeRequestStatusLabel(request.status)}
+                  </StatusBadge>
+                  <div className="operations-row__actions">
+                    <Button size="sm" onClick={() => void approveRequest(request)} isLoading={crBusyId === request.id}
+                      disabled={crBusyId !== null}>
+                      <Check size={15} aria-hidden="true" />Aprobar
+                    </Button>
+                    <Button size="sm" variant="danger" onClick={() => setRequestToReject(request)}
+                      isLoading={crBusyId === request.id} disabled={crBusyId !== null}>
+                      <X size={15} aria-hidden="true" />Rechazar
+                    </Button>
+                  </div>
+                </div>
+              </article>
+            ))}</div>}
+        <PromptDialog
+          open={requestToReject !== null}
+          title="Rechazar solicitud"
+          description="El turista recibirá este motivo junto con el rechazo."
+          label="Motivo del rechazo"
+          placeholder="Escribe el motivo para el turista"
+          confirmLabel="Rechazar solicitud"
+          isConfirming={crBusyId !== null}
+          onClose={() => setRequestToReject(null)}
+          onConfirm={async (reason) => {
+            if (requestToReject) await rejectRequest(requestToReject, reason);
+          }}
+        />
+      </>
+    ) : (
+      <>
     <form className="management-list-toolbar surface-panel" role="search" onSubmit={(event) => {
       event.preventDefault();
       updateParams({ query: queryDraft, status: currentStatus, page: 1 });
@@ -192,6 +329,8 @@ export const HostReservations = () => {
         if (reservationToCancel) await cancel(reservationToCancel, reason);
       }}
     />
+      </>
+    )}
   </div>;
 };
 
