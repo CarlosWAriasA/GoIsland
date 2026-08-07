@@ -14,4 +14,5 @@ public interface IPaymentService
     Task<PaymentOperationResult> MockConfirmAsync(int id, int actorUserId, bool isAdmin);
     Task<PaymentOperationResult> MockRejectAsync(int id, int actorUserId, bool isAdmin, string? failureCode);
     Task<PaymentOperationResult> RefundAsync(int id, int adminUserId, string reason);
+    Task<PaymentOperationResult> RefundByHostAsync(int id, int hostUserId, string reason);
 }

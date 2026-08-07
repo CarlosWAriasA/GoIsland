@@ -99,6 +99,7 @@ try
     var created = 0;
     var updated = 0;
     var pendingImages = 0;
+    var pendingSchedules = 0;
 
     foreach (var source in catalog.Experiences)
     {
@@ -131,6 +132,11 @@ try
 
         ApplyCatalogData(experience, source);
         await context.SaveChangesAsync();
+        pendingSchedules += await GenerateHostScheduledSlotsAsync(
+            context,
+            experience,
+            source,
+            modeOptions[0] == ApplyOption);
         pendingImages += await ReplaceCatalogDetailsAsync(
             context,
             experience,
@@ -149,7 +155,8 @@ try
         await transaction.RollbackAsync();
         Console.WriteLine(
             $"Simulación completada: {created} nuevos, {updated} actualizados, "
-            + $"{pendingImages} imágenes por subir. No se guardaron cambios.");
+            + $"{pendingImages} imágenes por subir, {pendingSchedules} horarios por crear. "
+            + "No se guardaron cambios.");
     }
     else
     {
@@ -157,7 +164,7 @@ try
         await DeleteReplacedImagesAsync(imageStorage, imagesToDeleteAfterCommit);
         Console.WriteLine(
             $"Catálogo importado: {created} nuevos, {updated} actualizados, "
-            + $"{uploadedPublicIds.Count} imágenes subidas.");
+            + $"{uploadedPublicIds.Count} imágenes subidas, {pendingSchedules} horarios creados.");
     }
 }
 catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UndefinedColumn)
@@ -243,13 +250,121 @@ static void ApplyCatalogData(Experience target, CatalogExperience source)
     target.Longitude = source.Longitude;
     target.Category = source.Category;
     target.Price = source.Price;
-    target.Capacity = ExperienceCapacity.UnlimitedValue;
-    target.AvailableSpots = ExperienceCapacity.UnlimitedValue;
-    target.IsUnlimitedCapacity = true;
+    var isHostScheduled = source.SchedulingMode == ExperienceSchedulingModes.HostScheduled;
+    target.Capacity = isHostScheduled ? source.Capacity : ExperienceCapacity.UnlimitedValue;
+    target.AvailableSpots = isHostScheduled ? source.Capacity : ExperienceCapacity.UnlimitedValue;
+    target.IsUnlimitedCapacity = !isHostScheduled;
+    target.SchedulingMode = isHostScheduled
+        ? ExperienceSchedulingModes.HostScheduled
+        : ExperienceSchedulingModes.SelfGuided;
     target.IsApproved = true;
     target.ApprovalStatus = ExperienceApprovalStatuses.Approved;
     target.RejectionReason = null;
     target.UpdatedAt = DateTime.UtcNow;
+}
+
+static async Task<int> GenerateHostScheduledSlotsAsync(
+    GoIslandDbContext context,
+    Experience experience,
+    CatalogExperience source,
+    bool apply)
+{
+    if (source.SchedulingMode != ExperienceSchedulingModes.HostScheduled || source.SchedulePolicy is null)
+    {
+        return 0;
+    }
+
+    TimeZoneInfo timeZone;
+    try
+    {
+        timeZone = TimeZoneInfo.FindSystemTimeZoneById(experience.TimeZoneId);
+    }
+    catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+    {
+        timeZone = TimeZoneInfo.Utc;
+    }
+
+    var policy = source.SchedulePolicy;
+    var weekdays = policy.Weekdays.ToHashSet();
+    var durationMinutes = experience.DurationMinutes ?? 120;
+    var now = DateTime.UtcNow;
+    var today = DateOnly.FromDateTime(now);
+    var startDate = policy.StartDate.HasValue && policy.StartDate.Value > today
+        ? policy.StartDate.Value
+        : today;
+    var endDate = startDate.AddDays(policy.WeeksAhead * 7);
+
+    var candidates = new List<(DateTime StartsAt, DateTime EndsAt)>();
+    for (var date = startDate; date <= endDate; date = date.AddDays(1))
+    {
+        if (!weekdays.Contains((int)date.DayOfWeek))
+        {
+            continue;
+        }
+
+        var localStart = date.ToDateTime(policy.StartsAt, DateTimeKind.Unspecified);
+        if (timeZone.IsInvalidTime(localStart))
+        {
+            continue;
+        }
+
+        var startsAt = TimeZoneInfo.ConvertTimeToUtc(localStart, timeZone);
+        if (startsAt <= now)
+        {
+            continue;
+        }
+
+        candidates.Add((startsAt, startsAt.AddMinutes(durationMinutes)));
+    }
+
+    if (candidates.Count == 0)
+    {
+        return 0;
+    }
+
+    var candidateStarts = candidates.Select(candidate => candidate.StartsAt).ToArray();
+    var existingStarts = (await context.ExperienceSchedules.AsNoTracking()
+        .Where(schedule => schedule.ExperienceId == experience.Id
+            && candidateStarts.Contains(schedule.StartsAt))
+        .Select(schedule => schedule.StartsAt)
+        .ToArrayAsync())
+        .ToHashSet();
+
+    var toCreate = candidates.Where(candidate => !existingStarts.Contains(candidate.StartsAt)).ToArray();
+    if (toCreate.Length == 0 || !apply)
+    {
+        return toCreate.Length;
+    }
+
+    var createdAt = DateTime.UtcNow;
+    var schedules = toCreate.Select(candidate => new ExperienceSchedule
+    {
+        ExperienceId = experience.Id,
+        StartsAt = candidate.StartsAt,
+        EndsAt = candidate.EndsAt,
+        Capacity = source.Capacity,
+        AvailableSpots = source.Capacity,
+        Status = ScheduleStatuses.Scheduled,
+        CreatedAt = createdAt,
+        UpdatedAt = createdAt
+    }).ToArray();
+
+    await context.ExperienceSchedules.AddRangeAsync(schedules);
+    try
+    {
+        await context.SaveChangesAsync();
+    }
+    catch (DbUpdateException exception) when (
+        exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+    {
+        foreach (var schedule in schedules)
+        {
+            context.Entry(schedule).State = EntityState.Detached;
+        }
+        return 0;
+    }
+
+    return schedules.Length;
 }
 
 static async Task<int> ReplaceCatalogDetailsAsync(

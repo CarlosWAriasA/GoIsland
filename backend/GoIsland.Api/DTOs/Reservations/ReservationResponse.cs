@@ -11,6 +11,9 @@ public class ReservationResponse
     public string ExperienceSlug { get; set; } = string.Empty;
     public string ExperienceTitle { get; set; } = string.Empty;
     public string ExperienceLocation { get; set; } = string.Empty;
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
+    public string SchedulingMode { get; set; } = string.Empty;
     public DateTime StartsAt { get; set; }
     public DateTime EndsAt { get; set; }
     public int Quantity { get; set; }
@@ -21,6 +24,7 @@ public class ReservationResponse
     public DateTime UpdatedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
     public IReadOnlyCollection<ReservationStatusHistoryResponse> StatusHistory { get; set; } = [];
+    public ReservationChangeRequestResponse? PendingChangeRequest { get; set; }
 }
 
 public class ReservationStatusHistoryResponse
@@ -41,4 +45,12 @@ public class RescheduleReservationRequest
 {
     [Range(1, int.MaxValue, ErrorMessage = "El horario no es valido.")]
     public int ScheduleId { get; set; }
+}
+
+public class RescheduleSelfScheduledReservationRequest
+{
+    public DateTime StartsAtLocal { get; set; }
+
+    [Range(1, int.MaxValue, ErrorMessage = "La cantidad debe ser mayor que cero.")]
+    public int Quantity { get; set; }
 }

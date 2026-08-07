@@ -37,7 +37,8 @@ public record GatewayPaymentResult(
 public record GatewayPaymentSessionResult(
     bool Available,
     string? ClientSecret,
-    string? FailureCode);
+    string? FailureCode,
+    bool Succeeded = false);
 
 public record GatewayRefundRequest(
     string ProviderPaymentId,

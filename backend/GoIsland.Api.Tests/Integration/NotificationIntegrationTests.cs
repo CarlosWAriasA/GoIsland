@@ -2,6 +2,7 @@ using GoIsland.Api.DTOs.Notifications;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Notifications;
 using GoIsland.Api.Tests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace GoIsland.Api.Tests.Integration;
 
@@ -56,6 +57,36 @@ public class NotificationIntegrationTests : PostgresIntegrationTestBase
         });
         Assert.Empty(unreadPage.Items);
         Assert.Equal(0, unreadPage.TotalItems);
+    }
+
+    [Fact]
+    public async Task Enqueue_WithDeliverAtInFuture_IsNotProcessedUntilTime()
+    {
+        var user = await SeedUserAsync();
+        var outboxWriter = GetRequiredService<IOutboxWriter>();
+        var deliverAt = DateTime.UtcNow.AddHours(2);
+
+        await outboxWriter.EnqueueAsync(user.Id, "VisitReminder", "Recordatorio futuro", "Mensaje diferido", deliverAt: deliverAt);
+        await Context.SaveChangesAsync();
+
+        var processor = GetRequiredService<OutboxProcessor>();
+        var processedCount = await processor.ProcessPendingAsync();
+        Assert.Equal(0, processedCount);
+
+        var msg = await Context.OutboxMessages.SingleAsync(m => m.UserId == user.Id && m.Type == "VisitReminder");
+        Assert.Equal(OutboxStatuses.Pending, msg.Status);
+        Assert.True(msg.NextAttemptAt > DateTime.UtcNow);
+
+        // Manually move deliverAt to past to simulate time passing
+        msg.NextAttemptAt = DateTime.UtcNow.AddMinutes(-5);
+        await Context.SaveChangesAsync();
+
+        processedCount = await processor.ProcessPendingAsync();
+        Assert.Equal(1, processedCount);
+
+        var deliveredNotification = await Context.Notifications.SingleAsync(n => n.UserId == user.Id);
+        Assert.Equal("Recordatorio futuro", deliveredNotification.Title);
+        Assert.True(deliveredNotification.CreatedAt > DateTime.UtcNow.AddMinutes(-1));
     }
 
     private async Task<User> SeedUserAsync()

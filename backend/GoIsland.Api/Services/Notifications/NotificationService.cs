@@ -100,13 +100,32 @@ public class NotificationService : INotificationService, IOutboxWriter
     }
 
     public async Task EnqueueAsync(int userId, string type, string title, string message,
-        Reservation? reservation = null, string? actionUrl = null) =>
+        Reservation? reservation = null, string? actionUrl = null, DateTime? deliverAt = null)
+    {
+        var now = DateTime.UtcNow;
+        var nextAttemptAt = deliverAt.HasValue && deliverAt.Value > now ? deliverAt.Value : now;
         await _context.OutboxMessages.AddAsync(new OutboxMessage
         {
             UserId = userId, Reservation = reservation, Type = type, Title = title,
-            Message = message, ActionUrl = actionUrl, CreatedAt = DateTime.UtcNow,
-            NextAttemptAt = DateTime.UtcNow
+            Message = message, ActionUrl = actionUrl, CreatedAt = now,
+            NextAttemptAt = nextAttemptAt
         });
+    }
+
+    public async Task CancelPendingByReservationAsync(int reservationId, params string[] types)
+    {
+        var pendingMessages = await _context.OutboxMessages
+            .Where(m => m.ReservationId == reservationId
+                && (m.Status == OutboxStatuses.Pending || m.Status == OutboxStatuses.Failed)
+                && types.Contains(m.Type))
+            .ToListAsync();
+
+        foreach (var message in pendingMessages)
+        {
+            message.Status = OutboxStatuses.Processed;
+            message.ProcessedAt = DateTime.UtcNow;
+        }
+    }
 
     private static NotificationResponse ToResponse(Notification item) => new()
     {

@@ -61,7 +61,8 @@ public class StripePaymentGateway : IPaymentGateway
             return new GatewayPaymentSessionResult(
                 available,
                 available ? intent.ClientSecret : null,
-                available ? null : $"PaymentIntent{intent.Status}");
+                available ? null : $"PaymentIntent{intent.Status}",
+                Succeeded: intent.Status == "succeeded");
         }
         catch (StripeException exception)
         {

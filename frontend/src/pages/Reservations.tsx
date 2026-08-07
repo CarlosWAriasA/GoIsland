@@ -1,4 +1,4 @@
-import { CalendarDays, MapPin, ReceiptText, TicketCheck, UsersRound } from 'lucide-react';
+import { CalendarDays, MapPin, MapPinned, Pencil, ReceiptText, TicketCheck, UsersRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Button from '../components/Button';
@@ -11,6 +11,7 @@ import StatusBadge from '../components/StatusBadge';
 import { toApiError } from '../services/apiError';
 import { reservationService } from '../services/reservationService';
 import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
+import { buildGoogleMapsUrl } from '../utils/navigation';
 import type { Reservation, ReservationStatus } from '../types';
 
 const PAGE_SIZE = 12;
@@ -122,6 +123,15 @@ export const Reservations = () => {
     return () => controller.abort();
   }, [currentPage, currentQuery, currentStatus, requestKey]);
 
+  const currentScope = searchParams.get('scope') || 'all';
+  const displayedReservations = reservations.filter((reservation) => {
+    const isPast = new Date(reservation.endsAt) <= new Date()
+      || ['Completed', 'CancelledByTourist', 'CancelledByHost', 'Expired', 'Refunded'].includes(reservation.status);
+    if (currentScope === 'upcoming') return !isPast;
+    if (currentScope === 'past') return isPast;
+    return true;
+  });
+
   return (
     <div className="container reservations-page animate-fade-in">
       <header className="page-heading reservations-page__heading">
@@ -145,6 +155,24 @@ export const Reservations = () => {
           maxLength={160}
           onChange={(event) => setQueryState({ source: queryString, value: event.target.value })}
         />
+        <SelectField
+          label="Período"
+          value={currentScope}
+          onChange={(event) => {
+            const next = new URLSearchParams(searchParams);
+            if (event.target.value && event.target.value !== 'all') {
+              next.set('scope', event.target.value);
+            } else {
+              next.delete('scope');
+            }
+            next.set('page', '1');
+            setSearchParams(next);
+          }}
+        >
+          <option value="all">Todas las fechas</option>
+          <option value="upcoming">Próximas</option>
+          <option value="past">Pasadas</option>
+        </SelectField>
         <SelectField
           label="Estado"
           value={currentStatus ?? ''}
@@ -170,9 +198,9 @@ export const Reservations = () => {
               ? 'No fue posible cargar tus reservas.'
               : `${totalItems} ${totalItems === 1 ? 'reserva disponible' : 'reservas disponibles'}.`}
         </p>
-        {!loading && !error && reservations.length > 0 && (
+        {!loading && !error && displayedReservations.length > 0 && (
           <p className="reservations-page__count">
-            {totalItems} {totalItems === 1 ? 'reserva' : 'reservas'}
+            {displayedReservations.length} {displayedReservations.length === 1 ? 'reserva' : 'reservas'}
           </p>
         )}
 
@@ -180,15 +208,20 @@ export const Reservations = () => {
           <ReservationsSkeleton />
         ) : error ? (
           <ErrorState description={error} onRetry={() => setRetryCount((current) => current + 1)} />
-        ) : reservations.length === 0 ? (
+        ) : displayedReservations.length === 0 ? (
           <EmptyState
-            title="Todavía no tienes reservas"
-            description="Explora el catálogo y crea una reserva cuando encuentres una experiencia para ti."
+            title="No se encontraron reservas"
+            description={currentScope !== 'all' ? "No tienes reservas en este período." : "Explora el catálogo y crea una reserva cuando encuentres una experiencia para ti."}
             action={<Link className="button-link button-link--outline" to="/experiences">Explorar experiencias</Link>}
           />
         ) : (
           <div className="reservation-list">
-            {reservations.map((reservation) => {
+            {displayedReservations.map((reservation) => {
+              const isSelfGuided = reservation.schedulingMode === 'SelfGuided';
+              const canCompleteVisit = isSelfGuided
+                && reservation.status === 'Confirmed' && new Date(reservation.endsAt) <= new Date();
+              const canEditVisit = isSelfGuided
+                && reservation.status === 'Confirmed' && new Date(reservation.startsAt) > new Date();
               return (
                 <article className="surface-panel reservation-card" key={reservation.id}>
                   <div className="reservation-card__header">
@@ -218,9 +251,34 @@ export const Reservations = () => {
                     </div>
                   </dl>
 
-                  <Link className="reservation-card__link" to={`/reservations/${reservation.id}`}>
-                    <TicketCheck size={17} aria-hidden="true" /> Ver detalle
-                  </Link>
+                  <div className="reservation-card__secondary-links">
+                    <Link
+                      className="reservation-card__link"
+                      to={`/experiences/${reservation.experienceSlug || reservation.experienceId}`}
+                      state={{ from: `/reservations${queryString ? `?${queryString}` : ''}` }}
+                    >
+                      Ver experiencia
+                    </Link>
+                    <a
+                      className="reservation-card__link"
+                      href={buildGoogleMapsUrl(reservation.latitude, reservation.longitude, reservation.experienceLocation)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <MapPinned size={16} aria-hidden="true" /> Ver ubicación
+                    </a>
+                    <Link
+                      className="reservation-card__link"
+                      to={`/reservations/${reservation.id}`}
+                      state={canEditVisit ? { focusEdit: true } : undefined}
+                    >
+                      {canCompleteVisit
+                        ? <><TicketCheck size={17} aria-hidden="true" /> Marcar realizada y reseñar</>
+                        : canEditVisit
+                          ? <><Pencil size={17} aria-hidden="true" /> Editar reserva</>
+                          : <><TicketCheck size={17} aria-hidden="true" /> Ver detalle</>}
+                    </Link>
+                  </div>
                 </article>
               );
             })}

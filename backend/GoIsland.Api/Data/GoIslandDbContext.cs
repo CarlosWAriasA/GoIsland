@@ -18,6 +18,7 @@ public class GoIslandDbContext : DbContext
     public DbSet<ExperienceSchedule> ExperienceSchedules => Set<ExperienceSchedule>();
     public DbSet<ReservationStatusHistory> ReservationStatusHistories => Set<ReservationStatusHistory>();
     public DbSet<ReservationIdempotencyKey> ReservationIdempotencyKeys => Set<ReservationIdempotencyKey>();
+    public DbSet<ReservationChangeRequest> ReservationChangeRequests => Set<ReservationChangeRequest>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<PaymentGatewayAttempt> PaymentGatewayAttempts => Set<PaymentGatewayAttempt>();
     public DbSet<PaymentWebhookEvent> PaymentWebhookEvents => Set<PaymentWebhookEvent>();
@@ -111,6 +112,10 @@ public class GoIslandDbContext : DbContext
                 .IsConcurrencyToken();
             entity.Property(experience => experience.IsUnlimitedCapacity)
                 .HasColumnName("is_unlimited_capacity")
+                .IsRequired();
+            entity.Property(experience => experience.SchedulingMode)
+                .HasColumnName("scheduling_mode")
+                .HasMaxLength(20)
                 .IsRequired();
             entity.Property(experience => experience.IsApproved).HasColumnName("is_approved").IsRequired();
             entity.Property(experience => experience.ApprovalStatus).HasColumnName("approval_status").HasMaxLength(40).IsRequired();
@@ -227,6 +232,33 @@ public class GoIslandDbContext : DbContext
             entity.HasOne(history => history.Reservation)
                 .WithMany()
                 .HasForeignKey(history => history.ReservationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReservationChangeRequest>(entity =>
+        {
+            entity.ToTable("reservation_change_requests");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.ReservationId).HasColumnName("reservation_id").IsRequired();
+            entity.Property(item => item.RequestedByUserId).HasColumnName("requested_by_user_id").IsRequired();
+            entity.Property(item => item.Type).HasColumnName("type").HasMaxLength(20).IsRequired();
+            entity.Property(item => item.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
+            entity.Property(item => item.Reason).HasColumnName("reason").HasMaxLength(500).IsRequired();
+            entity.Property(item => item.RequestedScheduleId).HasColumnName("requested_schedule_id");
+            entity.Property(item => item.ReviewedByUserId).HasColumnName("reviewed_by_user_id");
+            entity.Property(item => item.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(item => item.DecisionReason).HasColumnName("decision_reason").HasMaxLength(500);
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(item => item.UpdatedAt).HasColumnName("updated_at").IsRequired();
+            entity.HasIndex(item => item.ReservationId);
+            entity.HasIndex(item => item.ReservationId)
+                .IsUnique()
+                .HasFilter("status = 'Pending'")
+                .HasDatabaseName("ux_reservation_change_requests_one_pending");
+            entity.HasOne(item => item.Reservation)
+                .WithMany()
+                .HasForeignKey(item => item.ReservationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

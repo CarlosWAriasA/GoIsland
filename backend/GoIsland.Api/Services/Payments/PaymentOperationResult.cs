@@ -11,7 +11,8 @@ public enum PaymentOperationStatus
     ReservationExpired,
     IdempotencyConflict,
     ConcurrencyConflict,
-    GatewayRejected
+    GatewayRejected,
+    Forbidden
 }
 
 public record PaymentOperationResult(

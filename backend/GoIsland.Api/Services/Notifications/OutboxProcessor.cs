@@ -76,7 +76,7 @@ public class OutboxProcessor : IOutboxProcessor
                         UserId = item.UserId, OutboxMessageId = item.Id, Type = item.Type,
                         Title = item.Title, Message = item.Message,
                         ActionUrl = item.ActionUrl ?? (item.ReservationId.HasValue ? $"/reservations/{item.ReservationId}" : null),
-                        CreatedAt = item.CreatedAt
+                        CreatedAt = DateTime.UtcNow
                     }, cancellationToken);
                 }
                 await RecordAttemptAsync(id, NotificationChannels.Dashboard, true, null, cancellationToken);
