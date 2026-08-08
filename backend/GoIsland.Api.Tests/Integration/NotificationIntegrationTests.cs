@@ -69,7 +69,7 @@ public class NotificationIntegrationTests : PostgresIntegrationTestBase
         await outboxWriter.EnqueueAsync(user.Id, "VisitReminder", "Recordatorio futuro", "Mensaje diferido", deliverAt: deliverAt);
         await Context.SaveChangesAsync();
 
-        var processor = GetRequiredService<OutboxProcessor>();
+        var processor = GetRequiredService<IOutboxProcessor>();
         var processedCount = await processor.ProcessPendingAsync();
         Assert.Equal(0, processedCount);
 
