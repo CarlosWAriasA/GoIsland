@@ -259,6 +259,63 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         return user;
     }
 
+    [Theory]
+    [InlineData("samana")]      // sin tildes encuentra el titulo con tilde
+    [InlineData("Samaná")]      // con tilde encuentra igual
+    [InlineData("SAMANÁ")]      // mayusculas y tildes
+    [InlineData("samaná")]
+    public async Task PublicSearch_IgnoresAccentsAndCasingInTheQuery(string query)
+    {
+        var (marker, experienceId) = await SeedAccentedExperienceAsync();
+
+        var search = await GetRequiredService<IExperienceService>().SearchAsync(new SearchExperiencesRequest
+        {
+            Query = query,
+            Location = $"Lugar-{marker}"
+        });
+
+        var result = Assert.Single(search.Items);
+        Assert.Equal(experienceId, result.Id);
+    }
+
+    [Fact]
+    public async Task PublicSearch_IgnoresAccentsInLocationAndCategoryFilters()
+    {
+        var (marker, experienceId) = await SeedAccentedExperienceAsync();
+
+        // La categoria almacenada es "Gastronomía-…" y se consulta sin tilde ni mayusculas.
+        var search = await GetRequiredService<IExperienceService>().SearchAsync(new SearchExperiencesRequest
+        {
+            Location = $"lugar-{marker}",
+            Category = $"gastronomia-{marker}"
+        });
+
+        var result = Assert.Single(search.Items);
+        Assert.Equal(experienceId, result.Id);
+    }
+
+    /// <summary>Crea una experiencia aprobada con tildes en titulo, lugar y categoria.</summary>
+    private async Task<(string Marker, int ExperienceId)> SeedAccentedExperienceAsync()
+    {
+        var service = GetRequiredService<IExperienceManagementService>();
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync(marker);
+        var admin = await CreateUserAsync($"admin-accents-{marker}@goisland.test", UserRoles.Admin);
+
+        var created = await service.CreateAsync(host.Id, CreateRequest(
+            $"Bahía de Samaná {marker}",
+            $"Lugar-{marker}",
+            $"Gastronomía-{marker}",
+            50m));
+
+        var experienceId = created.Experience!.Id;
+        await AddCoverAsync(experienceId, $"{marker}-{experienceId}");
+        await service.SubmitAsync(host.Id, experienceId);
+        await service.ReviewAsync(experienceId, admin.Id, ExperienceReviewAction.Approve, null);
+
+        return (marker, experienceId);
+    }
+
     private static CreateExperienceRequest CreateRequest(
         string title,
         string location,

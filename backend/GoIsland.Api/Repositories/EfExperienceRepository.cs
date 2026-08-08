@@ -51,28 +51,30 @@ public class EfExperienceRepository : IExperienceRepository
             .AsNoTracking()
             .Where(experience => experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
 
-        var searchTerm = Normalize(request.Query);
+        var searchTerm = SearchText.NormalizeTerm(request.Query);
         if (searchTerm is not null)
         {
-            var pattern = $"%{EscapeLikePattern(searchTerm)}%";
+            var pattern = SearchText.ToContainsPattern(searchTerm);
             query = query.Where(experience =>
-                EF.Functions.ILike(experience.Title, pattern, "\\")
-                || EF.Functions.ILike(experience.ShortDescription, pattern, "\\")
-                || EF.Functions.ILike(experience.Location, pattern, "\\")
-                || experience.Tags.Any(tag => EF.Functions.ILike(tag, pattern, "\\")));
+                EF.Functions.Like(GoIslandDbContext.Normalize(experience.Title), pattern, "\\")
+                || EF.Functions.Like(GoIslandDbContext.Normalize(experience.ShortDescription), pattern, "\\")
+                || EF.Functions.Like(GoIslandDbContext.Normalize(experience.Location), pattern, "\\")
+                || experience.Tags.Any(tag =>
+                    EF.Functions.Like(GoIslandDbContext.Normalize(tag), pattern, "\\")));
         }
 
-        var location = Normalize(request.Location);
+        var location = SearchText.NormalizeTerm(request.Location);
         if (location is not null)
         {
-            var pattern = $"%{EscapeLikePattern(location)}%";
-            query = query.Where(experience => EF.Functions.ILike(experience.Location, pattern, "\\"));
+            var pattern = SearchText.ToContainsPattern(location);
+            query = query.Where(experience =>
+                EF.Functions.Like(GoIslandDbContext.Normalize(experience.Location), pattern, "\\"));
         }
 
-        var category = Normalize(request.Category);
+        var category = SearchText.NormalizeTerm(request.Category);
         if (category is not null)
         {
-            query = query.Where(experience => EF.Functions.ILike(experience.Category, category));
+            query = query.Where(experience => GoIslandDbContext.Normalize(experience.Category) == category);
         }
 
         if (request.MaxPrice.HasValue)
@@ -98,17 +100,17 @@ public class EfExperienceRepository : IExperienceRepository
                 && schedule.AvailableSpots >= requiredSpots));
         }
 
-        var language = Normalize(request.Language);
+        var language = SearchText.NormalizeTerm(request.Language);
         if (language is not null)
         {
             query = query.Where(experience => experience.Languages.Any(value =>
-                EF.Functions.ILike(value, language)));
+                GoIslandDbContext.Normalize(value) == language));
         }
 
-        var difficulty = Normalize(request.Difficulty);
+        var difficulty = SearchText.NormalizeTerm(request.Difficulty);
         if (difficulty is not null)
         {
-            query = query.Where(experience => EF.Functions.ILike(experience.Difficulty, difficulty));
+            query = query.Where(experience => GoIslandDbContext.Normalize(experience.Difficulty) == difficulty);
         }
 
         if (request.Accessible == true)
@@ -153,10 +155,10 @@ public class EfExperienceRepository : IExperienceRepository
                     .Average(review => (double?)review.Rating) ?? 0d)
                 .ThenByDescending(experience => experience.CreatedAt),
             "relevance" when searchTerm is not null => query
-                .OrderByDescending(experience => EF.Functions.ILike(experience.Title, searchTerm))
-                .ThenByDescending(experience => EF.Functions.ILike(
-                    experience.Title,
-                    $"{EscapeLikePattern(searchTerm)}%",
+                .OrderByDescending(experience => GoIslandDbContext.Normalize(experience.Title) == searchTerm)
+                .ThenByDescending(experience => EF.Functions.Like(
+                    GoIslandDbContext.Normalize(experience.Title),
+                    SearchText.ToStartsWithPattern(searchTerm),
                     "\\"))
                 .ThenByDescending(experience => experience.CreatedAt),
             _ => query.OrderByDescending(experience => experience.CreatedAt)
@@ -165,11 +167,6 @@ public class EfExperienceRepository : IExperienceRepository
 
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private static string EscapeLikePattern(string value) => value
-        .Replace("\\", "\\\\", StringComparison.Ordinal)
-        .Replace("%", "\\%", StringComparison.Ordinal)
-        .Replace("_", "\\_", StringComparison.Ordinal);
 
     public async Task<Experience> AddAsync(Experience experience)
     {

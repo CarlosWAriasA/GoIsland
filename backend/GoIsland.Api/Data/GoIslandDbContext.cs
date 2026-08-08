@@ -35,9 +35,21 @@ public class GoIslandDbContext : DbContext
     public DbSet<CapacityAudit> CapacityAudits => Set<CapacityAudit>();
     public DbSet<Review> Reviews => Set<Review>();
 
+    /// <summary>
+    /// Se traduce a la función <c>goisland_normalize</c> de PostgreSQL (sin diacríticos y en
+    /// minúsculas). Solo puede usarse dentro de una consulta LINQ; para normalizar en memoria
+    /// se usa <see cref="SearchText.Normalize"/>.
+    /// </summary>
+    public static string Normalize(string value) =>
+        throw new InvalidOperationException("Solo puede usarse dentro de una consulta LINQ.");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder
+            .HasDbFunction(typeof(GoIslandDbContext).GetMethod(nameof(Normalize), [typeof(string)])!)
+            .HasName("goisland_normalize");
 
         modelBuilder.Entity<User>(entity =>
         {

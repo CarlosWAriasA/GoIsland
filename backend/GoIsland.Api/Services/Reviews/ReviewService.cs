@@ -119,13 +119,13 @@ public class ReviewService : IReviewService
                             CreatedAt = review.CreatedAt,
                             UpdatedAt = review.UpdatedAt
                         };
-        var search = string.IsNullOrWhiteSpace(request.Query) ? null : request.Query.Trim();
+        var search = SearchText.NormalizeTerm(request.Query);
         if (search is not null)
         {
-            var pattern = $"%{EscapeLikePattern(search)}%";
+            var pattern = SearchText.ToContainsPattern(search);
             responses = responses.Where(review =>
-                EF.Functions.ILike(review.AuthorName, pattern, "\\")
-                || EF.Functions.ILike(review.Comment, pattern, "\\"));
+                EF.Functions.Like(GoIslandDbContext.Normalize(review.AuthorName), pattern, "\\")
+                || EF.Functions.Like(GoIslandDbContext.Normalize(review.Comment), pattern, "\\"));
         }
 
         if (request.ReservationId.HasValue)
