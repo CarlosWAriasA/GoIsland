@@ -572,9 +572,7 @@ export const ReservationDetail = () => {
                       <ShieldCheck size={18} /> Reembolsar pago
                     </Button>
                   </div>
-                  <span className="field-hint">
-                    Este motivo quedará guardado para futuras consultas (mínimo 3 caracteres).
-                  </span>
+                  <span className="field-hint">Mínimo 3 caracteres.</span>
                 </div>
               )}
             </>
@@ -592,7 +590,7 @@ export const ReservationDetail = () => {
       {isOwner && isSelfGuided && reservation.status === 'Confirmed' && new Date(reservation.endsAt) <= new Date() && (
         <section className="surface-panel reservation-actions" aria-labelledby="reservation-complete-title">
           <h2 id="reservation-complete-title">¿Ya realizaste esta visita?</h2>
-          <p>Confirma tu asistencia a esta visita autoguiada para compartir tu reseña y opinión.</p>
+          <p>Confírmalo para dejar tu reseña.</p>
           <Button
             variant="primary"
             onClick={() => void completeReservation()}
@@ -693,13 +691,13 @@ export const ReservationDetail = () => {
       {reservation.status === 'Completed' && isOwner && (
         <section className="surface-panel review-form" aria-labelledby="review-form-title">
           <h2 id="review-form-title">{currentResult.review ? 'Editar tu reseña' : 'Comparte tu experiencia'}</h2>
-          <p>Esta opinion queda vinculada a una reserva completada.</p>
+          <p>Cuéntale a otros viajeros cómo te fue.</p>
           <SelectField label="Calificación" value={rating} required onChange={(event) => setRating(event.target.value)}>
             <option value="5">5 · Excelente</option><option value="4">4 · Muy buena</option>
             <option value="3">3 · Buena</option><option value="2">2 · Regular</option><option value="1">1 · Mala</option>
           </SelectField>
           <TextAreaField label="Comentario" value={reviewComment} maxLength={1000} required
-            hint={`${reviewComment.length}/1000; minimo 10 caracteres.`}
+            hint={`${reviewComment.length}/1000 · mínimo 10 caracteres`}
             onChange={(event) => setReviewComment(event.target.value)} />
           <div className="management-actions">
             <Button onClick={() => void saveReview()} isLoading={busyAction === 'review'}>

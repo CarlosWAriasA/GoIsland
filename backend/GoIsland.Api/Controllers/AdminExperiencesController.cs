@@ -57,7 +57,7 @@ public class AdminExperiencesController : ControllerBase
         {
             ExperienceManagementStatus.Success => Ok(result.Experience),
             ExperienceManagementStatus.NotFound => NotFound(new { message = "No se encontro la experiencia." }),
-            ExperienceManagementStatus.ReasonRequired => BadRequest(new { message = "Debes indicar el motivo de la decision." }),
+            ExperienceManagementStatus.ReasonRequired => BadRequest(new { message = "Debes indicar el motivo de la decisión." }),
             ExperienceManagementStatus.InvalidTransition => Conflict(new { message = "No puedes aplicar esa decisión al estado actual de la experiencia." }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };

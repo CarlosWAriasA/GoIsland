@@ -172,7 +172,7 @@ export const HostReservations = () => {
 
   return <div className="container management-page animate-fade-in">
     <header className="page-heading"><span className="page-heading__eyebrow">Panel de anfitrión</span><h1>Reservas recibidas</h1>
-      <p>Gestiona las reservas de tus experiencias: márcalas como completadas al terminar o cancélalas si hace falta.</p></header>
+      <p>Confirma las visitas realizadas y atiende las solicitudes de cambio.</p></header>
     <ToastFeedback message={success} tone="success" />
     <ToastFeedback message={error} tone="error" />
     <ToastFeedback message={crError} tone="error" />

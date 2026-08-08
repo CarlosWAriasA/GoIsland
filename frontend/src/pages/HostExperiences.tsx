@@ -106,6 +106,7 @@ const createEmptyForm = (): ManagedExperienceRequest => ({
   price: 0,
   capacity: 1,
   isUnlimitedCapacity: true,
+  schedulingMode: 'HostScheduled',
 });
 
 const formatCurrency = (amount: number) => amount === 0
@@ -508,6 +509,7 @@ export const HostExperiences = () => {
       price: experience.price,
       capacity: experience.isUnlimitedCapacity ? 1 : experience.capacity,
       isUnlimitedCapacity: experience.isUnlimitedCapacity,
+      schedulingMode: experience.schedulingMode || 'HostScheduled',
     });
     setOpenItineraryIndex(experience.itinerary.length > 0 ? 0 : null);
     setFormError(null);
@@ -812,29 +814,52 @@ export const HostExperiences = () => {
                 error={formError ? getFieldError(formError, 'Price') : undefined}
                 disabled={form.price === 0}
               />
-              <label className="choice-card">
-                <input
-                  type="checkbox"
-                  checked={form.isUnlimitedCapacity}
-                  onChange={(event) => setForm((current) => ({
+              <SelectField
+                label="Disponibilidad"
+                hint={form.schedulingMode === 'SelfGuided'
+                  ? 'El turista elige la fecha que prefiera, sin cupo limitado.'
+                  : 'Defines las fechas y el cupo de cada una desde el Calendario.'}
+                value={form.schedulingMode}
+                onChange={(event) => {
+                  const schedulingMode = event.target.value;
+                  setForm((current) => ({
                     ...current,
-                    isUnlimitedCapacity: event.target.checked,
-                  }))}
-                />
-                <span className="choice-card__icon"><InfinityIcon size={21} aria-hidden="true" /></span>
-                <span><strong>Sin límite de personas</strong></span>
-              </label>
-              <Input
-                label="Capacidad"
-                type="number"
-                min="1"
-                step="1"
-                value={form.capacity}
-                onChange={(event) => setForm((current) => ({ ...current, capacity: Number(event.target.value) }))}
-                error={formError ? getFieldError(formError, 'Capacity') : undefined}
-                icon={<UsersRound size={18} />}
-                disabled={form.isUnlimitedCapacity}
-              />
+                    schedulingMode,
+                    isUnlimitedCapacity: schedulingMode === 'SelfGuided' ? true : current.isUnlimitedCapacity,
+                  }));
+                }}
+                error={formError ? getFieldError(formError, 'SchedulingMode') : undefined}
+              >
+                <option value="HostScheduled">Horarios fijos</option>
+                <option value="SelfGuided">Fechas libres</option>
+              </SelectField>
+              {form.schedulingMode === 'HostScheduled' && (
+                <>
+                  <label className="choice-card">
+                    <input
+                      type="checkbox"
+                      checked={form.isUnlimitedCapacity}
+                      onChange={(event) => setForm((current) => ({
+                        ...current,
+                        isUnlimitedCapacity: event.target.checked,
+                      }))}
+                    />
+                    <span className="choice-card__icon"><InfinityIcon size={21} aria-hidden="true" /></span>
+                    <span><strong>Sin límite de personas</strong></span>
+                  </label>
+                  <Input
+                    label="Capacidad"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={form.capacity}
+                    onChange={(event) => setForm((current) => ({ ...current, capacity: Number(event.target.value) }))}
+                    error={formError ? getFieldError(formError, 'Capacity') : undefined}
+                    icon={<UsersRound size={18} />}
+                    disabled={form.isUnlimitedCapacity}
+                  />
+                </>
+              )}
             </section>
 
             <section className="experience-form-section">
@@ -1122,7 +1147,7 @@ export const HostExperiences = () => {
       ) : experiences.length === 0 ? (
         <EmptyState
           title="Todavía no tienes experiencias"
-          description="Crea un borrador con información real y envíalo a revisión cuando esté listo."
+          description="Empieza con un borrador y envíalo cuando esté listo."
           action={<Button onClick={startCreate}>Crear experiencia</Button>}
         />
       ) : (
@@ -1165,7 +1190,7 @@ export const HostExperiences = () => {
                   <div><dt>Galería</dt><dd>{experience.images.length} de {MAX_IMAGES}</dd></div>
                 </dl>
                 <div className="management-actions">
-                  {experience.approvalStatus === 'Approved' && (
+                  {experience.approvalStatus === 'Approved' && experience.schedulingMode !== 'SelfGuided' && (
                     <Link className="button-link button-link--outline" to={`/host/experiences/${experience.id}/schedules`}>
                       <CalendarDays size={17} aria-hidden="true" />Calendario
                     </Link>

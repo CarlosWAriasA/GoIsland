@@ -115,7 +115,7 @@ public class ExperiencesController : ControllerBase
         {
             return StatusCode(StatusCodes.Status403Forbidden, new
             {
-                message = "Tu perfil de anfitrion no esta aprobado o fue suspendido."
+                message = "Tu perfil de anfitrión no está aprobado o fue suspendido."
             });
         }
 

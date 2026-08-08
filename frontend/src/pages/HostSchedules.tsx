@@ -182,7 +182,7 @@ export const HostSchedules = () => {
         ? current.map((item) => item.id === saved.id ? saved : item)
         : [...current, saved].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
       setForm(emptyForm); setEditingId(null);
-      setSuccess(editingId ? 'Horario guardado.' : 'Horario publicado con disponibilidad real.');
+      setSuccess(editingId ? 'Horario guardado.' : 'Horario publicado.');
     } catch (requestError: unknown) {
       setFormError(toApiError(requestError));
     } finally { setSubmitting(false); }
@@ -428,7 +428,7 @@ export const HostSchedules = () => {
       <details className="experience-advanced schedule-recurring surface-panel">
         <summary><CalendarRange size={19} aria-hidden="true" />Copiar una semana</summary>
         <div className="experience-advanced__content">
-          <p>Repite los días, horas y capacidades de una semana. Los nuevos horarios quedarán abiertos.</p>
+          <p>Repite los días, horas y capacidades de una semana.</p>
           <div className="management-form__grid">
             <Input label="Semana de origen" type="date" value={copyWeekForm.sourceWeekStart}
               onChange={(event) => updateCopyWeek({ sourceWeekStart: toMondayInput(event.target.value) })} />

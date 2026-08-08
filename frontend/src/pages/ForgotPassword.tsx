@@ -24,7 +24,7 @@ export const ForgotPassword = () => {
     setError(null);
 
     if (!email.trim()) {
-      setFieldError('El correo electronico es obligatorio.');
+      setFieldError('Escribe tu correo.');
       return;
     }
 

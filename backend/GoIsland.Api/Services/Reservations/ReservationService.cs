@@ -563,7 +563,7 @@ public class ReservationService : IReservationService
         owned.Reservation.Status = ReservationStatuses.Completed;
         owned.Reservation.UpdatedAt = now;
         await AddHistoryAsync(owned.Reservation, previous, owned.Reservation.Status, hostUserId,
-            "Marcada como completada por el anfitrion.", now);
+            "Marcada como completada por el anfitrión.", now);
         await AddIdempotencyAsync(owned.Reservation, hostUserId, operation, key, requestHash, now);
         await _outbox.EnqueueAsync(owned.Reservation.UserId, "ReservationCompleted", "Experiencia completada",
             "Tu experiencia terminó. Ya puedes compartir una reseña verificada.", owned.Reservation);
@@ -676,7 +676,7 @@ public class ReservationService : IReservationService
         schedule.AvailableSpots += reservation.Quantity;
         schedule.UpdatedAt = now;
         await AddHistoryAsync(reservation, previous, reservation.Status, actorUserId,
-            reason ?? (byHost ? "Cancelada por el anfitrion." : "Cancelada por el turista."), now);
+            reason ?? (byHost ? "Cancelada por el anfitrión." : "Cancelada por el turista."), now);
         await AddIdempotencyAsync(reservation, actorUserId, operation, key, requestHash, now);
         await AddCapacityAuditAsync(reservation, schedule, previousSpots,
             byHost ? "CancelledByHost" : "CancelledByTourist", now);
@@ -815,13 +815,13 @@ public class ReservationService : IReservationService
             query = query.Where(reservation => reservation.Status == status);
         }
 
-        var search = NormalizeOptional(request.Query);
+        var search = SearchText.NormalizeTerm(request.Query);
         if (search is not null)
         {
-            var pattern = $"%{EscapeLikePattern(search)}%";
+            var pattern = SearchText.ToContainsPattern(search);
             query = query.Where(reservation =>
-                EF.Functions.ILike(reservation.ExperienceTitle, pattern, "\\")
-                || EF.Functions.ILike(reservation.ExperienceLocation, pattern, "\\"));
+                EF.Functions.Like(GoIslandDbContext.Normalize(reservation.ExperienceTitle), pattern, "\\")
+                || EF.Functions.Like(GoIslandDbContext.Normalize(reservation.ExperienceLocation), pattern, "\\"));
         }
 
         if (request.From.HasValue)

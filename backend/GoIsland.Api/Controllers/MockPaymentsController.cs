@@ -55,7 +55,7 @@ public class MockPaymentsController : ControllerBase
         PaymentOperationStatus.Success => Ok(result.Payment),
         PaymentOperationStatus.PaymentNotFound => NotFound(new { message = "No se encontro el pago." }),
         PaymentOperationStatus.InvalidTransition => Conflict(
-            new { message = "El pago no admite esa operacion en su estado actual." }),
+            new { message = "El pago no admite esa acción en su estado actual." }),
         PaymentOperationStatus.ReservationExpired => Conflict(
             new { message = "El tiempo para completar el pago terminó. Reserva nuevamente si todavía hay disponibilidad." }),
         PaymentOperationStatus.ConcurrencyConflict => Conflict(

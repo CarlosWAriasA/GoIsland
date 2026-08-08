@@ -131,28 +131,29 @@ export const Notifications = () => {
             <Icon aria-hidden="true" /><span><strong>{label}</strong><small>{description}</small></span>
           </label>
         ))}
-        <div className="push-device-control">
-          <div>
-            <strong>Este dispositivo</strong>
-            <small>
-              {pushStatus === 'checking' && 'Comprobando si los avisos están activados…'}
-              {pushStatus === 'active' && 'Los avisos están activados en este dispositivo.'}
-              {pushStatus === 'inactive' && 'Los avisos no están activados en este dispositivo.'}
-              {pushStatus === 'denied' && 'Los avisos están bloqueados en la configuración del sitio.'}
-              {pushStatus === 'unsupported' && 'Este dispositivo no permite recibir avisos fuera de la aplicación.'}
-            </small>
+        {pushStatus !== 'unsupported' && (
+          <div className="push-device-control">
+            <div>
+              <strong>Este dispositivo</strong>
+              <small>
+                {pushStatus === 'checking' && 'Comprobando…'}
+                {pushStatus === 'active' && 'Avisos activados.'}
+                {pushStatus === 'inactive' && 'Avisos desactivados.'}
+                {pushStatus === 'denied' && 'Avisos bloqueados desde la configuración del sitio.'}
+              </small>
+            </div>
+            {pushStatus === 'active' ? (
+              <Button variant="outline" onClick={() => void deactivatePushForDevice()} isLoading={updatingPush}>
+                Desactivar avisos
+              </Button>
+            ) : (
+              <Button onClick={() => void activatePushForDevice()} isLoading={updatingPush}
+                disabled={pushStatus === 'checking' || pushStatus === 'denied'}>
+                Activar avisos
+              </Button>
+            )}
           </div>
-          {pushStatus === 'active' ? (
-            <Button variant="outline" onClick={() => void deactivatePushForDevice()} isLoading={updatingPush}>
-              Desactivar avisos
-            </Button>
-          ) : (
-            <Button onClick={() => void activatePushForDevice()} isLoading={updatingPush}
-              disabled={pushStatus === 'checking' || pushStatus === 'denied' || pushStatus === 'unsupported'}>
-              Activar avisos
-            </Button>
-          )}
-        </div>
+        )}
         <Button onClick={() => void savePreferences()} isLoading={saving}>Guardar preferencias</Button>
       </section>
     </div>

@@ -26,7 +26,7 @@ public class HostReservationsController : ControllerBase
         if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         var reservations = await _service.GetForHostAsync(userId, request);
         return reservations is null
-            ? StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrion no esta aprobado o fue suspendido." })
+            ? StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrión no está aprobado o fue suspendido." })
             : Ok(reservations);
     }
 
@@ -62,7 +62,7 @@ public class HostReservationsController : ControllerBase
         if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         var requests = await _changeRequestService.GetForHostAsync(userId, request);
         return requests is null
-            ? StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrion no esta aprobado o fue suspendido." })
+            ? StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrión no está aprobado o fue suspendido." })
             : Ok(requests);
     }
 
@@ -85,13 +85,13 @@ public class HostReservationsController : ControllerBase
         ReservationChangeRequestOperationStatus.ReasonRequired => BadRequest(
             new { message = "Indica el motivo del rechazo." }),
         ReservationChangeRequestOperationStatus.ScheduleUnavailable => Conflict(
-            new { message = "El horario solicitado ya no esta disponible." }),
+            new { message = "El horario solicitado ya no está disponible." }),
         ReservationChangeRequestOperationStatus.InsufficientSpots => Conflict(
             new { message = "El horario solicitado no tiene suficientes cupos." }),
         ReservationChangeRequestOperationStatus.RefundFailed => StatusCode(StatusCodes.Status502BadGateway,
             new { message = "No pudimos procesar el reembolso. Inténtalo nuevamente." }),
         ReservationChangeRequestOperationStatus.ConcurrencyConflict => Conflict(
-            new { message = "La disponibilidad cambio. Intenta nuevamente." }),
+            new { message = "La disponibilidad cambió. Intenta nuevamente." }),
         _ => StatusCode(StatusCodes.Status500InternalServerError)
     };
 
@@ -99,9 +99,9 @@ public class HostReservationsController : ControllerBase
     {
         ReservationCreationStatus.Success => Ok(result.Reservation),
         ReservationCreationStatus.ExperienceNotFound => NotFound(new { message = "No se encontro la reserva." }),
-        ReservationCreationStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrion no esta aprobado o fue suspendido." }),
-        ReservationCreationStatus.InvalidTransition => Conflict(new { message = "La reserva no admite esa operacion en su estado o fecha actual." }),
-        ReservationCreationStatus.ConcurrencyConflict => Conflict(new { message = "La disponibilidad cambio. Intenta nuevamente." }),
+        ReservationCreationStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrión no está aprobado o fue suspendido." }),
+        ReservationCreationStatus.InvalidTransition => Conflict(new { message = "La reserva no admite esa acción en su estado o fecha actual." }),
+        ReservationCreationStatus.ConcurrencyConflict => Conflict(new { message = "La disponibilidad cambió. Intenta nuevamente." }),
         ReservationCreationStatus.IdempotencyConflict => Conflict(new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
         _ => StatusCode(StatusCodes.Status500InternalServerError)
     };

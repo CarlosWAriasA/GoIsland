@@ -37,7 +37,7 @@ public class HostExperiencesController : ControllerBase
             ? CreatedAtAction(nameof(GetById), new { id = result.Experience!.Id }, result.Experience)
             : StatusCode(StatusCodes.Status403Forbidden, new
             {
-                message = "Tu perfil de anfitrion no esta aprobado o fue suspendido."
+                message = "Tu perfil de anfitrión no está aprobado o fue suspendido."
             });
     }
 
@@ -165,7 +165,7 @@ public class HostExperiencesController : ControllerBase
             ExperienceManagementStatus.NotFound => NotFound(new { message = "No se encontro la experiencia entre tus publicaciones." }),
             ExperienceManagementStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new
             {
-                message = "Tu perfil de anfitrion no esta aprobado o fue suspendido."
+                message = "Tu perfil de anfitrión no está aprobado o fue suspendido."
             }),
             ExperienceManagementStatus.Conflict => Conflict(new
             {
@@ -173,7 +173,7 @@ public class HostExperiencesController : ControllerBase
             }),
             ExperienceManagementStatus.InvalidTransition => Conflict(new
             {
-                message = "La experiencia no admite esa operacion en su estado actual."
+                message = "La experiencia no admite esa acción en su estado actual."
             }),
             ExperienceManagementStatus.Incomplete => BadRequest(
                 ApiProblemDetailsFactory.CreateValidation(

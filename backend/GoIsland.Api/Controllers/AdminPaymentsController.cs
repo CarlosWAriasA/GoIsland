@@ -38,7 +38,7 @@ public class AdminPaymentsController : ControllerBase
                 StatusCodes.Status502BadGateway,
                 new { message = "No pudimos completar el reembolso. Inténtalo nuevamente." }),
             PaymentOperationStatus.ConcurrencyConflict => Conflict(
-                new { message = "La disponibilidad cambio mientras se procesaba el reembolso. Intenta nuevamente." }),
+                new { message = "La disponibilidad cambió mientras se procesaba el reembolso. Intenta nuevamente." }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };
     }

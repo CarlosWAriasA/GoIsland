@@ -159,10 +159,10 @@ export const ReservationDialog = ({
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Volver</Button>
           <Button type="submit" variant="primary" form="reservation-form" isLoading={isSubmitting} disabled={!isSelfGuided && !selectedSchedule}>
             {isSelfGuided
-              ? 'Confirmar agendado'
+              ? 'Confirmar visita'
               : experience.price === 0
-                ? 'Confirmar reserva gratis'
-                : 'Crear reserva pendiente de pago'}
+                ? 'Confirmar reserva'
+                : 'Continuar al pago'}
           </Button>
         </>
       )}
@@ -223,12 +223,8 @@ export const ReservationDialog = ({
           <div className="reservation-form__total"><dt>Total</dt><dd>{formatPrice(total)}</dd></div>
         </dl>
 
-        {!isSelfGuided && (
-          <Alert tone="info">
-            {experience.price === 0
-              ? <>Esta experiencia es gratis; la reserva quedará <strong>confirmada inmediatamente</strong>.</>
-              : <>La reserva quedará <strong>Pendiente de pago</strong>. Todavía no implica pago ni confirmación.</>}
-          </Alert>
+        {!isSelfGuided && experience.price === 0 && (
+          <Alert tone="info">Esta experiencia es gratis: tu reserva queda confirmada de inmediato.</Alert>
         )}
       </form>
     </Dialog>

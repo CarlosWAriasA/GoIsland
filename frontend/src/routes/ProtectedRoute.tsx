@@ -9,7 +9,7 @@ export const ProtectedRoute = () => {
     return (
       <div className="route-loading" role="status">
         <span className="route-loading__spinner" aria-hidden="true" />
-        <p>Verificando autenticación...</p>
+        <p>Cargando…</p>
       </div>
     );
   }

@@ -54,6 +54,7 @@ export interface ManagedExperienceRequest {
   price: number;
   capacity: number;
   isUnlimitedCapacity: boolean;
+  schedulingMode: string;
 }
 
 export interface ManagedExperience extends ManagedExperienceRequest {

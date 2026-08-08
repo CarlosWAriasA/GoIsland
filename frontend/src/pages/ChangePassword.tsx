@@ -32,12 +32,12 @@ export const ChangePassword = () => {
 
   const validate = () => {
     const errors: ChangePasswordErrors = {};
-    if (!currentPassword) errors.currentPassword = 'La contrasena actual es obligatoria.';
-    if (!newPassword) errors.newPassword = 'La nueva contrasena es obligatoria.';
+    if (!currentPassword) errors.currentPassword = 'Escribe tu contraseña actual.';
+    if (!newPassword) errors.newPassword = 'Escribe la nueva contraseña.';
     else errors.newPassword = getPasswordPolicyError(newPassword);
-    if (!confirmPassword) errors.confirmPassword = 'La confirmacion de la contrasena es obligatoria.';
+    if (!confirmPassword) errors.confirmPassword = 'Repite la nueva contraseña.';
     else if (newPassword !== confirmPassword) {
-      errors.confirmPassword = 'La confirmacion no coincide con la nueva contrasena.';
+      errors.confirmPassword = 'Las contraseñas no coinciden.';
     }
     setFieldErrors(errors);
     return Object.values(errors).every((message) => !message);
@@ -56,7 +56,7 @@ export const ChangePassword = () => {
       setNewPassword('');
       setConfirmPassword('');
       setFieldErrors({});
-      setSuccess('Contraseña actualizada correctamente.');
+      setSuccess('Contraseña actualizada.');
     } catch (requestError: unknown) {
       const apiError = toApiError(requestError);
       setFieldErrors({
