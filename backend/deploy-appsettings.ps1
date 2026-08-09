@@ -29,6 +29,15 @@ else {
     $jwtKey = $json.Jwt.Key
 }
 
+# El archivo de desarrollo puede venir sin la clave, asi que se cae al mismo valor por
+# defecto que usa JwtTokenService en vez de subir un app setting vacio.
+$jwtLifetimeMinutes = if ($json.Jwt.PSObject.Properties.Name -contains "AccessTokenLifetimeMinutes" -and $json.Jwt.AccessTokenLifetimeMinutes) {
+    $json.Jwt.AccessTokenLifetimeMinutes
+}
+else {
+    10080
+}
+
 $appHost = "$AppName.azurewebsites.net"
 
 $settings = [ordered]@{
@@ -36,6 +45,7 @@ $settings = [ordered]@{
     "Jwt__Issuer"                          = $json.Jwt.Issuer
     "Jwt__Audience"                        = $json.Jwt.Audience
     "Jwt__Key"                             = $jwtKey
+    "Jwt__AccessTokenLifetimeMinutes"      = "$jwtLifetimeMinutes"
     "GoogleAuth__ClientId"                 = $json.GoogleAuth.ClientId
     "GoogleMaps__ApiKey"                   = $json.GoogleMaps.ApiKey
     "Email__Provider"                      = $json.Email.Provider

@@ -8,6 +8,10 @@ namespace GoIsland.Api.Services.Security;
 
 public class JwtTokenService : IJwtTokenService
 {
+    private const int DefaultLifetimeMinutes = 10080; // 7 dias
+    private const int MinimumLifetimeMinutes = 5;
+    private const int MaximumLifetimeMinutes = 43200; // 30 dias
+
     private readonly IConfiguration _configuration;
 
     public JwtTokenService(IConfiguration configuration)
@@ -27,7 +31,7 @@ public class JwtTokenService : IJwtTokenService
 
         var issuer = _configuration["Jwt:Issuer"];
         var audience = _configuration["Jwt:Audience"];
-        var expiresAt = DateTime.UtcNow.AddHours(2);
+        var expiresAt = DateTime.UtcNow.AddMinutes(ResolveLifetimeMinutes());
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
         var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
@@ -49,5 +53,18 @@ public class JwtTokenService : IJwtTokenService
             signingCredentials: credentials);
 
         return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+    }
+
+    // Un valor ausente, no numerico o fuera de rango cae al predeterminado para que una
+    // configuracion equivocada no genere sesiones eternas ni sesiones de segundos.
+    private int ResolveLifetimeMinutes()
+    {
+        var configured = _configuration.GetValue<int?>("Jwt:AccessTokenLifetimeMinutes");
+        if (configured is null || configured < MinimumLifetimeMinutes || configured > MaximumLifetimeMinutes)
+        {
+            return DefaultLifetimeMinutes;
+        }
+
+        return configured.Value;
     }
 }

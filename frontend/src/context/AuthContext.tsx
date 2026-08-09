@@ -77,12 +77,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!expiresAt) return;
 
-    const remainingMilliseconds = Date.parse(expiresAt) - Date.now();
-    const expirationTimer = window.setTimeout(
-      () => clearAuthentication(true),
-      Math.max(0, remainingMilliseconds),
-    );
-    return () => window.clearTimeout(expirationTimer);
+    // Con sesiones largas un setTimeout no sirve: desborda el máximo de 24,8 días y además no
+    // avanza mientras el equipo está suspendido. Se comprueba la caducidad periódicamente.
+    const expiration = Date.parse(expiresAt);
+    const checkExpiration = () => {
+      if (Date.now() >= expiration) clearAuthentication(true);
+    };
+
+    checkExpiration();
+    const expirationTimer = window.setInterval(checkExpiration, 30_000);
+    return () => window.clearInterval(expirationTimer);
   }, [clearAuthentication, expiresAt]);
 
   const applyAuthResponse = (response: AuthResponse) => {

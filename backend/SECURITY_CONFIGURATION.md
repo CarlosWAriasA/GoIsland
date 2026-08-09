@@ -33,6 +33,17 @@ La rotacion se realiza primero en el proveedor, despues en el gestor de secretos
 por ultimo se revoca la credencial anterior. `Jwt__Key` invalida las sesiones existentes. El
 inventario y la validacion posterior estan en `../docs/deployment/operations-runbook.md`.
 
+## Duracion de la sesion
+
+`Jwt:AccessTokenLifetimeMinutes` define cuanto vive el token de acceso. El valor por defecto es
+10080 minutos (7 dias) y se acepta entre 5 y 43200 minutos; fuera de ese rango o con un valor no
+numerico se vuelve al predeterminado. En produccion se envia como `Jwt__AccessTokenLifetimeMinutes`.
+
+No hay refresh tokens ni lista de revocacion, asi que un token emitido sigue siendo valido hasta
+que caduca. Para cortar sesiones antes de tiempo hay que rotar `Jwt__Key`, lo que invalida todas
+las sesiones activas. El frontend guarda la sesion en `localStorage`, de modo que sobrevive al
+cierre de la pestana y del navegador hasta la fecha de expiracion del token.
+
 ## Google
 
 - La clave de Maps debe aceptar solo el dominio publico y las previews autorizadas mediante
