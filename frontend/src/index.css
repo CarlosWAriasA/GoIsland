@@ -761,11 +761,12 @@ textarea {
 
 /* El borde y el fondo viven en la fila para que el botón de "marcar leída" quede dentro de la
    misma tarjeta y no como una caja aparte. */
+/* La columna de la acción se reserva siempre, también en las leídas: si solo existiera en las
+   no leídas, el texto de unas terminaría 42px más a la derecha que el de las otras. */
 .account-notifications__row {
   position: relative;
-  display: flex;
-  align-items: stretch;
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.25rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.82);
@@ -784,10 +785,9 @@ textarea {
 
 .account-notifications__item {
   display: grid;
-  flex: 1;
   min-width: 0;
   gap: 0.3rem;
-  padding: 0.85rem 0.5rem 0.85rem 1rem;
+  padding: 0.85rem 0 0.85rem 1rem;
   border: 0;
   background: transparent;
   color: var(--color-text);
@@ -797,12 +797,11 @@ textarea {
 
 .account-notifications__mark-one {
   display: grid;
-  flex: 0 0 auto;
   place-items: center;
   align-self: center;
+  justify-self: center;
   width: 2rem;
   height: 2rem;
-  margin-right: 0.6rem;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-white);
@@ -824,6 +823,10 @@ textarea {
 }
 
 @media (pointer: coarse) {
+  .account-notifications__row {
+    grid-template-columns: minmax(0, 1fr) 3.75rem;
+  }
+
   .account-notifications__mark-one {
     width: 44px;
     height: 44px;
@@ -4527,6 +4530,41 @@ input[type='number']::-webkit-inner-spin-button {
   gap: var(--space-5);
 }
 
+.map-page__results {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.map-results__summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-mist-50);
+}
+
+.map-results__summary strong {
+  color: var(--color-ocean-700);
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.map-results__summary span {
+  color: var(--color-ink-900);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.map-results__summary small {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
 .map-results {
   display: grid;
   gap: var(--space-3);
@@ -6708,6 +6746,8 @@ input[type='number']::-webkit-inner-spin-button {
   box-shadow: inset 3px 0 0 var(--color-ocean-700);
 }
 
+/* La columna del botón solo existe cuando el botón se muestra; si no, el hueco y su
+   separación quedaban vacíos al final de la fila. */
 .map-page__filters {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr;
@@ -6722,6 +6762,14 @@ input[type='number']::-webkit-inner-spin-button {
 
 .map-page__filters .field-group {
   margin-bottom: 0;
+}
+
+.map-page__filters--with-reset {
+  grid-template-columns: 2fr 1fr 1fr auto;
+}
+
+.map-page__reset-col {
+  padding-bottom: 0;
 }
 
 @media (max-width: 900px) {

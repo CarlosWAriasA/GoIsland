@@ -178,18 +178,15 @@ export const ExperienceMapPage = () => {
           <Button onClick={findNearby} isLoading={locating}>
             <LocateFixed size={18} aria-hidden="true" /> Cerca de mí
           </Button>
-          {hasActiveFilters && (
-            <Button type="button" variant="outline" onClick={handleResetAll}>
-              <RotateCcw size={16} aria-hidden="true" /> Limpiar mapa
-            </Button>
-          )}
         </div>
       </header>
 
       <ToastFeedback message={notice} tone="info" />
 
       {!loading && !error && (
-        <div className="map-page__filters surface-panel">
+        <div
+          className={`map-page__filters surface-panel${hasActiveFilters ? ' map-page__filters--with-reset' : ''}`}
+        >
           <div className="map-page__search-col">
             <Input
               label="Buscar"
@@ -226,6 +223,18 @@ export const ExperienceMapPage = () => {
               <option value="200">Hasta $200 USD</option>
             </SelectField>
           </div>
+
+          {hasActiveFilters && (
+            <div className="map-page__reset-col">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetAll}
+              >
+                <RotateCcw size={15} aria-hidden="true" /> Limpiar filtros
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -241,48 +250,63 @@ export const ExperienceMapPage = () => {
               onPointClick={openExperience}
               label="Mapa de experiencias disponibles"
             />
-            {filteredExperiences.length === 0 ? (
-              <EmptyState
-                title="Sin experiencias encontradas"
-                description={hasActiveFilters ? "No hay experiencias que coincidan con tus criterios." : "Todavía no hay experiencias para mostrar en el mapa."}
-                action={hasActiveFilters ? (
-                  <Button
-                    variant="outline"
-                    onClick={handleResetAll}
-                  >
-                    Ver todas las experiencias
-                  </Button>
-                ) : (
-                  <Link className="button-link button-link--outline" to="/experiences">Ver catálogo</Link>
-                )}
-              />
-            ) : (
-              <ol className="map-results">
-                {displayedExperiences.map((experience) => {
-                  const isSelected = String(experience.id) === String(activeFocusedId ?? '');
-                  return (
-                    <li key={experience.id}>
-                      <button
-                        type="button"
-                        className={`map-results__button ${isSelected ? 'is-active' : ''}`}
-                        onClick={() => setSelectedExperienceId(experience.id)}
-                        aria-current={isSelected ? 'location' : undefined}
-                      >
-                        <span className="map-results__icon"><MapPinned aria-hidden="true" /></span>
-                        <span>
-                          <strong>{experience.title}</strong>
-                          <small>{formatLocationLabel(experience.location)}</small>
-                          {experience.distanceKm !== null && (
-                            <small><Navigation size={14} aria-hidden="true" /> A {experience.distanceKm.toFixed(1)} km</small>
-                          )}
-                        </span>
-                        <b>{formatPrice(experience.price)}</b>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
+            <div className="map-page__results">
+              {filteredExperiences.length === 0 ? (
+                <EmptyState
+                  title="Sin experiencias encontradas"
+                  description={hasActiveFilters ? "No hay experiencias que coincidan con tus criterios." : "Todavía no hay experiencias para mostrar en el mapa."}
+                  action={hasActiveFilters ? (
+                    <Button
+                      variant="outline"
+                      onClick={handleResetAll}
+                    >
+                      Ver todas las experiencias
+                    </Button>
+                  ) : (
+                    <Link className="button-link button-link--outline" to="/experiences">Ver catálogo</Link>
+                  )}
+                />
+              ) : (
+                <>
+                  <p className="map-results__summary" role="status">
+                    <strong>{filteredExperiences.length}</strong>{' '}
+                    <span>
+                      {filteredExperiences.length === 1
+                        ? 'experiencia disponible'
+                        : 'experiencias disponibles'}
+                    </span>{' '}
+                    {filteredExperiences.length !== catalogExperiences.length && (
+                      <small>de {catalogExperiences.length} en el catálogo</small>
+                    )}
+                  </p>
+                  <ol className="map-results">
+                    {displayedExperiences.map((experience) => {
+                      const isSelected = String(experience.id) === String(activeFocusedId ?? '');
+                      return (
+                        <li key={experience.id}>
+                          <button
+                            type="button"
+                            className={`map-results__button ${isSelected ? 'is-active' : ''}`}
+                            onClick={() => setSelectedExperienceId(experience.id)}
+                            aria-current={isSelected ? 'location' : undefined}
+                          >
+                            <span className="map-results__icon"><MapPinned aria-hidden="true" /></span>
+                            <span>
+                              <strong>{experience.title}</strong>
+                              <small>{formatLocationLabel(experience.location)}</small>
+                              {experience.distanceKm !== null && (
+                                <small><Navigation size={14} aria-hidden="true" /> A {experience.distanceKm.toFixed(1)} km</small>
+                              )}
+                            </span>
+                            <b>{formatPrice(experience.price)}</b>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </>
+              )}
+            </div>
           </div>
         )}
     </div>
