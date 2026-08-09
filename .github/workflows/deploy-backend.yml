@@ -59,7 +59,7 @@ jobs:
     needs: test
     environment:
       name: production
-      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
+      url: https://${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net
     permissions:
       contents: read
       packages: write
@@ -91,37 +91,58 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Los identificadores pueden estar como variables o como secretos del repositorio; se
+      # aceptan ambos para que la ubicacion elegida no rompa el despliegue.
+      - name: Comprobar la configuracion de Azure
+        env:
+          CLIENT_ID: ${{ vars.AZURE_CLIENT_ID || secrets.AZURE_CLIENT_ID }}
+          TENANT_ID: ${{ vars.AZURE_TENANT_ID || secrets.AZURE_TENANT_ID }}
+          SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID }}
+          WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}
+        run: |
+          faltan=""
+          for nombre in CLIENT_ID TENANT_ID SUBSCRIPTION_ID WEBAPP_NAME; do
+            if [ -z "$(eval echo \$$nombre)" ]; then faltan="$faltan AZURE_$nombre"; fi
+          done
+          if [ -n "$faltan" ]; then
+            echo "Faltan estos valores en el repositorio (Settings > Secrets and variables > Actions):"
+            for f in $faltan; do echo "  - $f"; done
+            echo "Pueden definirse como variables o como secretos."
+            exit 1
+          fi
+          echo "Configuracion de Azure completa."
+
       - name: Autenticarse en Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID || secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID || secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Apuntar el Web App a la imagen nueva
         run: |
           # La etiqueta es el SHA del commit, asi que cada despliegue es rastreable y
           # App Service siempre baja una imagen distinta en vez de reusar la cacheada.
           az webapp config appsettings set \
-            --name "${{ vars.AZURE_WEBAPP_NAME }}" \
+            --name "${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --settings WEBSITES_PORT=8080 \
             --output none
 
           az webapp config container set \
-            --name "${{ vars.AZURE_WEBAPP_NAME }}" \
+            --name "${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --container-image-name "${{ env.IMAGE }}:${{ github.sha }}" \
             --output none
 
           az webapp restart \
-            --name "${{ vars.AZURE_WEBAPP_NAME }}" \
+            --name "${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --output none
 
       - name: Comprobar que la API responde
         run: |
-          url="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/health/ready"
+          url="https://${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/health/ready"
           for attempt in $(seq 1 20); do
             code=$(curl -s -o /dev/null -w '%{http_code}' "$url" || true)
             if [ "$code" = "200" ]; then
