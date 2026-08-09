@@ -186,9 +186,14 @@ else if (emailProvider.Equals("Resend", StringComparison.OrdinalIgnoreCase))
     builder.Services.AddHttpClient<IEmailSender, ResendEmailSender>(client =>
         client.BaseAddress = new Uri("https://api.resend.com/"));
 }
+else if (emailProvider.Equals("Brevo", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHttpClient<IEmailSender, BrevoEmailSender>(client =>
+        client.BaseAddress = new Uri("https://api.brevo.com/"));
+}
 else
 {
-    throw new InvalidOperationException("Email:Provider debe ser Smtp o Resend.");
+    throw new InvalidOperationException("Email:Provider debe ser Smtp, Resend o Brevo.");
 }
 // El proveedor se resuelve antes de registrar servicios: Production no puede arrancar con
 // Mock, Stripe solo acepta modo Sandbox y cualquier clave live detiene la aplicacion.

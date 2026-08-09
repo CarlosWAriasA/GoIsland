@@ -44,6 +44,47 @@ public class EmailSenderTests
     }
 
     [Fact]
+    public async Task BrevoEmailSender_SendsExpectedApiRequest()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Brevo:ApiKey"] = "xkeysib-test-key",
+            ["Email:FromEmail"] = "no-reply@goisland.test",
+            ["Email:FromName"] = "GoIsland",
+            ["Email:ResetPasswordUrl"] = "http://localhost:5173/reset-password"
+        });
+        var handler = new RecordingHttpMessageHandler();
+        var sender = new BrevoEmailSender(
+            new HttpClient(handler) { BaseAddress = new Uri("https://api.brevo.com/") },
+            configuration);
+
+        await sender.SendPasswordResetAsync(
+            "usuario@goisland.test",
+            "Usuario <Seguro>",
+            "token con espacios");
+
+        Assert.True(sender.IsConfigured);
+        Assert.Equal(HttpMethod.Post, handler.Method);
+        Assert.Equal("https://api.brevo.com/v3/smtp/email", handler.RequestUri?.ToString());
+        // Brevo autentica con la cabecera api-key, no con Authorization.
+        Assert.Equal("xkeysib-test-key", handler.ApiKeyHeader);
+        Assert.Null(handler.AuthorizationScheme);
+
+        using var payload = JsonDocument.Parse(handler.Content);
+        var root = payload.RootElement;
+        Assert.Equal("no-reply@goisland.test", root.GetProperty("sender").GetProperty("email").GetString());
+        Assert.Equal("GoIsland", root.GetProperty("sender").GetProperty("name").GetString());
+        Assert.Equal("usuario@goisland.test", root.GetProperty("to")[0].GetProperty("email").GetString());
+
+        var html = root.GetProperty("htmlContent").GetString();
+        var text = root.GetProperty("textContent").GetString();
+        Assert.Contains("token%20con%20espacios", html);
+        Assert.Contains("Usuario &lt;Seguro&gt;", html);
+        Assert.Contains(WebUtility.HtmlEncode("Crear nueva contraseña"), html);
+        Assert.Contains("token%20con%20espacios", text);
+    }
+
+    [Fact]
     public void NotificationEmailContent_UsesBrandedTemplateAndEncodesUserContent()
     {
         var content = NotificationEmailContent.Build(
@@ -77,11 +118,17 @@ public class EmailSenderTests
         {
             ["Resend:ApiKey"] = "re_test_key"
         };
+        var brevoSettings = new Dictionary<string, string?>(commonSettings)
+        {
+            ["Brevo:ApiKey"] = "xkeysib-test-key"
+        };
 
         Assert.True(new SmtpEmailSender(BuildConfiguration(smtpSettings)).IsConfigured);
         Assert.True(new ResendEmailSender(new HttpClient(), BuildConfiguration(resendSettings)).IsConfigured);
+        Assert.True(new BrevoEmailSender(new HttpClient(), BuildConfiguration(brevoSettings)).IsConfigured);
         Assert.False(new SmtpEmailSender(BuildConfiguration(commonSettings)).IsConfigured);
         Assert.False(new ResendEmailSender(new HttpClient(), BuildConfiguration(commonSettings)).IsConfigured);
+        Assert.False(new BrevoEmailSender(new HttpClient(), BuildConfiguration(commonSettings)).IsConfigured);
     }
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values)
@@ -95,6 +142,7 @@ public class EmailSenderTests
         public Uri? RequestUri { get; private set; }
         public string? AuthorizationScheme { get; private set; }
         public string? AuthorizationParameter { get; private set; }
+        public string? ApiKeyHeader { get; private set; }
         public string Content { get; private set; } = string.Empty;
 
         protected override async Task<HttpResponseMessage> SendAsync(
@@ -105,6 +153,9 @@ public class EmailSenderTests
             RequestUri = request.RequestUri;
             AuthorizationScheme = request.Headers.Authorization?.Scheme;
             AuthorizationParameter = request.Headers.Authorization?.Parameter;
+            ApiKeyHeader = request.Headers.TryGetValues("api-key", out var apiKeyValues)
+                ? apiKeyValues.FirstOrDefault()
+                : null;
             Content = request.Content is null
                 ? string.Empty
                 : await request.Content.ReadAsStringAsync(cancellationToken);

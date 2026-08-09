@@ -56,11 +56,12 @@ debe registrar ese valor al investigar un error sin exponer contenido de la soli
 | `Cors__FrontendUrl` | Sí | Origen HTTPS de Vercel, sin ruta final |
 | `AllowedHosts` | Sí | Host público de la API |
 | `ForwardedHeaders__TrustManagedProxy` | Sí | `true` solo si la API está aislada detrás del proxy administrado |
-| `Email__Provider` | Sí | `Resend` en el ambiente público |
-| `Email__FromEmail` | Sí | Remitente verificado |
+| `Email__Provider` | Sí | `Brevo`, `Resend` o `Smtp`; ver nota debajo de la tabla |
+| `Email__FromEmail` | Sí | Remitente verificado en el proveedor |
 | `Email__FromName` | Sí | Nombre visible del remitente |
 | `Email__ResetPasswordUrl` | Sí | URL pública de recuperación |
-| `Resend__ApiKey` | Sí | Secreto de Resend |
+| `Brevo__ApiKey` | Con `Brevo` | Secreto de Brevo |
+| `Resend__ApiKey` | Con `Resend` | Secreto de Resend |
 | `GoogleAuth__ClientId` | Sí | Cliente web de Google |
 | `GoogleMaps__ApiKey` | Según uso | Clave restringida de mapas |
 | `WebPush__Subject` | Según uso | Contacto VAPID |
@@ -76,6 +77,26 @@ debe registrar ese valor al investigar un error sin exponer contenido de la soli
 | `Cloudinary__ApiSecret` | Fase 2 | Secreto de carga |
 | `Stripe__SecretKey` | Sí | Clave secreta de prueba `sk_test_`; las claves live se rechazan |
 | `Stripe__WebhookSecret` | Sí | Firma `whsec_` del endpoint |
+
+### Elección del proveedor de correo
+
+`Smtp` **no funciona en Azure App Service** con suscripciones de tipo Azure for Students o
+similares: el tráfico SMTP saliente está bloqueado y los envíos fallan sin aviso visible. Los
+otros dos proveedores usan API HTTPS, que no está afectada.
+
+La diferencia práctica entre ellos es a quién pueden escribir sin tener un dominio propio:
+
+| Proveedor | Remitente sin dominio | Destinatarios |
+|---|---|---|
+| `Brevo` | Una dirección individual verificada | Cualquiera |
+| `Resend` | `onboarding@resend.dev` | Solo el correo de la cuenta de Resend |
+
+Por eso el ambiente público usa `Brevo`: permite verificar un correo suelto como remitente y aun
+así entregar a cualquier destinatario. `Resend` requiere un dominio verificado para lo mismo.
+
+Un envío fallido queda registrado en los logs pero no interrumpe la operación: la respuesta al
+usuario es siempre la misma para no revelar qué correos están registrados. Al cambiar de
+proveedor conviene comprobar la entrega en el panel del proveedor, no en la interfaz.
 
 ## Render
 
