@@ -59,7 +59,9 @@ jobs:
     needs: test
     environment:
       name: production
-      url: https://${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net
+      # environment.url no admite el contexto secrets, solo vars. Es informativo: el
+      # despliegue real usa el valor con respaldo mas abajo.
+      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
     permissions:
       contents: read
       packages: write
