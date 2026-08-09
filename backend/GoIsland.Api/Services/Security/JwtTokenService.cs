@@ -17,7 +17,14 @@ public class JwtTokenService : IJwtTokenService
 
     public (string Token, DateTime ExpiresAt) CreateToken(User user)
     {
-        var key = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key no esta configurado.");
+        // appsettings.json define Jwt:Key como cadena vacia, asi que comprobar solo null dejaba
+        // pasar el valor y el fallo aparecia despues como un error de clave de longitud cero.
+        var key = _configuration["Jwt:Key"];
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new InvalidOperationException("Jwt:Key no esta configurado.");
+        }
+
         var issuer = _configuration["Jwt:Issuer"];
         var audience = _configuration["Jwt:Audience"];
         var expiresAt = DateTime.UtcNow.AddHours(2);
