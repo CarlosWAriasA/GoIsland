@@ -122,23 +122,37 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Apuntar el Web App a la imagen nueva
+        env:
+          WEBAPP: ${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}
         run: |
+          # El plano de gestion de Azure devuelve BadGatewayConnection de forma intermitente,
+          # asi que cada operacion se reintenta antes de dar el despliegue por fallido.
+          reintentar() {
+            for intento in 1 2 3 4 5; do
+              if "$@"; then return 0; fi
+              echo "Intento $intento fallido; se reintenta en 20s."
+              sleep 20
+            done
+            echo "La operacion no se completo tras 5 intentos: $*"
+            return 1
+          }
+
           # La etiqueta es el SHA del commit, asi que cada despliegue es rastreable y
           # App Service siempre baja una imagen distinta en vez de reusar la cacheada.
-          az webapp config appsettings set \
-            --name "${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}" \
+          reintentar az webapp config appsettings set \
+            --name "$WEBAPP" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --settings WEBSITES_PORT=8080 \
             --output none
 
-          az webapp config container set \
-            --name "${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}" \
+          reintentar az webapp config container set \
+            --name "$WEBAPP" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --container-image-name "${{ env.IMAGE }}:${{ github.sha }}" \
             --output none
 
-          az webapp restart \
-            --name "${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}" \
+          reintentar az webapp restart \
+            --name "$WEBAPP" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --output none
 
