@@ -53,6 +53,55 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
+    public async Task Create_HostCannotReserveOwnExperience()
+    {
+        var (_, experience, schedule, _) = await SeedScenarioAsync();
+
+        var result = await GetRequiredService<IReservationService>().CreateAsync(
+            experience.HostId,
+            new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 1 },
+            "own-experience");
+
+        Assert.Equal(ReservationCreationStatus.Forbidden, result.Status);
+        Assert.False(await Context.Reservations.AnyAsync(item => item.ScheduleId == schedule.Id));
+    }
+
+    [Fact]
+    public async Task Create_InsideBookingCutoff_IsUnavailable()
+    {
+        var (user, _, schedule, _) = await SeedScenarioAsync();
+        schedule.StartsAt = DateTime.UtcNow.AddMinutes(20);
+        schedule.EndsAt = schedule.StartsAt.AddHours(2);
+        await Context.SaveChangesAsync();
+
+        var result = await GetRequiredService<IReservationService>().CreateAsync(
+            user.Id,
+            new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 1 },
+            "inside-cutoff");
+
+        Assert.Equal(ReservationCreationStatus.ScheduleUnavailable, result.Status);
+        Assert.False(await Context.Reservations.AnyAsync(item => item.ScheduleId == schedule.Id));
+    }
+
+    [Fact]
+    public async Task Create_PaymentHoldNeverCrossesBookingDeadline()
+    {
+        var (user, _, schedule, _) = await SeedScenarioAsync();
+        schedule.StartsAt = DateTime.UtcNow.AddMinutes(40);
+        schedule.EndsAt = schedule.StartsAt.AddHours(2);
+        await Context.SaveChangesAsync();
+
+        var result = await GetRequiredService<IReservationService>().CreateAsync(
+            user.Id,
+            new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 1 },
+            "capped-hold");
+
+        Assert.Equal(ReservationCreationStatus.Success, result.Status);
+        Assert.NotNull(result.Reservation!.ExpiresAt);
+        Assert.True(result.Reservation.ExpiresAt <= schedule.StartsAt.AddMinutes(-30));
+    }
+
+    [Fact]
     public async Task Create_RepeatedIdempotencyKey_ReturnsSameReservationWithoutDoubleDiscount()
     {
         var (user, _, schedule, _) = await SeedScenarioAsync();
@@ -136,16 +185,6 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
         await service.CreateAsync(owner.Id,
             new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 1 }, "list-two");
 
-        Context.HostProfiles.Add(new HostProfile
-        {
-            UserId = experience.HostId,
-            DisplayName = "Anfitrión de reservas",
-            Description = "Perfil aprobado para consultar reservas recibidas.",
-            PhoneNumber = "+1 809 555 0130",
-            VerificationStatus = HostVerificationStatuses.Approved
-        });
-        await Context.SaveChangesAsync();
-
         var request = new ReservationListRequest
         {
             Query = experience.Location,
@@ -215,6 +254,14 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
         };
         Context.Users.AddRange(user, host);
         await Context.SaveChangesAsync();
+        Context.HostProfiles.Add(new HostProfile
+        {
+            UserId = host.Id,
+            DisplayName = host.FullName,
+            Description = "Perfil aprobado para recibir reservas.",
+            PhoneNumber = "+1 809 555 0120",
+            VerificationStatus = HostVerificationStatuses.Approved
+        });
 
         var experience = new Experience
         {
@@ -331,6 +378,60 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
+    public async Task CreateSelfScheduled_HostCannotReserveOwnExperience()
+    {
+        var (_, experience) = await SeedSelfGuidedExperienceAsync();
+
+        var result = await GetRequiredService<IReservationService>().CreateSelfScheduledAsync(
+            experience.HostId,
+            new CreateSelfScheduledReservationRequest
+            {
+                ExperienceId = experience.Id,
+                StartsAtLocal = DateTime.Today.AddDays(3).AddHours(10),
+                Quantity = 1
+            },
+            "own-self-guided");
+
+        Assert.Equal(ReservationCreationStatus.Forbidden, result.Status);
+        Assert.False(await Context.Reservations.AnyAsync(item => item.ExperienceId == experience.Id));
+    }
+
+    [Fact]
+    public async Task CreateSelfScheduled_DoesNotReuseClosedSchedule()
+    {
+        var (user, experience) = await SeedSelfGuidedExperienceAsync();
+        var startsAtLocal = DateTime.Today.AddDays(4).AddHours(10);
+        var service = GetRequiredService<IReservationService>();
+        var first = await service.CreateSelfScheduledAsync(user.Id, new CreateSelfScheduledReservationRequest
+        {
+            ExperienceId = experience.Id,
+            StartsAtLocal = startsAtLocal,
+            Quantity = 1
+        }, "closed-self-guided-first");
+        var schedule = await Context.ExperienceSchedules.SingleAsync(item => item.Id == first.Reservation!.ScheduleId);
+        schedule.Status = ScheduleStatuses.Closed;
+        await Context.SaveChangesAsync();
+
+        var secondUser = new User
+        {
+            FullName = "Segundo turista autoguiado",
+            Email = $"closed-selfguided-{Guid.NewGuid():N}@goisland.test",
+            PasswordHash = "hash-integracion",
+            Role = UserRoles.Tourist
+        };
+        Context.Users.Add(secondUser);
+        await Context.SaveChangesAsync();
+        var result = await service.CreateSelfScheduledAsync(secondUser.Id, new CreateSelfScheduledReservationRequest
+        {
+            ExperienceId = experience.Id,
+            StartsAtLocal = startsAtLocal,
+            Quantity = 1
+        }, "closed-self-guided-second");
+
+        Assert.Equal(ReservationCreationStatus.ScheduleUnavailable, result.Status);
+    }
+
+    [Fact]
     public async Task CompleteByTourist_ForSelfGuidedExperienceAfterEndsAt_CompletesReservation()
     {
         var (user, experience) = await SeedSelfGuidedExperienceAsync();
@@ -366,6 +467,42 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
         Assert.Equal(ReservationCreationStatus.Success, repeatResult.Status);
     }
 
+    [Fact]
+    public async Task CompletionReconciler_CompletesConfirmedReservationsAfterGracePeriod()
+    {
+        var (user, experience) = await SeedSelfGuidedExperienceAsync();
+        var reservations = GetRequiredService<IReservationService>();
+        var creation = await reservations.CreateSelfScheduledAsync(user.Id, new CreateSelfScheduledReservationRequest
+        {
+            ExperienceId = experience.Id,
+            StartsAtLocal = DateTime.Today.AddDays(1).AddHours(10),
+            Quantity = 1
+        }, "automatic-completion");
+        Assert.Equal(ReservationCreationStatus.Success, creation.Status);
+        var createdReservation = creation.Reservation!;
+
+        var schedule = await Context.ExperienceSchedules
+            .SingleAsync(item => item.Id == createdReservation.ScheduleId);
+        schedule.StartsAt = DateTime.UtcNow.AddHours(-5);
+        schedule.EndsAt = DateTime.UtcNow.AddHours(-3);
+        await Context.SaveChangesAsync();
+        Context.ChangeTracker.Clear();
+
+        var completion = GetRequiredService<IReservationCompletionService>();
+        var processed = await completion.CompleteDueAsync();
+
+        Assert.Equal(1, processed);
+        var storedReservation = await Context.Reservations.AsNoTracking()
+            .SingleAsync(item => item.Id == createdReservation.Id);
+        var storedSchedule = await Context.ExperienceSchedules.AsNoTracking()
+            .SingleAsync(item => item.Id == schedule.Id);
+        Assert.Equal(ReservationStatuses.Completed, storedReservation.Status);
+        Assert.Equal(ScheduleStatuses.Completed, storedSchedule.Status);
+        Assert.True(await Context.ReservationStatusHistories.AsNoTracking().AnyAsync(history =>
+            history.ReservationId == storedReservation.Id
+            && history.ToStatus == ReservationStatuses.Completed));
+    }
+
     private async Task<(User User, Experience Experience)> SeedSelfGuidedExperienceAsync()
     {
         var marker = Guid.NewGuid().ToString("N");
@@ -385,6 +522,14 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
         };
         Context.Users.AddRange(user, host);
         await Context.SaveChangesAsync();
+        Context.HostProfiles.Add(new HostProfile
+        {
+            UserId = host.Id,
+            DisplayName = host.FullName,
+            Description = "Perfil aprobado para experiencias autoguiadas.",
+            PhoneNumber = "+1 809 555 0121",
+            VerificationStatus = HostVerificationStatuses.Approved
+        });
 
         var experience = new Experience
         {

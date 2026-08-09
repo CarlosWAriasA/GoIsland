@@ -305,6 +305,21 @@ public class ScheduleService : IScheduleService
         var capacity = experience.IsUnlimitedCapacity
             ? ExperienceCapacity.UnlimitedValue
             : request.Capacity;
+        await _expiration.ExpireForExperienceAsync(experienceId);
+        var selectedIds = schedules.Select(schedule => schedule.Id).ToArray();
+        var activeReservationScheduleIds = await _context.Reservations.AsNoTracking()
+            .Where(reservation => selectedIds.Contains(reservation.ScheduleId)
+                && (reservation.Status == ReservationStatuses.PendingPayment
+                    || reservation.Status == ReservationStatuses.Confirmed))
+            .Select(reservation => reservation.ScheduleId)
+            .Distinct()
+            .ToArrayAsync();
+        if (activeReservationScheduleIds.Length > 0)
+        {
+            return new(
+                ScheduleOperationStatus.HasReservations,
+                new ScheduleBatchResponse { ConflictingScheduleIds = activeReservationScheduleIds });
+        }
         var conflicts = schedules
             .Where(schedule => capacity < schedule.Capacity - schedule.AvailableSpots)
             .Select(schedule => schedule.Id)
@@ -380,6 +395,12 @@ public class ScheduleService : IScheduleService
                 ScheduleOperationStatus.InvalidStatus,
                 ToResponse(schedule, isUnlimitedCapacity));
         }
+        if (schedule.Status is not (ScheduleStatuses.Scheduled or ScheduleStatuses.Closed))
+        {
+            return new(
+                ScheduleOperationStatus.InvalidStatus,
+                ToResponse(schedule, isUnlimitedCapacity));
+        }
 
         if (!TryNormalizeDates(request.StartsAt, request.EndsAt, out var startsAt, out var endsAt))
         {
@@ -388,10 +409,25 @@ public class ScheduleService : IScheduleService
                 ToResponse(schedule, isUnlimitedCapacity));
         }
 
+        await _expiration.ExpireForScheduleAsync(id);
         var reservedSpots = schedule.Capacity - schedule.AvailableSpots;
         var capacity = isUnlimitedCapacity
             ? ExperienceCapacity.UnlimitedValue
             : request.Capacity;
+        var hasActiveReservations = await _context.Reservations.AnyAsync(reservation =>
+            reservation.ScheduleId == id
+            && (reservation.Status == ReservationStatuses.PendingPayment
+                || reservation.Status == ReservationStatuses.Confirmed));
+        if (hasActiveReservations
+            && (startsAt != schedule.StartsAt
+                || endsAt != schedule.EndsAt
+                || capacity != schedule.Capacity
+                || request.Status != ScheduleStatuses.Closed))
+        {
+            return new(
+                ScheduleOperationStatus.HasReservations,
+                ToResponse(schedule, isUnlimitedCapacity));
+        }
         if (capacity < reservedSpots)
         {
             return new(
@@ -457,7 +493,10 @@ public class ScheduleService : IScheduleService
         await _expiration.ExpireForExperienceAsync(experienceId);
         var isUnlimitedCapacity = await _context.Experiences.AsNoTracking()
             .Where(experience => experience.Id == experienceId
-                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved)
+                && experience.IsApproved
+                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && _context.HostProfiles.Any(profile => profile.UserId == experience.HostId
+                    && profile.VerificationStatus == HostVerificationStatuses.Approved))
             .Select(experience => (bool?)experience.IsUnlimitedCapacity)
             .SingleOrDefaultAsync();
         if (!isUnlimitedCapacity.HasValue)

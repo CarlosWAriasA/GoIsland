@@ -69,7 +69,12 @@ debe registrar ese valor al investigar un error sin exponer contenido de la soli
 | `WebPush__PrivateKey` | Según uso | Clave privada VAPID |
 | `Payments__Provider` | Sí | `Stripe` en la demostración |
 | `Payments__Mode` | Sí | `Sandbox` |
+| `Payments__Currency` | Sí | Moneda ISO de tres letras; inicialmente `USD` |
+| `Payments__ServiceFeePercent` | Sí | Cargo mostrado y cobrado a la persona |
+| `Payments__CommissionPercent` | Sí | Comisión descontada al calcular el neto del anfitrión |
 | `Reservations__Expiration__HoldMinutes` | Sí | Minutos disponibles para pagar; inicialmente `15` |
+| `Reservations__Expiration__BookingCutoffMinutes` | Sí | Anticipación mínima para reservar; inicialmente `30` |
+| `Reservations__Expiration__CompletionGraceMinutes` | Sí | Margen antes de completar automáticamente; inicialmente `120` |
 | `Reservations__Expiration__PollIntervalSeconds` | Sí | Frecuencia de reconciliación; inicialmente `30` |
 | `Reservations__Expiration__BatchSize` | Sí | Reservas procesadas por lote; inicialmente `50` |
 | `Cloudinary__CloudName` | Fase 2 | Cuenta de imágenes |
@@ -191,6 +196,11 @@ Los scripts SQL no se ejecutan solos, y el orden importa:
 
 Invertir el orden deja la API desplegada consultando objetos que aún no existen. Por ejemplo, la
 búsqueda sin tildes depende de la función `goisland_normalize` que crea el script `020`.
+
+Antes de aplicar un script, ejecutar `./scripts/verify-release.ps1`. Con PostgreSQL local disponible,
+usar `./scripts/verify-release.ps1 -IncludeIntegration`. La verificación incluye backend, lint,
+pruebas frontend, presupuesto del paquete y auditoría de dependencias. No sustituye la copia previa
+ni la comprobación de `/api/health/ready` después de migrar.
 
 ## Stripe Sandbox
 

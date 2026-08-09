@@ -20,10 +20,9 @@ import {
   Utensils,
   UsersRound,
   Waves,
-  X,
   XCircle,
 } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
@@ -36,7 +35,7 @@ import { usePageMetadata } from '../hooks/usePageMetadata';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
 import RatingStars from '../components/RatingStars';
-import { getCancellationPolicyLabel, getDifficultyLabel } from '../utils/experienceLabels';
+import { getDifficultyLabel } from '../utils/experienceLabels';
 import { reviewService } from '../services/reviewService';
 import { resolveApiAssetUrl } from '../services/api';
 import { formatLocationLabel } from '../services/googleMapsService';
@@ -136,18 +135,19 @@ export const ExperienceDetail = () => {
   });
   const schedules = availabilityQuery.data ?? [];
   const reviews = reviewsQuery.data ?? [];
-  const requestError = (!detailQuery.data ? detailQuery.error : null)
-    ?? (!availabilityQuery.data ? availabilityQuery.error : null)
-    ?? (!reviewsQuery.data ? reviewsQuery.error : null);
+  const requestError = !detailQuery.data ? detailQuery.error : null;
   const apiError = requestError
     ? toApiError(requestError, 'No fue posible cargar esta experiencia.')
     : null;
-  const loading = isValidIdentifier && (
-    detailQuery.isPending
-    || (experience !== null && (availabilityQuery.isPending || reviewsQuery.isPending))
-  );
+  const loading = isValidIdentifier && detailQuery.isPending;
   const error = apiError?.status === 404 ? null : apiError?.message ?? null;
   const notFound = !isValidIdentifier || apiError?.status === 404;
+  const availabilityError = availabilityQuery.error
+    ? toApiError(availabilityQuery.error, 'No pudimos consultar las fechas disponibles.').message
+    : null;
+  const reviewsError = reviewsQuery.error
+    ? toApiError(reviewsQuery.error, 'No pudimos cargar las reseñas.').message
+    : null;
 
   const metadata = useMemo(() => {
     if (!experience) return undefined;
@@ -204,14 +204,25 @@ export const ExperienceDetail = () => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const lightboxRef = useRef<HTMLDivElement>(null);
+  const lightboxTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (userHasInteracted || allImages.length <= 1) return;
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updatePreference = () => setPrefersReducedMotion(query.matches);
+    updatePreference();
+    query.addEventListener('change', updatePreference);
+    return () => query.removeEventListener('change', updatePreference);
+  }, []);
+
+  useEffect(() => {
+    if (prefersReducedMotion || userHasInteracted || allImages.length <= 1) return;
     const interval = setInterval(() => {
       setActiveImageIndex((prev) => (prev + 1) % allImages.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, [userHasInteracted, allImages.length]);
+  }, [prefersReducedMotion, userHasInteracted, allImages.length]);
 
   const handlePrevImage = useCallback(() => {
     if (allImages.length <= 1) return;
@@ -232,6 +243,9 @@ export const ExperienceDetail = () => {
 
   useEffect(() => {
     if (!isLightboxOpen) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const focusable = () => Array.from(lightboxRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled)') ?? []);
+    focusable()[0]?.focus();
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsLightboxOpen(false);
@@ -239,6 +253,17 @@ export const ExperienceDetail = () => {
         handlePrevImage();
       } else if (e.key === 'ArrowRight') {
         handleNextImage();
+      } else if (e.key === 'Tab') {
+        const elements = focusable();
+        const first = elements[0];
+        const last = elements[elements.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -246,6 +271,7 @@ export const ExperienceDetail = () => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
+      previousFocus?.focus();
     };
   }, [isLightboxOpen, handleNextImage, handlePrevImage]);
 
@@ -297,8 +323,7 @@ export const ExperienceDetail = () => {
     || experience.whatIsNotIncluded.length > 0;
   const hasUsefulInformation = experience.languages.length > 0
     || Boolean(experience.difficulty)
-    || Boolean(experience.accessibilityInformation)
-    || Boolean(experience.cancellationPolicy);
+    || Boolean(experience.accessibilityInformation);
   const handleReserve = () => {
     if (!isAuthenticated) {
       navigate('/login', {
@@ -349,6 +374,7 @@ export const ExperienceDetail = () => {
 
               {allImages.length > 0 && (
                 <button
+                  ref={lightboxTriggerRef}
                   type="button"
                   className="experience-carousel__expand"
                   onClick={() => {
@@ -445,7 +471,13 @@ export const ExperienceDetail = () => {
                     : 'La próxima fecha está completa.'}
               </Alert>
             </>
-          ) : null}
+          ) : availabilityQuery.isPending ? (
+            <p className="experience-detail__reservation-note">Consultando fechas disponibles…</p>
+          ) : availabilityError ? (
+            <Alert tone="warning">{availabilityError}</Alert>
+          ) : (
+            <Alert tone="info">No hay fechas disponibles por ahora.</Alert>
+          )}
           {canReserve && (
             <>
               <Button
@@ -594,11 +626,6 @@ export const ExperienceDetail = () => {
                       <strong>Accesibilidad:</strong> {experience.accessibilityInformation}
                     </p>
                   )}
-                  {experience.cancellationPolicy && (
-                    <p className="experience-info-card__row">
-                      <strong>Política de cancelación:</strong> {getCancellationPolicyLabel(experience.cancellationPolicy)}
-                    </p>
-                  )}
                 </div>
               </div>
             )}
@@ -680,7 +707,13 @@ export const ExperienceDetail = () => {
               </p>
             )}
           </div>
-          {reviews.length === 0 ? (
+          {reviewsError ? (
+            <Alert tone="warning">
+              {reviewsError} <Button variant="ghost" size="sm" onClick={() => void reviewsQuery.refetch()}>Intentar de nuevo</Button>
+            </Alert>
+          ) : reviewsQuery.isPending ? (
+            <p className="experience-reviews__empty">Cargando reseñas…</p>
+          ) : reviews.length === 0 ? (
             <p className="experience-reviews__empty">
               Todavía no hay reseñas.
             </p>
@@ -708,19 +741,14 @@ export const ExperienceDetail = () => {
           aria-modal="true"
           aria-label="Visualizador de imágenes a pantalla completa"
         >
-          <div className="experience-lightbox__container" onClick={(e) => e.stopPropagation()}>
+          <div ref={lightboxRef} className="experience-lightbox__container" onClick={(e) => e.stopPropagation()}>
             <div className="experience-lightbox__header">
               <span className="experience-lightbox__count">
                 Foto {activeImageIndex + 1} de {allImages.length}
               </span>
-              <button
-                type="button"
-                className="experience-lightbox__close"
-                onClick={() => setIsLightboxOpen(false)}
-                aria-label="Cerrar vista ampliada"
-              >
-                <X size={22} aria-hidden="true" />
-              </button>
+              <Button variant="ghost" onClick={() => setIsLightboxOpen(false)} aria-label="Cerrar vista ampliada">
+                Cerrar
+              </Button>
             </div>
 
             <div className="experience-lightbox__stage">

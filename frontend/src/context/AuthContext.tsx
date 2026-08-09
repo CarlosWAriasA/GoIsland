@@ -53,10 +53,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const currentUser = await authService.getMe();
+        const refreshed = await authService.refreshSession();
         if (!cancelled) {
-          setUser(currentUser);
-          saveAuthSession({ ...session, user: currentUser });
+          setAuthToken(refreshed.token);
+          setToken(refreshed.token);
+          setExpiresAt(refreshed.expiresAt);
+          setAuthenticationMethod(refreshed.authenticationMethod);
+          setUser(refreshed.user);
+          saveAuthSession(refreshed);
         }
       } catch {
         // Un 401 se procesa en el interceptor. Ante un fallo de red se conserva
@@ -88,6 +92,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const expirationTimer = window.setInterval(checkExpiration, 30_000);
     return () => window.clearInterval(expirationTimer);
   }, [clearAuthentication, expiresAt]);
+
+  useEffect(() => {
+    if (!token) return;
+    let lastRefreshAt = Date.now();
+    let refreshing = false;
+
+    const refreshVisibleSession = async () => {
+      if (refreshing || document.visibilityState !== 'visible'
+        || Date.now() - lastRefreshAt < 60_000) return;
+      refreshing = true;
+      lastRefreshAt = Date.now();
+      try {
+        const refreshed = await authService.refreshSession();
+        setAuthToken(refreshed.token);
+        setToken(refreshed.token);
+        setExpiresAt(refreshed.expiresAt);
+        setAuthenticationMethod(refreshed.authenticationMethod);
+        setUser(refreshed.user);
+        saveAuthSession(refreshed);
+      } catch {
+        // Un 401 cierra la sesión mediante el interceptor. Los fallos temporales de red
+        // conservan la sesión y se reintentan cuando la persona vuelve a la aplicación.
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    const onFocus = () => void refreshVisibleSession();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [token]);
 
   const applyAuthResponse = (response: AuthResponse) => {
     setAuthToken(response.token);
@@ -156,13 +195,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshUser = useCallback(async () => {
-    const currentUser = await authService.getMe();
-    setUser(currentUser);
-    if (token && expiresAt) {
-      saveAuthSession({ token, expiresAt, authenticationMethod, user: currentUser });
-    }
-    return currentUser;
-  }, [authenticationMethod, expiresAt, token]);
+    const refreshed = await authService.refreshSession();
+    setAuthToken(refreshed.token);
+    setToken(refreshed.token);
+    setExpiresAt(refreshed.expiresAt);
+    setAuthenticationMethod(refreshed.authenticationMethod);
+    setUser(refreshed.user);
+    saveAuthSession(refreshed);
+    return refreshed.user;
+  }, []);
 
   return (
     <AuthContext.Provider

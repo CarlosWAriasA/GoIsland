@@ -62,6 +62,8 @@ public class ReservationsController : ControllerBase
                 new { message = "Los cupos cambiaron mientras se procesaba la reserva. Intenta nuevamente." }),
             ReservationCreationStatus.IdempotencyConflict => Conflict(
                 new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
+            ReservationCreationStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "No puedes reservar tu propia experiencia." }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };
     }
@@ -99,6 +101,8 @@ public class ReservationsController : ControllerBase
                 new { message = "Ocurrió un conflicto al agendar la visita. Intenta nuevamente." }),
             ReservationCreationStatus.IdempotencyConflict => Conflict(
                 new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
+            ReservationCreationStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "No puedes reservar tu propia experiencia." }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };
     }

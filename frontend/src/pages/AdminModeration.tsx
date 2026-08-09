@@ -14,6 +14,7 @@ import {
 import { lazy, Suspense, useEffect, useState } from 'react';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
+import ConfirmDialog from '../components/ConfirmDialog';
 import Dialog from '../components/Dialog';
 import PromptDialog from '../components/PromptDialog';
 import EmptyState from '../components/EmptyState';
@@ -34,7 +35,7 @@ import type {
   ManagedExperience,
 } from '../types';
 import { getModerationLabel, getModerationTone } from '../utils/moderationStatus';
-import { getCancellationPolicyLabel, getDifficultyLabel } from '../utils/experienceLabels';
+import { getDifficultyLabel } from '../utils/experienceLabels';
 
 const ExperienceMap = lazy(() => import('../components/ExperienceMap'));
 
@@ -76,8 +77,7 @@ const ModerationExperienceDetail = ({ experience }: ModerationExperienceDetailPr
     || experience.whatIsNotIncluded.length > 0;
   const hasUsefulInformation = experience.languages.length > 0
     || Boolean(experience.difficulty)
-    || Boolean(experience.accessibilityInformation)
-    || Boolean(experience.cancellationPolicy);
+    || Boolean(experience.accessibilityInformation);
 
   return (
     <article className="moderation-experience-detail">
@@ -113,7 +113,7 @@ const ModerationExperienceDetail = ({ experience }: ModerationExperienceDetailPr
               <StatusBadge tone={getModerationTone(experience.approvalStatus)}>
                 {getModerationLabel(experience.approvalStatus)}
               </StatusBadge>
-              <span>Experiencia #{experience.id}</span>
+              <span>Experiencia enviada a revisión</span>
             </div>
             <h2>{experience.title}</h2>
             <div className="experience-detail__location">
@@ -169,9 +169,6 @@ const ModerationExperienceDetail = ({ experience }: ModerationExperienceDetailPr
                   {experience.languages.length > 0 && <p>Idiomas: {experience.languages.join(', ')}</p>}
                   {experience.difficulty && <p>Dificultad: {getDifficultyLabel(experience.difficulty)}</p>}
                   {experience.accessibilityInformation && <p>Accesibilidad: {experience.accessibilityInformation}</p>}
-                  {experience.cancellationPolicy && (
-                    <p>Cancelación: {getCancellationPolicyLabel(experience.cancellationPolicy)}</p>
-                  )}
                 </section>
               )}
             </div>
@@ -279,6 +276,7 @@ export const AdminModeration = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [pendingReasonAction, setPendingReasonAction] = useState<PendingReasonAction | null>(null);
+  const [pendingApprovalAction, setPendingApprovalAction] = useState<PendingReasonAction | null>(null);
   const [selectedExperience, setSelectedExperience] = useState<ManagedExperience | null>(null);
 
   const retryLoad = () => {
@@ -328,8 +326,10 @@ export const AdminModeration = () => {
       setApplications((current) => current.map((item) => item.id === updated.id ? updated : item));
       setSuccess(`La solicitud de ${profile.displayName} fue ${actionPastParticiple[action]}.`);
       setRetryCount((current) => current + 1);
+      return true;
     } catch (requestError: unknown) {
       setError(toApiError(requestError).message);
+      return false;
     } finally {
       setBusyKey(null);
     }
@@ -345,8 +345,10 @@ export const AdminModeration = () => {
       setSelectedExperience((current) => current?.id === updated.id ? updated : current);
       setSuccess(`La experiencia “${experience.title}” fue ${actionPastParticiple[action]}.`);
       setRetryCount((current) => current + 1);
+      return true;
     } catch (requestError: unknown) {
       setError(toApiError(requestError).message);
+      return false;
     } finally {
       setBusyKey(null);
     }
@@ -354,7 +356,7 @@ export const AdminModeration = () => {
 
   const requestHostDecision = (profile: HostProfile, action: HostAction) => {
     if (action === 'approve') {
-      void decideHost(profile, action);
+      setPendingApprovalAction({ scope: 'host', target: profile, action });
       return;
     }
     setPendingReasonAction({ scope: 'host', target: profile, action });
@@ -362,7 +364,7 @@ export const AdminModeration = () => {
 
   const requestExperienceDecision = (experience: ManagedExperience, action: ExperienceAction) => {
     if (action === 'approve') {
-      void decideExperience(experience, action);
+      setPendingApprovalAction({ scope: 'experience', target: experience, action });
       return;
     }
     setPendingReasonAction({ scope: 'experience', target: experience, action });
@@ -370,12 +372,18 @@ export const AdminModeration = () => {
 
   const confirmReasonAction = async (reason: string) => {
     if (!pendingReasonAction) return;
-    if (pendingReasonAction.scope === 'host') {
-      await decideHost(pendingReasonAction.target, pendingReasonAction.action, reason);
-    } else {
-      await decideExperience(pendingReasonAction.target, pendingReasonAction.action, reason);
-    }
-    setPendingReasonAction(null);
+    const succeeded = pendingReasonAction.scope === 'host'
+      ? await decideHost(pendingReasonAction.target, pendingReasonAction.action, reason)
+      : await decideExperience(pendingReasonAction.target, pendingReasonAction.action, reason);
+    if (succeeded) setPendingReasonAction(null);
+  };
+
+  const confirmApprovalAction = async () => {
+    if (!pendingApprovalAction) return;
+    const succeeded = pendingApprovalAction.scope === 'host'
+      ? await decideHost(pendingApprovalAction.target, 'approve')
+      : await decideExperience(pendingApprovalAction.target, 'approve');
+    if (succeeded) setPendingApprovalAction(null);
   };
 
   if (loading) {
@@ -449,7 +457,7 @@ export const AdminModeration = () => {
               <article className="operations-row operations-row--hosts" key={profile.id}>
                 <div className="operations-row__main">
                   <div className="operations-row__primary">
-                    <span className="operations-row__reference">Solicitud #{profile.id}</span>
+                    <span className="operations-row__reference">Solicitud de anfitrión</span>
                     <h3>{profile.displayName}</h3>
                     <small>{profile.userFullName}</small>
                   </div>
@@ -461,7 +469,6 @@ export const AdminModeration = () => {
                   <div className="operations-row__cell">
                     <span>Enviada</span>
                     <strong>{new Date(profile.submittedAt).toLocaleDateString('es-DO')}</strong>
-                    <small>Usuario #{profile.userId}</small>
                   </div>
                   <StatusBadge tone={getModerationTone(profile.verificationStatus)}>
                     {getModerationLabel(profile.verificationStatus)}
@@ -553,7 +560,7 @@ export const AdminModeration = () => {
               <article className="operations-row operations-row--experiences" key={experience.id}>
                 <div className="operations-row__main">
                   <div className="operations-row__primary">
-                    <span className="operations-row__reference">Experiencia #{experience.id}</span>
+                    <span className="operations-row__reference">Experiencia para moderar</span>
                     <h3>{experience.title}</h3>
                     <small><MapPin size={14} aria-hidden="true" />{formatLocationLabel(experience.location)}</small>
                   </div>
@@ -688,6 +695,20 @@ export const AdminModeration = () => {
         isConfirming={busyKey !== null}
         onClose={() => setPendingReasonAction(null)}
         onConfirm={confirmReasonAction}
+      />
+      <ConfirmDialog
+        open={pendingApprovalAction !== null}
+        title={pendingApprovalAction?.scope === 'host' ? 'Aprobar anfitrión' : 'Publicar experiencia'}
+        message={pendingApprovalAction?.scope === 'host'
+          ? `¿Confirmas que ${pendingApprovalAction.target.displayName} puede publicar y gestionar experiencias?`
+          : pendingApprovalAction
+            ? `¿Confirmas que “${pendingApprovalAction.target.title}” está lista para aparecer en el catálogo?`
+            : ''}
+        confirmLabel={pendingApprovalAction?.scope === 'host' ? 'Aprobar anfitrión' : 'Publicar experiencia'}
+        confirmVariant="primary"
+        isConfirming={busyKey !== null}
+        onClose={() => setPendingApprovalAction(null)}
+        onConfirm={() => void confirmApprovalAction()}
       />
     </div>
   );

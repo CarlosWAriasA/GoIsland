@@ -90,16 +90,60 @@ public class StripePaymentGateway : IPaymentGateway
                 },
                 new RequestOptions { IdempotencyKey = request.IdempotencyKey },
                 cancellationToken);
-            return refund.Status == "succeeded"
-                ? new GatewayRefundResult(true, refund.Id, null)
-                : new GatewayRefundResult(false, refund.Id, $"Refund{refund.Status}");
+            var accepted = refund.Status is "succeeded" or "pending" or "requires_action";
+            return new GatewayRefundResult(
+                accepted,
+                refund.Id,
+                accepted ? null : $"Refund{refund.Status}",
+                Completed: refund.Status == "succeeded");
         }
         catch (StripeException exception)
         {
             var failureCode = exception.StripeError?.Code ?? "StripeUnavailable";
             _logger.LogWarning(exception, "Stripe rechazo el reembolso de {PaymentIntentId}: {FailureCode}.",
                 request.ProviderPaymentId, failureCode);
-            return new GatewayRefundResult(false, null, failureCode);
+            return new GatewayRefundResult(false, null, failureCode, Completed: false);
+        }
+    }
+
+    public async Task<GatewayCancellationResult> CancelPaymentAsync(
+        string providerPaymentId,
+        CancellationToken cancellationToken = default)
+    {
+        var service = new PaymentIntentService(_client);
+        try
+        {
+            var intent = await service.CancelAsync(
+                providerPaymentId,
+                cancellationToken: cancellationToken);
+            return new GatewayCancellationResult(
+                Cancelled: intent.Status == "canceled",
+                Succeeded: intent.Status == "succeeded",
+                FailureCode: intent.Status == "canceled" ? null : $"PaymentIntent{intent.Status}");
+        }
+        catch (StripeException exception)
+        {
+            try
+            {
+                var intent = await service.GetAsync(providerPaymentId, cancellationToken: cancellationToken);
+                if (intent.Status == "succeeded")
+                {
+                    return new GatewayCancellationResult(false, true, "PaymentAlreadySucceeded");
+                }
+            }
+            catch (StripeException lookupException)
+            {
+                _logger.LogWarning(lookupException,
+                    "No se pudo consultar el PaymentIntent {PaymentIntentId} tras fallar su cancelacion.",
+                    providerPaymentId);
+            }
+
+            var failureCode = exception.StripeError?.Code ?? "StripeUnavailable";
+            _logger.LogWarning(exception,
+                "Stripe rechazo la cancelacion del PaymentIntent {PaymentIntentId}: {FailureCode}.",
+                providerPaymentId,
+                failureCode);
+            return new GatewayCancellationResult(false, false, failureCode);
         }
     }
 

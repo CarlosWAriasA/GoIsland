@@ -14,6 +14,7 @@ public class MockPaymentGateway : IPaymentGateway
     private readonly ILogger<MockPaymentGateway> _logger;
     private readonly ConcurrentDictionary<string, string> _paymentsByIdempotencyKey = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, string> _refundsByIdempotencyKey = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, byte> _cancelledPayments = new(StringComparer.Ordinal);
 
     public MockPaymentGateway(ILogger<MockPaymentGateway> logger)
     {
@@ -53,8 +54,19 @@ public class MockPaymentGateway : IPaymentGateway
         return Task.FromResult(new GatewayRefundResult(true, providerRefundId, null));
     }
 
+    public Task<GatewayCancellationResult> CancelPaymentAsync(
+        string providerPaymentId,
+        CancellationToken cancellationToken = default)
+    {
+        _cancelledPayments.TryAdd(providerPaymentId, 0);
+        _logger.LogInformation("Pago mock {ProviderPaymentId} cancelado.", providerPaymentId);
+        return Task.FromResult(new GatewayCancellationResult(true, false, null));
+    }
+
     public Task<GatewayPaymentSessionResult> GetPaymentSessionAsync(
         string providerPaymentId,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult(new GatewayPaymentSessionResult(true, null, null));
+        Task.FromResult(_cancelledPayments.ContainsKey(providerPaymentId)
+            ? new GatewayPaymentSessionResult(false, null, "PaymentCanceled")
+            : new GatewayPaymentSessionResult(true, null, null));
 }

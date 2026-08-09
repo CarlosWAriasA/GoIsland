@@ -15,26 +15,36 @@ public class EfExperienceRepository : IExperienceRepository
         _context = context;
     }
 
-    public Task<Experience?> GetByIdAsync(int id)
+    public async Task<Experience?> GetByIdAsync(int id)
     {
-        return _context.Experiences
+        var experience = await _context.Experiences
             .AsNoTracking()
             .Include(experience => experience.Images)
             .Include(experience => experience.Itinerary)
             .FirstOrDefaultAsync(experience =>
                 experience.Id == id
-                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
+                && experience.IsApproved
+                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && _context.HostProfiles.Any(profile => profile.UserId == experience.HostId
+                    && profile.VerificationStatus == HostVerificationStatuses.Approved));
+        if (experience is not null) await ApplyPublicAvailabilityAsync([experience]);
+        return experience;
     }
 
-    public Task<Experience?> GetBySlugAsync(string slug)
+    public async Task<Experience?> GetBySlugAsync(string slug)
     {
-        return _context.Experiences
+        var experience = await _context.Experiences
             .AsNoTracking()
             .Include(experience => experience.Images)
             .Include(experience => experience.Itinerary)
             .FirstOrDefaultAsync(experience =>
                 experience.Slug == slug
-                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
+                && experience.IsApproved
+                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && _context.HostProfiles.Any(profile => profile.UserId == experience.HostId
+                    && profile.VerificationStatus == HostVerificationStatuses.Approved));
+        if (experience is not null) await ApplyPublicAvailabilityAsync([experience]);
+        return experience;
     }
 
     public Task<Experience?> GetForReservationAsync(int id)
@@ -42,14 +52,20 @@ public class EfExperienceRepository : IExperienceRepository
         return _context.Experiences
             .FirstOrDefaultAsync(experience =>
                 experience.Id == id
-                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
+                && experience.IsApproved
+                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && _context.HostProfiles.Any(profile => profile.UserId == experience.HostId
+                    && profile.VerificationStatus == HostVerificationStatuses.Approved));
     }
 
     public async Task<PagedResponse<Experience>> SearchAsync(SearchExperiencesRequest request)
     {
         var query = _context.Experiences
             .AsNoTracking()
-            .Where(experience => experience.ApprovalStatus == ExperienceApprovalStatuses.Approved);
+            .Where(experience => experience.IsApproved
+                && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && _context.HostProfiles.Any(profile => profile.UserId == experience.HostId
+                    && profile.VerificationStatus == HostVerificationStatuses.Approved));
 
         var searchTerm = SearchText.NormalizeTerm(request.Query);
         if (searchTerm is not null)
@@ -127,12 +143,57 @@ public class EfExperienceRepository : IExperienceRepository
             .Include(experience => experience.Itinerary)
             .AsSplitQuery()
             .ToArrayAsync();
+        await ApplyPublicAvailabilityAsync(items);
 
         return PagedResponse<Experience>.Create(
             items,
             request.Page,
             request.PageSize,
             totalItems);
+    }
+
+    private async Task ApplyPublicAvailabilityAsync(IReadOnlyCollection<Experience> experiences)
+    {
+        if (experiences.Count == 0) return;
+
+        var guided = experiences
+            .Where(item => item.SchedulingMode != ExperienceSchedulingModes.SelfGuided)
+            .ToDictionary(item => item.Id);
+        foreach (var selfGuided in experiences.Where(item =>
+                     item.SchedulingMode == ExperienceSchedulingModes.SelfGuided))
+        {
+            selfGuided.Capacity = ExperienceCapacity.UnlimitedValue;
+            selfGuided.AvailableSpots = ExperienceCapacity.UnlimitedValue;
+            selfGuided.IsUnlimitedCapacity = true;
+        }
+        if (guided.Count == 0) return;
+
+        var now = DateTime.UtcNow;
+        var schedules = await _context.ExperienceSchedules
+            .AsNoTracking()
+            .Where(schedule => guided.Keys.Contains(schedule.ExperienceId)
+                && schedule.Status == ScheduleStatuses.Scheduled
+                && schedule.StartsAt > now)
+            .OrderBy(schedule => schedule.StartsAt)
+            .Select(schedule => new
+            {
+                schedule.ExperienceId,
+                schedule.Capacity,
+                schedule.AvailableSpots
+            })
+            .ToArrayAsync();
+
+        foreach (var experience in guided.Values)
+        {
+            experience.AvailableSpots = 0;
+        }
+        foreach (var schedule in schedules)
+        {
+            if (!guided.Remove(schedule.ExperienceId, out var experience)) continue;
+            experience.Capacity = schedule.Capacity;
+            experience.AvailableSpots = schedule.AvailableSpots;
+            experience.IsUnlimitedCapacity = schedule.Capacity == ExperienceCapacity.UnlimitedValue;
+        }
     }
 
     private IOrderedQueryable<Experience> ApplyOrdering(

@@ -150,4 +150,19 @@ public class AuthController : ControllerBase
 
         return Ok(AuthService.ToResponse(user));
     }
+
+    [HttpPost("refresh-session")]
+    [Authorize]
+    public async Task<ActionResult<AuthResponse>> RefreshSession()
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        }
+
+        var response = await _authService.RefreshSessionAsync(userId);
+        return response is null
+            ? Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." })
+            : Ok(response);
+    }
 }

@@ -211,7 +211,21 @@ else
 {
     builder.Services.AddSingleton<IPaymentGateway, StripePaymentGateway>();
 }
+builder.Services.AddOptions<PaymentPricingOptions>()
+    .Bind(builder.Configuration.GetSection(PaymentPricingOptions.SectionName))
+    .Validate(options => !string.IsNullOrWhiteSpace(options.Currency)
+            && options.Currency.Length == 3
+            && options.Currency.All(char.IsLetter),
+        "Payments:Currency debe ser un codigo de moneda de tres letras.")
+    .Validate(options => options.ServiceFeePercent is >= 0m and <= 100m,
+        "Payments:ServiceFeePercent debe estar entre 0 y 100.")
+    .Validate(options => options.CommissionPercent is >= 0m and <= 100m,
+        "Payments:CommissionPercent debe estar entre 0 y 100.")
+    .ValidateOnStart();
+builder.Services.AddSingleton<IPaymentPricingService, PaymentPricingService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IRefundRecoveryService, RefundRecoveryService>();
+builder.Services.AddHostedService<RefundRecoveryBackgroundService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExperienceService, ExperienceService>();
 builder.Services.AddScoped<IExperienceManagementService, ExperienceManagementService>();
@@ -230,6 +244,10 @@ builder.Services.AddOptions<ReservationExpirationOptions>()
     .Bind(builder.Configuration.GetSection(ReservationExpirationOptions.SectionName))
     .Validate(options => options.HoldMinutes is >= 1 and <= 1440,
         "Reservations:Expiration:HoldMinutes debe estar entre 1 y 1440.")
+    .Validate(options => options.BookingCutoffMinutes is >= 0 and <= 10080,
+        "Reservations:Expiration:BookingCutoffMinutes debe estar entre 0 y 10080.")
+    .Validate(options => options.CompletionGraceMinutes is >= 0 and <= 10080,
+        "Reservations:Expiration:CompletionGraceMinutes debe estar entre 0 y 10080.")
     .Validate(options => options.PollIntervalSeconds is >= 5 and <= 3600,
         "Reservations:Expiration:PollIntervalSeconds debe estar entre 5 y 3600.")
     .Validate(options => options.BatchSize is >= 1 and <= 500,
@@ -237,6 +255,7 @@ builder.Services.AddOptions<ReservationExpirationOptions>()
     .ValidateOnStart();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IReservationExpirationService, ReservationExpirationService>();
+builder.Services.AddScoped<IReservationCompletionService, ReservationCompletionService>();
 builder.Services.AddScoped<IReservationObserver, EmailNotificationObserver>();
 builder.Services.AddScoped<IReservationObserver, PushNotificationObserver>();
 builder.Services.AddScoped<IReservationObserver, CapacityManagerObserver>();
@@ -245,6 +264,7 @@ builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IReservationChangeRequestService, ReservationChangeRequestService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddHostedService<ReservationExpirationBackgroundService>();
+builder.Services.AddHostedService<ReservationCompletionBackgroundService>();
 
 var jwtKey = SecurityConfiguration.GetRequiredJwtKey(
     builder.Configuration,

@@ -3,6 +3,7 @@ import type {
   ExperienceSchedule,
   ExperienceSearchParams,
   PagedResponse,
+  PaymentQuote,
 } from '../types';
 import { api } from './api';
 
@@ -53,6 +54,18 @@ export const experienceService = {
   ): Promise<ExperienceSchedule[]> => {
     const response = await api.get<ExperienceSchedule[]>(`/experiences/${id}/availability`, {
       params,
+      signal,
+    });
+    return response.data;
+  },
+
+  getPaymentQuote: async (
+    id: number,
+    quantity: number,
+    signal?: AbortSignal,
+  ): Promise<PaymentQuote> => {
+    const response = await api.get<PaymentQuote>(`/experiences/${id}/payment-quote`, {
+      params: { quantity },
       signal,
     });
     return response.data;

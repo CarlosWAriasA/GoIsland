@@ -145,6 +145,29 @@ public class AuthIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
+    public async Task RefreshSession_ReissuesTokenWithCurrentDatabaseRole()
+    {
+        var authService = GetRequiredService<IAuthService>();
+        var registration = await authService.RegisterAsync(new RegisterRequest
+        {
+            FullName = "Anfitrión recién aprobado",
+            Email = $"refresh-role-{Guid.NewGuid():N}@goisland.test",
+            Password = "Password123"
+        });
+        Assert.NotNull(registration);
+
+        var user = await Context.Users.SingleAsync(item => item.Id == registration.User.Id);
+        user.Role = UserRoles.Host;
+        await Context.SaveChangesAsync();
+
+        var refreshed = await authService.RefreshSessionAsync(user.Id);
+
+        Assert.NotNull(refreshed);
+        Assert.Equal(UserRoles.Host, refreshed.User.Role);
+        Assert.NotEqual(registration.Token, refreshed.Token);
+    }
+
+    [Fact]
     public async Task GoogleAuth_CreatesAndReusesAccountByProviderSubject()
     {
         var authService = GetRequiredService<IAuthService>();

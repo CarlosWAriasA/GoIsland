@@ -98,6 +98,16 @@ public class PaymentUnitOfWorkIntegrationTests : PostgresIntegrationTestBase
         await unitOfWork.Users.AddAsync(host);
         await unitOfWork.CommitAsync();
 
+        Context.HostProfiles.Add(new HostProfile
+        {
+            UserId = host.Id,
+            DisplayName = host.FullName,
+            Description = "Perfil aprobado para validar pagos transaccionales.",
+            PhoneNumber = "+1 809 555 0140",
+            VerificationStatus = HostVerificationStatuses.Approved
+        });
+        await Context.SaveChangesAsync();
+
         var experience = new Experience
         {
             HostId = host.Id,

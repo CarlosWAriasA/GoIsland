@@ -5,9 +5,23 @@ import Alert from './Alert';
 import Button from './Button';
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.trim() ?? '';
-const stripePromise = publishableKey.startsWith('pk_test_') || publishableKey.startsWith('pk_live_')
-  ? loadStripe(publishableKey)
-  : null;
+let stripePromise: ReturnType<typeof loadStripe> | null | undefined;
+
+const getStripePromise = () => {
+  if (stripePromise !== undefined) return stripePromise;
+
+  stripePromise = publishableKey.startsWith('pk_test_')
+    ? loadStripe(publishableKey, {
+        developerTools: {
+          assistant: {
+            enabled: false,
+          },
+        },
+      })
+    : null;
+
+  return stripePromise;
+};
 
 interface StripePaymentFormProps {
   clientSecret: string;
@@ -64,7 +78,9 @@ const PaymentForm = ({ reservationId, onSubmitted, onCancel }: StripePaymentForm
 };
 
 export const StripePaymentForm = (props: StripePaymentFormProps) => {
-  if (!stripePromise) {
+  const stripe = getStripePromise();
+
+  if (!stripe) {
     return (
       <Alert tone="error">
         El pago no está disponible en este momento. Inténtalo nuevamente más tarde.
@@ -74,9 +90,10 @@ export const StripePaymentForm = (props: StripePaymentFormProps) => {
 
   return (
     <Elements
-      stripe={stripePromise}
+      stripe={stripe}
       options={{
         clientSecret: props.clientSecret,
+        locale: 'es',
         appearance: {
           theme: 'stripe',
           variables: {

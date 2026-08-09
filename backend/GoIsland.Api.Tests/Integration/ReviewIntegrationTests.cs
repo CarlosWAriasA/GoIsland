@@ -37,6 +37,22 @@ public class ReviewIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
+    public async Task HostCannotReviewOwnExperience()
+    {
+        var seed = await SeedAsync(ReservationStatuses.Completed);
+        seed.Reservation.UserId = seed.Experience.HostId;
+        await Context.SaveChangesAsync();
+
+        var result = await GetRequiredService<IReviewService>().CreateAsync(
+            seed.Experience.HostId,
+            seed.Reservation.Id,
+            new ReviewRequest { Rating = 5, Comment = "Opinión del propio anfitrión." });
+
+        Assert.Equal(ReviewMutationStatus.OwnExperience, result.Status);
+        Assert.False(await Context.Reviews.AnyAsync(item => item.ReservationId == seed.Reservation.Id));
+    }
+
+    [Fact]
     public async Task HiddenReview_DisappearsFromPublicReputation_AndKeepsAudit()
     {
         var seed = await SeedAsync(ReservationStatuses.Completed);
@@ -64,6 +80,14 @@ public class ReviewIntegrationTests : PostgresIntegrationTestBase
         var host = NewUser("Anfitrion", UserRoles.Host);
         Context.Users.AddRange(tourist, host);
         await Context.SaveChangesAsync();
+        Context.HostProfiles.Add(new HostProfile
+        {
+            UserId = host.Id,
+            DisplayName = host.FullName,
+            Description = "Perfil aprobado para recibir opiniones.",
+            PhoneNumber = "+1 809 555 0122",
+            VerificationStatus = HostVerificationStatuses.Approved
+        });
         var experience = new Experience
         {
             HostId = host.Id, Title = "Ruta cultural", Description = "Recorrido cultural verificado.",

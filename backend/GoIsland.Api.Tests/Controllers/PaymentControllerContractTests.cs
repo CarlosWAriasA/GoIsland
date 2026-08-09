@@ -76,5 +76,14 @@ public class PaymentControllerContractTests
 
         public Task<PaymentOperationResult> RefundByHostAsync(int id, int hostUserId, string reason) =>
             throw new NotSupportedException();
+
+        public Task LockReservationAsync(int reservationId, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task ClosePendingForReservationAsync(
+            int reservationId,
+            int actorUserId,
+            string reason,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

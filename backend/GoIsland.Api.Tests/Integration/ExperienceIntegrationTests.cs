@@ -2,6 +2,7 @@ using GoIsland.Api.DTOs.Experiences;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Experiences;
 using GoIsland.Api.Tests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace GoIsland.Api.Tests.Integration;
 
@@ -208,6 +209,137 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         Assert.Equal(string.Empty, submitted.Experience.GuestRequirements);
         Assert.Equal(string.Empty, submitted.Experience.Difficulty);
         Assert.Equal(string.Empty, submitted.Experience.CancellationPolicy);
+    }
+
+    [Fact]
+    public async Task Management_RejectsPaidSelfGuidedExperience()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"self-guided-{marker}");
+        var request = CreateRequest(
+            $"Autoguiada de pago {marker}",
+            $"Lugar-{marker}",
+            $"Tipo-{marker}",
+            25m);
+        request.SchedulingMode = ExperienceSchedulingModes.SelfGuided;
+
+        var result = await GetRequiredService<IExperienceManagementService>().CreateAsync(host.Id, request);
+
+        Assert.Equal(ExperienceManagementStatus.Incomplete, result.Status);
+        Assert.Contains(nameof(CreateExperienceRequest.Price), result.Errors!.Keys);
+        Assert.False(await Context.Experiences.AnyAsync(item => item.Title == request.Title));
+    }
+
+    [Fact]
+    public async Task Delete_WithSchedulesKeepsExperienceAndReturnsConflict()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"delete-{marker}");
+        var created = await GetRequiredService<IExperienceManagementService>().CreateAsync(
+            host.Id,
+            CreateRequest($"Con horario {marker}", $"Lugar-{marker}", $"Tipo-{marker}", 30m));
+        var schedule = new ExperienceSchedule
+        {
+            ExperienceId = created.Experience!.Id,
+            StartsAt = DateTime.UtcNow.AddDays(5),
+            EndsAt = DateTime.UtcNow.AddDays(5).AddHours(2),
+            Capacity = 10,
+            AvailableSpots = 10,
+            Status = ScheduleStatuses.Scheduled
+        };
+        Context.ExperienceSchedules.Add(schedule);
+        await Context.SaveChangesAsync();
+
+        var result = await GetRequiredService<IExperienceManagementService>()
+            .DeleteAsync(host.Id, created.Experience.Id);
+
+        Assert.Equal(ExperienceManagementStatus.Conflict, result.Status);
+        Assert.Contains("horarios", result.Message!, StringComparison.OrdinalIgnoreCase);
+        Assert.True(await Context.Experiences.AnyAsync(item => item.Id == created.Experience.Id));
+    }
+
+    [Fact]
+    public async Task EditingImage_ReturnsApprovedExperienceToDraft()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"image-{marker}");
+        var experience = new Experience
+        {
+            HostId = host.Id,
+            Title = $"Imagen aprobada {marker}",
+            Description = "Experiencia aprobada cuya imagen será actualizada.",
+            Location = "Santo Domingo",
+            Category = "Cultura",
+            Price = 30m,
+            Capacity = 10,
+            AvailableSpots = 10,
+            IsApproved = true,
+            ApprovalStatus = ExperienceApprovalStatuses.Approved
+        };
+        Context.Experiences.Add(experience);
+        await Context.SaveChangesAsync();
+        await AddCoverAsync(experience.Id, marker);
+        var image = await Context.ExperienceImages.SingleAsync(item => item.ExperienceId == experience.Id);
+
+        var result = await GetRequiredService<IExperienceImageService>().UpdateAsync(
+            host.Id,
+            experience.Id,
+            image.Id,
+            new UpdateExperienceImageRequest { AltText = "Nueva descripción de la portada", IsCover = true });
+
+        Context.ChangeTracker.Clear();
+        Assert.Equal(ExperienceImageStatus.Success, result.Status);
+        var stored = await Context.Experiences.SingleAsync(item => item.Id == experience.Id);
+        Assert.False(stored.IsApproved);
+        Assert.Equal(ExperienceApprovalStatuses.Draft, stored.ApprovalStatus);
+    }
+
+    [Fact]
+    public async Task PublicExperience_UsesCapacityFromNextReservableSchedule()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"availability-{marker}");
+        var experience = new Experience
+        {
+            HostId = host.Id,
+            Title = $"Disponibilidad real {marker}",
+            Description = "Experiencia con capacidad diferente en cada fecha.",
+            Location = "Samaná",
+            Category = "Naturaleza",
+            Price = 30m,
+            Capacity = 20,
+            AvailableSpots = 20,
+            IsApproved = true,
+            ApprovalStatus = ExperienceApprovalStatuses.Approved
+        };
+        Context.Experiences.Add(experience);
+        await Context.SaveChangesAsync();
+        Context.ExperienceSchedules.AddRange(
+            new ExperienceSchedule
+            {
+                ExperienceId = experience.Id,
+                StartsAt = DateTime.UtcNow.AddDays(2),
+                EndsAt = DateTime.UtcNow.AddDays(2).AddHours(2),
+                Capacity = 6,
+                AvailableSpots = 2,
+                Status = ScheduleStatuses.Scheduled
+            },
+            new ExperienceSchedule
+            {
+                ExperienceId = experience.Id,
+                StartsAt = DateTime.UtcNow.AddDays(3),
+                EndsAt = DateTime.UtcNow.AddDays(3).AddHours(2),
+                Capacity = 12,
+                AvailableSpots = 12,
+                Status = ScheduleStatuses.Scheduled
+            });
+        await Context.SaveChangesAsync();
+
+        var result = await GetRequiredService<IExperienceService>().GetByIdAsync(experience.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(6, result.Capacity);
+        Assert.Equal(2, result.AvailableSpots);
     }
 
     private async Task<User> CreateApprovedHostAsync(string marker)

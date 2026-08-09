@@ -69,6 +69,9 @@ export const Reservations = () => {
     ? statusValue
     : undefined;
   const currentQuery = searchParams.get('q')?.slice(0, 160).trim() || '';
+  const currentScope = searchParams.get('scope') === 'upcoming'
+    ? 'upcoming'
+    : searchParams.get('scope') === 'past' ? 'past' : 'all';
   const [queryState, setQueryState] = useState({ source: queryString, value: currentQuery });
   const queryDraft = queryState.source === queryString ? queryState.value : currentQuery;
   const [retryCount, setRetryCount] = useState(0);
@@ -85,6 +88,7 @@ export const Reservations = () => {
     const query = values.query?.trim();
     if (query) next.set('q', query);
     if (values.status) next.set('status', values.status);
+    if (currentScope !== 'all') next.set('scope', currentScope);
     if ((values.page ?? 1) > 1) next.set('page', String(values.page));
     setSearchParams(next);
   };
@@ -95,6 +99,8 @@ export const Reservations = () => {
     reservationService.getMy({
       query: currentQuery || undefined,
       status: currentStatus,
+      from: currentScope === 'upcoming' ? new Date().toISOString() : undefined,
+      to: currentScope === 'past' ? new Date().toISOString() : undefined,
       page: currentPage,
       pageSize: PAGE_SIZE,
     }, controller.signal)
@@ -121,16 +127,7 @@ export const Reservations = () => {
       });
 
     return () => controller.abort();
-  }, [currentPage, currentQuery, currentStatus, requestKey]);
-
-  const currentScope = searchParams.get('scope') || 'all';
-  const displayedReservations = reservations.filter((reservation) => {
-    const isPast = new Date(reservation.endsAt) <= new Date()
-      || ['Completed', 'CancelledByTourist', 'CancelledByHost', 'Expired', 'Refunded'].includes(reservation.status);
-    if (currentScope === 'upcoming') return !isPast;
-    if (currentScope === 'past') return isPast;
-    return true;
-  });
+  }, [currentPage, currentQuery, currentScope, currentStatus, requestKey]);
 
   return (
     <div className="container reservations-page animate-fade-in">
@@ -198,9 +195,9 @@ export const Reservations = () => {
               ? 'No fue posible cargar tus reservas.'
               : `${totalItems} ${totalItems === 1 ? 'reserva disponible' : 'reservas disponibles'}.`}
         </p>
-        {!loading && !error && displayedReservations.length > 0 && (
+        {!loading && !error && reservations.length > 0 && (
           <p className="reservations-page__count">
-            {displayedReservations.length} {displayedReservations.length === 1 ? 'reserva' : 'reservas'}
+            {totalItems} {totalItems === 1 ? 'reserva' : 'reservas'}
           </p>
         )}
 
@@ -208,7 +205,7 @@ export const Reservations = () => {
           <ReservationsSkeleton />
         ) : error ? (
           <ErrorState description={error} onRetry={() => setRetryCount((current) => current + 1)} />
-        ) : displayedReservations.length === 0 ? (
+        ) : reservations.length === 0 ? (
           <EmptyState
             title={currentScope !== 'all' ? 'Sin reservas en este período' : 'Todavía no tienes reservas'}
             description={currentScope !== 'all' ? 'Cambia el filtro para ver otras fechas.' : 'Cuando reserves una experiencia, aparecerá aquí.'}
@@ -218,7 +215,7 @@ export const Reservations = () => {
           />
         ) : (
           <div className="reservation-list">
-            {displayedReservations.map((reservation) => {
+            {reservations.map((reservation) => {
               const isSelfGuided = reservation.schedulingMode === 'SelfGuided';
               const canCompleteVisit = isSelfGuided
                 && reservation.status === 'Confirmed' && new Date(reservation.endsAt) <= new Date();
@@ -272,7 +269,10 @@ export const Reservations = () => {
                     <Link
                       className="reservation-card__link"
                       to={`/reservations/${reservation.id}`}
-                      state={canEditVisit ? { focusEdit: true } : undefined}
+                      state={{
+                        from: `/reservations${queryString ? `?${queryString}` : ''}`,
+                        ...(canEditVisit ? { focusEdit: true } : {}),
+                      }}
                     >
                       {canCompleteVisit
                         ? <><TicketCheck size={17} aria-hidden="true" /> Marcar realizada y reseñar</>

@@ -56,6 +56,7 @@ public enum ReviewMutationStatus
     Success,
     NotFound,
     Forbidden,
+    OwnExperience,
     ReservationNotCompleted,
     Duplicate,
     EditWindowExpired

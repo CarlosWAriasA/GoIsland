@@ -18,6 +18,12 @@ export const experienceKeys = {
     'availability',
     experienceId,
   ] as const,
+  paymentQuote: (experienceId: number, quantity: number) => [
+    ...experienceKeys.all,
+    'payment-quote',
+    experienceId,
+    quantity,
+  ] as const,
   reviews: (experienceId: number) => [...experienceKeys.all, 'reviews', experienceId] as const,
 };
 

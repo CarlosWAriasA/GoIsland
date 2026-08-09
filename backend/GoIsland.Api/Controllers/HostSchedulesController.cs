@@ -122,7 +122,10 @@ public class HostSchedulesController : ControllerBase
         ScheduleOperationStatus.InvalidDates => BadRequest(new { message = "Elige fechas futuras y asegúrate de que la hora de finalización sea posterior al inicio." }),
         ScheduleOperationStatus.InvalidStatus => Conflict(new { message = "El horario solo puede estar abierto o cerrado." }),
         ScheduleOperationStatus.CapacityConflict => Conflict(new { message = "La capacidad no puede ser menor que los cupos ya reservados." }),
-        ScheduleOperationStatus.HasReservations => Conflict(new { message = "No se puede eliminar un horario que tiene reservas." }),
+        ScheduleOperationStatus.HasReservations => Conflict(new
+        {
+            message = "Este horario tiene reservas. Solo puedes cerrarlo sin cambiar fecha, duración ni capacidad."
+        }),
         ScheduleOperationStatus.ConcurrencyConflict => Conflict(new { message = "El calendario cambió mientras se guardaba. Revisa la vista previa e inténtalo nuevamente." }),
         _ => StatusCode(StatusCodes.Status500InternalServerError)
     };
@@ -149,6 +152,11 @@ public class HostSchedulesController : ControllerBase
         ScheduleOperationStatus.CapacityConflict => Conflict(new
         {
             message = "La capacidad no puede ser menor que los cupos ya reservados.",
+            conflictingScheduleIds = result.Batch?.ConflictingScheduleIds ?? []
+        }),
+        ScheduleOperationStatus.HasReservations => Conflict(new
+        {
+            message = "No puedes cambiar la capacidad de horarios con reservas activas.",
             conflictingScheduleIds = result.Batch?.ConflictingScheduleIds ?? []
         }),
         _ => StatusCode(StatusCodes.Status500InternalServerError)

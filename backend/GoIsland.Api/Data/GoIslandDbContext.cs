@@ -364,8 +364,11 @@ public class GoIslandDbContext : DbContext
             entity.Property(refund => refund.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
             entity.Property(refund => refund.Provider).HasColumnName("provider").HasMaxLength(40).IsRequired();
             entity.Property(refund => refund.ProviderRefundId).HasColumnName("provider_refund_id").HasMaxLength(120);
+            entity.Property(refund => refund.FailureCode).HasColumnName("failure_code").HasMaxLength(80);
+            entity.Property(refund => refund.AttemptCount).HasColumnName("attempt_count").IsRequired();
             entity.Property(refund => refund.RequestedByUserId).HasColumnName("requested_by_user_id").IsRequired();
             entity.Property(refund => refund.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(refund => refund.UpdatedAt).HasColumnName("updated_at").IsRequired();
             entity.HasIndex(refund => refund.PaymentId).IsUnique();
             entity.HasOne(refund => refund.Payment)
                 .WithMany()

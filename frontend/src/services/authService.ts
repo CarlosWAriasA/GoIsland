@@ -32,6 +32,11 @@ export const authService = {
     return response.data;
   },
 
+  refreshSession: async (): Promise<AuthResponse> => {
+    const response = await api.post<AuthResponse>('/auth/refresh-session');
+    return response.data;
+  },
+
   google: async (data: GoogleAuthRequest): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>('/auth/google', data);
     return response.data;

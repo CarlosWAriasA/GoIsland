@@ -63,6 +63,11 @@ public abstract class ExperienceRequestBase : IValidatableObject
             yield return new("La capacidad debe ser mayor que cero.", [nameof(Capacity)]);
         if (!ExperienceSchedulingModes.All.Contains(SchedulingMode))
             yield return new("Selecciona una opción de disponibilidad válida.", [nameof(SchedulingMode)]);
+        if (SchedulingMode == ExperienceSchedulingModes.SelfGuided && Price != 0)
+            yield return new("Las experiencias con fechas libres deben ser gratuitas.",
+                [nameof(Price), nameof(SchedulingMode)]);
+        if (!IsValidTimeZone(TimeZoneId))
+            yield return new("Selecciona una zona horaria válida.", [nameof(TimeZoneId)]);
         if (!string.IsNullOrWhiteSpace(Difficulty) && !ExperienceDifficulties.All.Contains(Difficulty))
             yield return new("Selecciona una dificultad válida.", [nameof(Difficulty)]);
         if (!string.IsNullOrWhiteSpace(CancellationPolicy)
@@ -74,6 +79,20 @@ public abstract class ExperienceRequestBase : IValidatableObject
         {
             if (!string.IsNullOrWhiteSpace(value) && value.Trim().Length > 120)
                 yield return new("Cada elemento debe tener 120 caracteres o menos.");
+        }
+    }
+
+    private static bool IsValidTimeZone(string timeZoneId)
+    {
+        if (string.IsNullOrWhiteSpace(timeZoneId)) return false;
+        try
+        {
+            _ = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId.Trim());
+            return true;
+        }
+        catch (Exception exception) when (exception is TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            return false;
         }
     }
 }

@@ -168,4 +168,97 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
         Assert.Equal(2, page.TotalPages);
         Assert.Contains(marker, page.Items.Single().DisplayName);
     }
+
+    [Fact]
+    public async Task Suspension_UnpublishesExperiencesAndClosesFutureSchedulesWithoutCancellingReservations()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = new User
+        {
+            FullName = "Anfitrión suspendido",
+            Email = $"suspended-host-{marker}@goisland.test",
+            PasswordHash = "hash-integracion",
+            Role = UserRoles.Host
+        };
+        var tourist = new User
+        {
+            FullName = "Turista con reserva",
+            Email = $"suspended-tourist-{marker}@goisland.test",
+            PasswordHash = "hash-integracion",
+            Role = UserRoles.Tourist
+        };
+        var admin = new User
+        {
+            FullName = "Admin suspensión",
+            Email = $"suspended-admin-{marker}@goisland.test",
+            PasswordHash = "hash-integracion",
+            Role = UserRoles.Admin
+        };
+        Context.Users.AddRange(host, tourist, admin);
+        await Context.SaveChangesAsync();
+        var profile = new HostProfile
+        {
+            UserId = host.Id,
+            DisplayName = host.FullName,
+            Description = "Perfil aprobado antes de la suspensión.",
+            PhoneNumber = "+1 809 555 0123",
+            VerificationStatus = HostVerificationStatuses.Approved
+        };
+        var experience = new Experience
+        {
+            HostId = host.Id,
+            Title = $"Experiencia suspendida {marker}",
+            Description = "Experiencia publicada antes de suspender al anfitrión.",
+            Location = "Santo Domingo",
+            Category = "Cultura",
+            Price = 50m,
+            Capacity = 8,
+            AvailableSpots = 7,
+            IsApproved = true,
+            ApprovalStatus = ExperienceApprovalStatuses.Approved
+        };
+        Context.HostProfiles.Add(profile);
+        Context.Experiences.Add(experience);
+        await Context.SaveChangesAsync();
+        var schedule = new ExperienceSchedule
+        {
+            ExperienceId = experience.Id,
+            StartsAt = DateTime.UtcNow.AddDays(5),
+            EndsAt = DateTime.UtcNow.AddDays(5).AddHours(2),
+            Capacity = 8,
+            AvailableSpots = 7,
+            Status = ScheduleStatuses.Scheduled
+        };
+        Context.ExperienceSchedules.Add(schedule);
+        await Context.SaveChangesAsync();
+        var reservation = new Reservation
+        {
+            UserId = tourist.Id,
+            ExperienceId = experience.Id,
+            ScheduleId = schedule.Id,
+            Quantity = 1,
+            Status = ReservationStatuses.Confirmed,
+            TotalAmount = 50m
+        };
+        Context.Reservations.Add(reservation);
+        await Context.SaveChangesAsync();
+
+        var result = await GetRequiredService<IHostService>().ReviewAsync(
+            profile.Id,
+            admin.Id,
+            HostReviewAction.Suspend,
+            "Incumplimiento revisado por administración.");
+
+        Context.ChangeTracker.Clear();
+        Assert.Equal(HostOperationStatus.Success, result.Status);
+        Assert.Equal(HostVerificationStatuses.Suspended,
+            await Context.HostProfiles.Where(item => item.Id == profile.Id).Select(item => item.VerificationStatus).SingleAsync());
+        Assert.False(await Context.Experiences.Where(item => item.Id == experience.Id).Select(item => item.IsApproved).SingleAsync());
+        Assert.Equal(ExperienceApprovalStatuses.Suspended,
+            await Context.Experiences.Where(item => item.Id == experience.Id).Select(item => item.ApprovalStatus).SingleAsync());
+        Assert.Equal(ScheduleStatuses.Closed,
+            await Context.ExperienceSchedules.Where(item => item.Id == schedule.Id).Select(item => item.Status).SingleAsync());
+        Assert.Equal(ReservationStatuses.Confirmed,
+            await Context.Reservations.Where(item => item.Id == reservation.Id).Select(item => item.Status).SingleAsync());
+    }
 }

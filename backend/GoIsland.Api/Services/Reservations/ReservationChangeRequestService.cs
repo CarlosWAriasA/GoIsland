@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using GoIsland.Api.Data;
 using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Reservations;
@@ -175,11 +177,39 @@ public class ReservationChangeRequestService : IReservationChangeRequestService
         int hostUserId,
         int requestId,
         bool approve,
-        string? decisionReason)
+        string? decisionReason,
+        string idempotencyKey)
     {
+        if (!approve && string.IsNullOrWhiteSpace(decisionReason))
+            return new(ReservationChangeRequestOperationStatus.ReasonRequired);
+        if (!await IsApprovedHostAsync(hostUserId))
+            return new(ReservationChangeRequestOperationStatus.Forbidden);
+
+        var key = idempotencyKey.Trim();
+        var operation = $"ReviewChangeRequest:{requestId}";
+        var requestHash = Hash($"{approve}:{decisionReason?.Trim() ?? string.Empty}");
+
+        await using var transaction = _context.Database.CurrentTransaction is null
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
+        await _context.Database.ExecuteSqlInterpolatedAsync(
+            $"select pg_advisory_xact_lock({73004}, {requestId})");
+
+        var repeated = await _context.ReservationIdempotencyKeys.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.UserId == hostUserId
+                && item.Operation == operation
+                && item.Key == key);
+        if (repeated is not null)
+        {
+            if (transaction is not null) await transaction.CommitAsync();
+            return repeated.RequestHash == requestHash
+                ? new(ReservationChangeRequestOperationStatus.Success)
+                : new(ReservationChangeRequestOperationStatus.IdempotencyConflict);
+        }
+
         var match = await (from item in _context.ReservationChangeRequests
                            join res in _context.Reservations on item.ReservationId equals res.Id
-                           join experience in _context.Experiences.AsNoTracking()
+                           join experience in _context.Experiences
                                on res.ExperienceId equals experience.Id
                            where item.Id == requestId
                            select new { Request = item, Reservation = res, experience.HostId })
@@ -195,9 +225,7 @@ public class ReservationChangeRequestService : IReservationChangeRequestService
 
         if (!approve)
         {
-            var trimmedReason = decisionReason?.Trim();
-            if (string.IsNullOrEmpty(trimmedReason))
-                return new(ReservationChangeRequestOperationStatus.ReasonRequired);
+            var trimmedReason = decisionReason!.Trim();
 
             request.Status = ReservationChangeRequestStatuses.Rejected;
             request.ReviewedByUserId = hostUserId;
@@ -210,7 +238,10 @@ public class ReservationChangeRequestService : IReservationChangeRequestService
                 $"El anfitrión rechazó tu solicitud. Motivo: {trimmedReason}",
                 reservation, actionUrl: $"/reservations/{reservation.Id}");
 
+            await AddReviewIdempotencyAsync(
+                reservation, hostUserId, operation, key, requestHash, now);
             await _context.SaveChangesAsync();
+            if (transaction is not null) await transaction.CommitAsync();
             return new(ReservationChangeRequestOperationStatus.Success);
         }
 
@@ -264,12 +295,15 @@ public class ReservationChangeRequestService : IReservationChangeRequestService
         request.UpdatedAt = now;
 
         var approvedMessage = request.Type == ReservationChangeRequestTypes.Cancel
-            ? "Tu solicitud de cancelación fue aprobada; el reembolso quedó registrado."
+            ? "Tu solicitud de cancelación fue aprobada; el reembolso se está procesando."
             : "Tu solicitud de reprogramación fue aprobada. Consulta los detalles actualizados.";
         await _outbox.EnqueueAsync(request.RequestedByUserId, "ReservationChangeRequestApproved",
             "Solicitud aprobada", approvedMessage, reservation, actionUrl: $"/reservations/{reservation.Id}");
 
+        await AddReviewIdempotencyAsync(
+            reservation, hostUserId, operation, key, requestHash, now);
         await _context.SaveChangesAsync();
+        if (transaction is not null) await transaction.CommitAsync();
         return new(ReservationChangeRequestOperationStatus.Success);
     }
 
@@ -317,6 +351,26 @@ public class ReservationChangeRequestService : IReservationChangeRequestService
         _context.HostProfiles.AnyAsync(profile =>
             profile.UserId == userId
             && profile.VerificationStatus == HostVerificationStatuses.Approved);
+
+    private async Task AddReviewIdempotencyAsync(
+        Reservation reservation,
+        int userId,
+        string operation,
+        string key,
+        string requestHash,
+        DateTime now) =>
+        await _context.ReservationIdempotencyKeys.AddAsync(new ReservationIdempotencyKey
+        {
+            UserId = userId,
+            Operation = operation,
+            Key = key,
+            RequestHash = requestHash,
+            Reservation = reservation,
+            CreatedAt = now
+        });
+
+    private static string Hash(string value) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 
     private static bool IsUniqueViolation(DbUpdateException exception) =>
         exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };

@@ -36,6 +36,17 @@ interface ExperienceMapProps {
 const defaultCenter = { lat: 18.7357, lng: -70.1627 };
 const emptyPoints: MapPoint[] = [];
 
+const getSafeImageUrl = (value?: string): string | null => {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+  } catch {
+    return null;
+  }
+};
+
 const createInfoWindowContent = (point: MapPoint, onPointClick?: (id: MapPoint['id']) => void): HTMLElement => {
   const container = document.createElement('div');
   container.className = 'map-info-window';
@@ -46,29 +57,58 @@ const createInfoWindowContent = (point: MapPoint, onPointClick?: (id: MapPoint['
       ? `$${point.price.toLocaleString('es-DO')} USD`
       : '';
 
-  const imageUrl = point.coverImageUrl;
-
-  container.innerHTML = `
-    ${imageUrl ? `<div class="map-info-window__image" style="background-image: url('${imageUrl}')"></div>` : ''}
-    <div class="map-info-window__body">
-      ${point.category ? `<span class="map-info-window__badge">${point.category}</span>` : ''}
-      <h3 class="map-info-window__title">${point.title}</h3>
-      ${point.location ? `<p class="map-info-window__location">${point.location}</p>` : ''}
-      <div class="map-info-window__footer">
-        ${priceLabel ? `<span class="map-info-window__price">${priceLabel}</span>` : '<span></span>'}
-        <button type="button" class="map-info-window__button">Ver detalles</button>
-      </div>
-    </div>
-  `;
-
-  const btn = container.querySelector('.map-info-window__button');
-  if (btn) {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onPointClick?.(point.id);
-    });
+  const imageUrl = getSafeImageUrl(point.coverImageUrl);
+  if (imageUrl) {
+    const image = document.createElement('div');
+    image.className = 'map-info-window__image';
+    image.style.backgroundImage = `url("${imageUrl}")`;
+    container.append(image);
   }
+
+  const body = document.createElement('div');
+  body.className = 'map-info-window__body';
+
+  if (point.category) {
+    const category = document.createElement('span');
+    category.className = 'map-info-window__badge';
+    category.textContent = point.category;
+    body.append(category);
+  }
+
+  const title = document.createElement('h3');
+  title.className = 'map-info-window__title';
+  title.textContent = point.title;
+  body.append(title);
+
+  if (point.location) {
+    const location = document.createElement('p');
+    location.className = 'map-info-window__location';
+    location.textContent = point.location;
+    body.append(location);
+  }
+
+  const footer = document.createElement('div');
+  footer.className = 'map-info-window__footer';
+
+  const price = document.createElement('span');
+  if (priceLabel) {
+    price.className = 'map-info-window__price';
+    price.textContent = priceLabel;
+  }
+  footer.append(price);
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'map-info-window__button';
+  button.textContent = 'Ver detalles';
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onPointClick?.(point.id);
+  });
+  footer.append(button);
+  body.append(footer);
+  container.append(body);
 
   return container;
 };

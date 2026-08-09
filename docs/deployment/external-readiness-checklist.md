@@ -40,12 +40,15 @@ conexión pertenecen al gestor de secretos de cada proveedor.
 | Migración de búsqueda `014` en Neon | Aplicada el 4 de agosto de 2026 |
 | Migración de horarios `015` en Neon | Aplicada el 4 de agosto de 2026 |
 | Migración de vencimiento `016` en Neon | Aplicada el 4 de agosto de 2026 |
+| Migraciones `017`–`020` en Neon | Aplicadas antes del 9 de agosto de 2026; presencia verificada |
+| Migraciones `021`–`022` en Neon | Aplicadas el 9 de agosto de 2026 después de una copia lógica validada |
 | Integración Stripe Sandbox | Implementada; pendiente de credenciales y prueba externa |
 | Observabilidad y errores uniformes | Implementados; logs JSON y `X-Correlation-ID` |
 | Suite PostgreSQL conjunta | 104/104 en Release el 4 de agosto de 2026 |
 | Pruebas focalizadas | 12/12: imágenes, búsqueda, horarios y expiración |
 | Build Release del backend | Correcto, sin advertencias |
 | Lint y build del frontend | Correctos |
+| Pruebas frontend y presupuesto de bundle | Automatizados en CI; ejecutar nuevamente antes de desplegar |
 | Build de `backend/Dockerfile` | Correcto en validación anterior |
 | Imagen local | `goisland-api:catalog-deployment` |
 | `GET /api/health` desde el contenedor | `Healthy` |

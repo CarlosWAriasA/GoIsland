@@ -78,6 +78,19 @@ La base actual de Neon recibió estas migraciones el 4 de agosto de 2026, en est
 En una base nueva deben aplicarse en el mismo orden. Cada aplicación debe comprobar
 `/api/health/ready` y ejecutar la suite focalizada correspondiente.
 
+Las migraciones `017` a `020` ya estaban presentes en Neon y las migraciones `021` y `022` se
+aplicaron el 9 de agosto de 2026, en ese orden. Antes de aplicarlas se creó una copia lógica con
+PostgreSQL 18, se validó su tabla de contenido con `pg_restore` y se comprobaron los conteos de
+usuarios, experiencias, reservas y pagos antes y después.
+
+Para migraciones futuras:
+
+1. crear y verificar una copia recuperable;
+2. ejecutar `./scripts/verify-release.ps1 -IncludeIntegration` contra una base local o efímera;
+3. aplicar únicamente los scripts pendientes, respetando su orden numérico;
+4. comprobar readiness y los flujos afectados;
+5. registrar fecha, versión y responsable en `external-readiness-checklist.md`.
+
 ## Rotación de credenciales
 
 Toda clave que haya aparecido en un commit, captura, chat, log o archivo compartido se considera

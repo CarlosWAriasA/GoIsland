@@ -118,7 +118,15 @@ public class HostService : IHostService
         HostReviewAction action,
         string? reason)
     {
-        var profile = await _context.HostProfiles.SingleOrDefaultAsync(item => item.Id == id);
+        await using var transaction = _context.Database.CurrentTransaction is null
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
+        var profile = await _context.HostProfiles
+            .FromSqlInterpolated($@"
+                select * from host_profiles
+                where id = {id}
+                for update")
+            .SingleOrDefaultAsync();
         if (profile is null)
         {
             return new(HostOperationStatus.NotFound);
@@ -161,6 +169,37 @@ public class HostService : IHostService
         profile.ReviewedByAdminId = adminUserId;
         user.Role = action == HostReviewAction.Approve ? UserRoles.Host : UserRoles.Tourist;
 
+        if (action == HostReviewAction.Suspend)
+        {
+            var experiences = await _context.Experiences
+                .Where(experience => experience.HostId == profile.UserId)
+                .ToArrayAsync();
+            var experienceIds = experiences.Select(experience => experience.Id).ToArray();
+            foreach (var experience in experiences)
+            {
+                experience.IsApproved = false;
+                experience.ApprovalStatus = ExperienceApprovalStatuses.Suspended;
+                experience.RejectionReason = normalizedReason;
+                experience.ReviewedAt = now;
+                experience.ReviewedByAdminId = adminUserId;
+                experience.UpdatedAt = now;
+            }
+
+            if (experienceIds.Length > 0)
+            {
+                var futureSchedules = await _context.ExperienceSchedules
+                    .Where(schedule => experienceIds.Contains(schedule.ExperienceId)
+                        && schedule.StartsAt > now
+                        && schedule.Status == ScheduleStatuses.Scheduled)
+                    .ToArrayAsync();
+                foreach (var schedule in futureSchedules)
+                {
+                    schedule.Status = ScheduleStatuses.Closed;
+                    schedule.UpdatedAt = now;
+                }
+            }
+        }
+
         await _context.AdminAuditLogs.AddAsync(new AdminAuditLog
         {
             AdminUserId = adminUserId,
@@ -171,6 +210,10 @@ public class HostService : IHostService
             CreatedAt = now
         });
         await _context.SaveChangesAsync();
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync();
+        }
         return new(HostOperationStatus.Success, await ToResponseAsync(profile));
     }
 

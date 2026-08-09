@@ -87,7 +87,16 @@ public class StripeWebhooksController : ControllerBase
             && !string.IsNullOrWhiteSpace(charge.PaymentIntentId) =>
             new(StripePaymentGateway.Provider, stripeEvent.Id, charge.PaymentIntentId,
                 GatewayWebhookEventKind.PaymentRefunded,
-                ProviderRefundId: charge.Refunds?.Data?.LastOrDefault()?.Id),
+                ProviderRefundId: charge.Refunds?.Data?.LastOrDefault()?.Id,
+                RefundedAmount: charge.AmountRefunded / 100m,
+                IsFullRefund: charge.AmountRefunded >= charge.Amount),
+
+        EventTypes.RefundFailed when stripeEvent.Data.Object is Stripe.Refund refund
+            && !string.IsNullOrWhiteSpace(refund.PaymentIntentId) =>
+            new(StripePaymentGateway.Provider, stripeEvent.Id, refund.PaymentIntentId,
+                GatewayWebhookEventKind.RefundFailed,
+                FailureCode: refund.FailureReason ?? "RefundFailed",
+                ProviderRefundId: refund.Id),
 
         _ => null
     };

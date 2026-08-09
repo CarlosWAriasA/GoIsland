@@ -15,6 +15,7 @@ public class AuthService : IAuthService
     private const string ExternalLoginOnlyPasswordHash = "EXTERNAL_LOGIN_ONLY";
     private const int LockoutThreshold = 5;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly GoIslandDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IPasswordResetTokenGenerator _resetTokenGenerator;
@@ -26,6 +27,7 @@ public class AuthService : IAuthService
 
     public AuthService(
         IUnitOfWork unitOfWork,
+        GoIslandDbContext context,
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
         IPasswordResetTokenGenerator resetTokenGenerator,
@@ -35,6 +37,7 @@ public class AuthService : IAuthService
         ILogger<AuthService> logger)
     {
         _unitOfWork = unitOfWork;
+        _context = context;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
         _resetTokenGenerator = resetTokenGenerator;
@@ -111,6 +114,17 @@ public class AuthService : IAuthService
         }
 
         return CreateAuthResponse(user, PasswordAuthenticationMethod);
+    }
+
+    public async Task<AuthResponse?> RefreshSessionAsync(int userId)
+    {
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        if (user is null) return null;
+
+        var authenticationMethod = HasLocalPassword(user)
+            ? PasswordAuthenticationMethod
+            : GoogleAuthenticationMethod;
+        return CreateAuthResponse(user, authenticationMethod);
     }
 
     public async Task<GoogleAuthResult> AuthenticateWithGoogleAsync(GoogleAuthRequest request)
@@ -256,7 +270,10 @@ public class AuthService : IAuthService
     {
         var now = DateTime.UtcNow;
         var tokenHash = _resetTokenGenerator.HashToken(request.Token);
-        var resetToken = await _unitOfWork.PasswordResetTokens.GetValidByHashAsync(tokenHash, now);
+        await using var transaction = _context.Database.CurrentTransaction is null
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
+        var resetToken = await _unitOfWork.PasswordResetTokens.LockValidByHashAsync(tokenHash, now);
         if (resetToken is null)
         {
             return ResetPasswordStatus.InvalidOrExpiredToken;
@@ -274,12 +291,18 @@ public class AuthService : IAuthService
         }
 
         user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
+        user.FailedLoginAttempts = 0;
+        user.LockoutEnd = null;
         resetToken.UsedAt = now;
 
         await _unitOfWork.Users.UpdateAsync(user);
         await _unitOfWork.PasswordResetTokens.InvalidateActiveForUserAsync(user.Id, now);
         await _unitOfWork.PasswordResetTokens.UpdateAsync(resetToken);
         await _unitOfWork.CommitAsync();
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync();
+        }
 
         return ResetPasswordStatus.Success;
     }

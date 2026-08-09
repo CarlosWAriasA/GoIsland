@@ -43,4 +43,19 @@ public class MockPaymentGatewayTests
 
         Assert.NotEqual(first.ProviderPaymentId, second.ProviderPaymentId);
     }
+
+    [Fact]
+    public async Task CancelPayment_DisablesItsCheckoutSession()
+    {
+        var gateway = new MockPaymentGateway(NullLogger<MockPaymentGateway>.Instance);
+        var created = await gateway.CreatePaymentAsync(
+            new GatewayPaymentRequest("payment:7:cancel", "USD", 105m, "Reserva #21"));
+
+        var cancelled = await gateway.CancelPaymentAsync(created.ProviderPaymentId!);
+        var session = await gateway.GetPaymentSessionAsync(created.ProviderPaymentId!);
+
+        Assert.True(cancelled.Cancelled);
+        Assert.False(cancelled.Succeeded);
+        Assert.False(session.Available);
+    }
 }

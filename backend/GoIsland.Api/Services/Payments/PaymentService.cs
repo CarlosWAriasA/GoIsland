@@ -20,7 +20,7 @@ public class PaymentService : IPaymentService
 
     private readonly GoIslandDbContext _context;
     private readonly IPaymentGateway _gateway;
-    private readonly IConfiguration _configuration;
+    private readonly IPaymentPricingService _pricing;
     private readonly ILogger<PaymentService> _logger;
     private readonly IOutboxWriter _outbox;
     private readonly IReservationExpirationService _expiration;
@@ -28,14 +28,14 @@ public class PaymentService : IPaymentService
     public PaymentService(
         GoIslandDbContext context,
         IPaymentGateway gateway,
-        IConfiguration configuration,
+        IPaymentPricingService pricing,
         IOutboxWriter outbox,
         IReservationExpirationService expiration,
         ILogger<PaymentService> logger)
     {
         _context = context;
         _gateway = gateway;
-        _configuration = configuration;
+        _pricing = pricing;
         _outbox = outbox;
         _expiration = expiration;
         _logger = logger;
@@ -69,6 +69,8 @@ public class PaymentService : IPaymentService
             }
             return new(PaymentOperationStatus.ReservationExpired);
         }
+        if (reservation.Status != ReservationStatuses.PendingPayment)
+            return new(PaymentOperationStatus.InvalidTransition);
 
         var repeated = await _context.Payments.AsNoTracking()
             .SingleOrDefaultAsync(payment => payment.UserId == userId && payment.IdempotencyKey == key);
@@ -85,15 +87,12 @@ public class PaymentService : IPaymentService
                 repeatedSession.ClientSecret);
         }
 
-        if (reservation.Status != ReservationStatuses.PendingPayment)
-            return new(PaymentOperationStatus.InvalidTransition);
-
         var hasActivePayment = await _context.Payments.AnyAsync(payment =>
             payment.ReservationId == reservationId
             && (payment.Status == PaymentStatuses.Pending || payment.Status == PaymentStatuses.Paid));
         if (hasActivePayment) return new(PaymentOperationStatus.InvalidTransition);
 
-        var breakdown = CalculateBreakdown(reservation.TotalAmount);
+        var breakdown = _pricing.Calculate(reservation.TotalAmount);
         var gatewayResult = await _gateway.CreatePaymentAsync(new GatewayPaymentRequest(
             $"payment:{userId}:{key}",
             breakdown.Currency,
@@ -186,42 +185,53 @@ public class PaymentService : IPaymentService
 
     public async Task<PaymentOperationResult> GetCheckoutAsync(int id, int userId)
     {
-        var identity = await _context.Payments.AsNoTracking()
-            .Where(item => item.Id == id && item.UserId == userId)
-            .Select(item => new { item.Status, item.ProviderPaymentId, item.Provider, item.ReservationId })
-            .SingleOrDefaultAsync();
-        if (identity is null) return new(PaymentOperationStatus.PaymentNotFound);
-        if (identity.Status != PaymentStatuses.Pending
-            || string.IsNullOrWhiteSpace(identity.ProviderPaymentId)
-            || !identity.Provider.Equals(_gateway.ProviderName, StringComparison.OrdinalIgnoreCase))
-        {
-            return new(PaymentOperationStatus.InvalidTransition);
-        }
-
-        var session = await _gateway.GetPaymentSessionAsync(identity.ProviderPaymentId);
-        if (session.Available)
-        {
-            return new(PaymentOperationStatus.Success, await BuildResponseAsync(id), session.ClientSecret);
-        }
-
-        if (!session.Succeeded) return new(PaymentOperationStatus.GatewayRejected);
-
-        // El gateway ya aprobo el cobro pero el webhook no llego a tiempo (o no llega en local sin
-        // 'stripe listen'). En vez de mostrar un error tras un cobro exitoso, reconciliamos aqui mismo.
         await using var ownedTransaction = _context.Database.CurrentTransaction is null
             ? await _context.Database.BeginTransactionAsync()
             : null;
-        await AcquireAdvisoryLockAsync(ReservationPaymentLockNamespace, identity.ReservationId);
-        await _expiration.ExpireReservationAsync(identity.ReservationId);
 
+        var identity = await _context.Payments.AsNoTracking()
+            .Where(item => item.Id == id && item.UserId == userId)
+            .Select(item => new { item.ReservationId })
+            .SingleOrDefaultAsync();
+        if (identity is null) return new(PaymentOperationStatus.PaymentNotFound);
+
+        await AcquireAdvisoryLockAsync(ReservationPaymentLockNamespace, identity.ReservationId);
+        var expiredNow = await _expiration.ExpireReservationAsync(identity.ReservationId);
         var payment = await _context.Payments.SingleAsync(item => item.Id == id);
-        if (payment.Status == PaymentStatuses.Pending)
+        var reservation = await _context.Reservations.SingleAsync(item => item.Id == payment.ReservationId);
+
+        if (reservation.Status == ReservationStatuses.Expired)
         {
-            var reservation = await _context.Reservations.SingleAsync(item => item.Id == payment.ReservationId);
-            await ReconcilePaymentSucceededAsync(payment, reservation, DateTime.UtcNow);
-            await _context.SaveChangesAsync();
+            if (expiredNow) await _context.SaveChangesAsync();
+            if (ownedTransaction is not null) await ownedTransaction.CommitAsync();
+            return new(PaymentOperationStatus.ReservationExpired);
+        }
+        if (reservation.Status != ReservationStatuses.PendingPayment
+            || payment.Status != PaymentStatuses.Pending
+            || string.IsNullOrWhiteSpace(payment.ProviderPaymentId)
+            || !payment.Provider.Equals(_gateway.ProviderName, StringComparison.OrdinalIgnoreCase))
+        {
+            if (ownedTransaction is not null) await ownedTransaction.CommitAsync();
+            return new(PaymentOperationStatus.InvalidTransition);
         }
 
+        var session = await _gateway.GetPaymentSessionAsync(payment.ProviderPaymentId);
+        if (session.Available)
+        {
+            if (ownedTransaction is not null) await ownedTransaction.CommitAsync();
+            return new(PaymentOperationStatus.Success, await BuildResponseAsync(id), session.ClientSecret);
+        }
+
+        if (!session.Succeeded)
+        {
+            if (ownedTransaction is not null) await ownedTransaction.CommitAsync();
+            return new(PaymentOperationStatus.GatewayRejected);
+        }
+
+        // El gateway ya aprobo el cobro pero el webhook no llego. La misma seccion critica que
+        // usan cancelaciones y webhooks decide si confirmar o iniciar el reembolso automatico.
+        await ReconcilePaymentSucceededAsync(payment, reservation, DateTime.UtcNow);
+        await _context.SaveChangesAsync();
         if (ownedTransaction is not null) await ownedTransaction.CommitAsync();
 
         return new(PaymentOperationStatus.Success, await BuildResponseAsync(id));
@@ -300,11 +310,32 @@ public class PaymentService : IPaymentService
                 break;
 
             case GatewayWebhookEventKind.PaymentRefunded:
-                await CompleteRefundAsync(
+                if (webhookEvent.IsFullRefund)
+                {
+                    await CompleteRefundAsync(
+                        payment,
+                        payment.UserId,
+                        "Reembolso procesado por el proveedor de pagos.",
+                        webhookEvent.ProviderRefundId,
+                        now,
+                        cancellationToken);
+                }
+                else if (webhookEvent.RefundedAmount is > 0)
+                {
+                    await RecordPartialRefundAsync(
+                        payment,
+                        webhookEvent.RefundedAmount.Value,
+                        webhookEvent.ProviderRefundId,
+                        now,
+                        cancellationToken);
+                }
+                break;
+
+            case GatewayWebhookEventKind.RefundFailed:
+                await RecordRefundFailureAsync(
                     payment,
-                    payment.UserId,
-                    "Reembolso procesado por Stripe.",
                     webhookEvent.ProviderRefundId,
+                    webhookEvent.FailureCode ?? "RefundFailed",
                     now,
                     cancellationToken);
                 break;
@@ -432,6 +463,82 @@ public class PaymentService : IPaymentService
         return new(PaymentOperationStatus.Success, await BuildResponseAsync(id));
     }
 
+    public async Task ClosePendingForReservationAsync(
+        int reservationId,
+        int actorUserId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        await using var ownedTransaction = _context.Database.CurrentTransaction is null
+            ? await _context.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        await AcquireAdvisoryLockAsync(
+            ReservationPaymentLockNamespace,
+            reservationId,
+            cancellationToken);
+
+        var payment = await _context.Payments
+            .Where(item => item.ReservationId == reservationId && item.Status == PaymentStatuses.Pending)
+            .OrderByDescending(item => item.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (payment is null)
+        {
+            if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        GatewayCancellationResult cancellation;
+        if (string.IsNullOrWhiteSpace(payment.ProviderPaymentId))
+        {
+            cancellation = new GatewayCancellationResult(true, false, null);
+        }
+        else
+        {
+            cancellation = await _gateway.CancelPaymentAsync(payment.ProviderPaymentId, cancellationToken);
+        }
+
+        if (cancellation.Succeeded)
+        {
+            var reservation = await _context.Reservations
+                .SingleAsync(item => item.Id == reservationId, cancellationToken);
+            await ReconcilePaymentSucceededAsync(payment, reservation, now, cancellationToken);
+        }
+        else
+        {
+            payment.Status = PaymentStatuses.Failed;
+            payment.FailureCode = cancellation.Cancelled
+                ? "ReservationCancelled"
+                : cancellation.FailureCode ?? "PaymentCancellationUnconfirmed";
+            payment.UpdatedAt = now;
+            await AddAttemptAsync(
+                payment,
+                PaymentGatewayAttemptOutcomes.Cancelled,
+                payment.ProviderPaymentId,
+                cancellation.Cancelled ? null : payment.FailureCode,
+                now,
+                cancellationToken);
+
+            if (!cancellation.Cancelled)
+            {
+                _logger.LogCritical(
+                    "No se pudo confirmar la cancelacion del pago {PaymentId} para la reserva {ReservationId}. " +
+                    "Un cobro posterior debera reembolsarse automaticamente: {FailureCode}.",
+                    payment.Id,
+                    reservationId,
+                    payment.FailureCode);
+            }
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
+    }
+
+    public Task LockReservationAsync(
+        int reservationId,
+        CancellationToken cancellationToken = default) =>
+        AcquireAdvisoryLockAsync(ReservationPaymentLockNamespace, reservationId, cancellationToken);
+
     public Task<PaymentOperationResult> RefundAsync(int id, int adminUserId, string reason) =>
         RefundCoreAsync(id, adminUserId, reason);
 
@@ -455,24 +562,107 @@ public class PaymentService : IPaymentService
             ? await _context.Database.BeginTransactionAsync()
             : null;
 
-        // Protege la comprobacion Paid -> Refunded y la llamada al gateway como una sola seccion
-        // critica. Los reintentos del gateway usan ademas una clave estable.
+        var identity = await _context.Payments.AsNoTracking()
+            .Where(item => item.Id == id)
+            .Select(item => new { item.ReservationId })
+            .SingleOrDefaultAsync();
+        if (identity is null) return new(PaymentOperationStatus.PaymentNotFound);
+
+        // Todas las rutas financieras toman primero el lock de reserva. De ese modo un webhook,
+        // una cancelacion y un reembolso no pueden decidir estados diferentes al mismo tiempo.
+        await AcquireAdvisoryLockAsync(ReservationPaymentLockNamespace, identity.ReservationId);
         await AcquireAdvisoryLockAsync(RefundLockNamespace, id);
 
-        var payment = await _context.Payments.SingleOrDefaultAsync(item => item.Id == id);
-        if (payment is null) return new(PaymentOperationStatus.PaymentNotFound);
+        var payment = await _context.Payments.SingleAsync(item => item.Id == id);
         if (payment.Status == PaymentStatuses.Refunded)
             return new(PaymentOperationStatus.Success, await BuildResponseAsync(id));
-        if (payment.Status != PaymentStatuses.Paid)
+        if (payment.Status is not (PaymentStatuses.Paid or PaymentStatuses.RefundPending))
             return new(PaymentOperationStatus.InvalidTransition);
+
+        var now = DateTime.UtcNow;
+        var trimmedReason = reason.Trim();
+        await TransitionReservationToRefundPendingAsync(
+            payment,
+            actorUserId,
+            trimmedReason,
+            now);
+
+        var refund = await _context.Refunds.SingleOrDefaultAsync(item => item.PaymentId == payment.Id);
+        if (refund is not null
+            && refund.Status == RefundStatuses.Pending
+            && !string.IsNullOrWhiteSpace(refund.ProviderRefundId))
+        {
+            await _context.SaveChangesAsync();
+            if (ownedTransaction is not null) await ownedTransaction.CommitAsync();
+            return new(PaymentOperationStatus.Success, await BuildResponseAsync(id));
+        }
+
+        var remainingAmount = payment.Amount - (payment.RefundedAmount ?? 0m);
+        if (remainingAmount <= 0)
+        {
+            await CompleteRefundAsync(payment, actorUserId, trimmedReason,
+                refund?.ProviderRefundId, now);
+            await _context.SaveChangesAsync();
+            if (ownedTransaction is not null) await ownedTransaction.CommitAsync();
+            return new(PaymentOperationStatus.Success, await BuildResponseAsync(id));
+        }
+
+        if (refund is null)
+        {
+            refund = new Refund
+            {
+                Payment = payment,
+                Amount = remainingAmount,
+                Reason = trimmedReason,
+                Status = RefundStatuses.Pending,
+                Provider = payment.Provider,
+                RequestedByUserId = actorUserId,
+                AttemptCount = 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            await _context.Refunds.AddAsync(refund);
+        }
+        else
+        {
+            refund.Amount = remainingAmount;
+            refund.Reason = trimmedReason;
+            refund.Status = RefundStatuses.Pending;
+            refund.FailureCode = null;
+            refund.ProviderRefundId = null;
+            refund.RequestedByUserId = actorUserId;
+            refund.AttemptCount += 1;
+            refund.UpdatedAt = now;
+        }
+
+        payment.Status = PaymentStatuses.RefundPending;
+        payment.FailureCode = null;
+        payment.UpdatedAt = now;
+        await _context.SaveChangesAsync();
 
         var gatewayResult = await _gateway.RefundAsync(new GatewayRefundRequest(
             payment.ProviderPaymentId ?? string.Empty,
             payment.Currency,
-            payment.Amount,
-            $"refund:{payment.Id}"));
+            remainingAmount,
+            $"refund:{payment.Id}:{refund.AttemptCount}"));
         if (!gatewayResult.Accepted)
         {
+            refund.Status = RefundStatuses.Failed;
+            refund.FailureCode = gatewayResult.FailureCode ?? "RefundRejected";
+            refund.ProviderRefundId = gatewayResult.ProviderRefundId;
+            refund.UpdatedAt = DateTime.UtcNow;
+            payment.FailureCode = refund.FailureCode;
+            payment.UpdatedAt = refund.UpdatedAt;
+            await AddAttemptAsync(payment, PaymentGatewayAttemptOutcomes.RefundFailed,
+                gatewayResult.ProviderRefundId, refund.FailureCode, refund.UpdatedAt);
+            if (refund.AttemptCount == 1)
+            {
+                await _outbox.EnqueueAsync(payment.UserId, "RefundPending", "Reembolso en proceso",
+                    "El reembolso requiere una nueva verificación. Te avisaremos cuando se complete.",
+                    await _context.Reservations.SingleAsync(item => item.Id == payment.ReservationId));
+            }
+            await _context.SaveChangesAsync();
+            if (ownedTransaction is not null) await ownedTransaction.CommitAsync();
             _logger.LogWarning(
                 "El gateway {Provider} rechazo el reembolso del pago {PaymentId}: {FailureCode}.",
                 _gateway.ProviderName,
@@ -481,12 +671,28 @@ public class PaymentService : IPaymentService
             return new(PaymentOperationStatus.GatewayRejected);
         }
 
-        await CompleteRefundAsync(
-            payment,
-            actorUserId,
-            reason.Trim(),
-            gatewayResult.ProviderRefundId,
-            DateTime.UtcNow);
+        refund.ProviderRefundId = gatewayResult.ProviderRefundId;
+        refund.FailureCode = null;
+        refund.UpdatedAt = DateTime.UtcNow;
+        await AddAttemptAsync(payment, PaymentGatewayAttemptOutcomes.RefundRequested,
+            gatewayResult.ProviderRefundId, null, refund.UpdatedAt);
+
+        if (gatewayResult.Completed)
+        {
+            await CompleteRefundAsync(
+                payment,
+                actorUserId,
+                trimmedReason,
+                gatewayResult.ProviderRefundId,
+                refund.UpdatedAt);
+        }
+        else
+        {
+            refund.Status = RefundStatuses.Pending;
+            await _outbox.EnqueueAsync(payment.UserId, "RefundPending", "Reembolso en proceso",
+                "Tu reembolso fue solicitado. Te avisaremos cuando se complete.",
+                await _context.Reservations.SingleAsync(item => item.Id == payment.ReservationId));
+        }
 
         try
         {
@@ -515,14 +721,21 @@ public class PaymentService : IPaymentService
         DateTime now,
         CancellationToken cancellationToken = default)
     {
-        if (payment.Status is PaymentStatuses.Paid or PaymentStatuses.Refunded) return;
+        if (payment.Status == PaymentStatuses.Refunded) return;
 
-        payment.Status = PaymentStatuses.Paid;
-        payment.FailureCode = null;
-        payment.PaidAt = now;
-        payment.UpdatedAt = now;
-        await AddAttemptAsync(payment, PaymentGatewayAttemptOutcomes.Approved,
-            payment.ProviderPaymentId, null, now, cancellationToken);
+        if (payment.Status != PaymentStatuses.RefundPending)
+        {
+            var newlyPaid = payment.Status != PaymentStatuses.Paid;
+            payment.Status = PaymentStatuses.Paid;
+            payment.FailureCode = null;
+            payment.PaidAt ??= now;
+            payment.UpdatedAt = now;
+            if (newlyPaid)
+            {
+                await AddAttemptAsync(payment, PaymentGatewayAttemptOutcomes.Approved,
+                    payment.ProviderPaymentId, null, now, cancellationToken);
+            }
+        }
 
         if (reservation.Status == ReservationStatuses.PendingPayment)
         {
@@ -539,28 +752,45 @@ public class PaymentService : IPaymentService
                 $"Una reserva para {experience.Title} fue confirmada mediante pago.", reservation,
                 "/host/reservations");
         }
-        else if (reservation.Status == ReservationStatuses.Expired)
+        else if (reservation.Status is ReservationStatuses.Expired
+                 or ReservationStatuses.CancelledByTourist
+                 or ReservationStatuses.CancelledByHost
+                 or ReservationStatuses.RefundPending)
         {
-            var refund = await _gateway.RefundAsync(new GatewayRefundRequest(
-                payment.ProviderPaymentId ?? string.Empty,
-                payment.Currency,
-                payment.Amount,
-                $"late-refund:{payment.Id}"), cancellationToken);
-            if (refund.Accepted)
+            var reason = reservation.Status == ReservationStatuses.Expired
+                ? "Reembolso automático porque la reserva venció antes de confirmarse."
+                : "Reembolso automático porque la reserva fue cancelada antes de confirmarse.";
+            var result = await RefundCoreAsync(payment.Id, payment.UserId, reason);
+            if (result.Status == PaymentOperationStatus.GatewayRejected)
             {
-                await CompleteRefundAsync(payment, payment.UserId,
-                    "Reembolso automático porque la reserva venció antes de confirmarse.",
-                    refund.ProviderRefundId, now, cancellationToken);
-            }
-            else
-            {
-                payment.FailureCode = "LatePaymentRefundRequired";
                 _logger.LogCritical(
-                    "El pago {PaymentId} se completo tras vencer la reserva y requiere reembolso: {FailureCode}.",
-                    payment.Id,
-                    refund.FailureCode);
+                    "El pago {PaymentId} se completo para una reserva terminal y su reembolso requiere reintento.",
+                    payment.Id);
             }
         }
+    }
+
+    private async Task TransitionReservationToRefundPendingAsync(
+        Payment payment,
+        int actorUserId,
+        string reason,
+        DateTime now,
+        CancellationToken cancellationToken = default)
+    {
+        var reservation = await _context.Reservations
+            .SingleAsync(item => item.Id == payment.ReservationId, cancellationToken);
+        if (reservation.Status is ReservationStatuses.RefundPending or ReservationStatuses.Refunded) return;
+
+        var previous = reservation.Status;
+        if (ReservationStatuses.IsActive(previous))
+        {
+            await ReleaseCapacityAsync(reservation, now, "RefundPending", cancellationToken);
+        }
+
+        reservation.Status = ReservationStatuses.RefundPending;
+        reservation.UpdatedAt = now;
+        await AddHistoryAsync(reservation, previous, ReservationStatuses.RefundPending, actorUserId,
+            $"Reembolso solicitado. Motivo: {reason}", now, cancellationToken);
     }
 
     private async Task CompleteRefundAsync(
@@ -574,6 +804,7 @@ public class PaymentService : IPaymentService
         var newlyRefunded = payment.Status != PaymentStatuses.Refunded;
         payment.Status = PaymentStatuses.Refunded;
         payment.RefundedAmount = payment.Amount;
+        payment.FailureCode = null;
         payment.UpdatedAt = now;
 
         var refund = await _context.Refunds
@@ -588,15 +819,20 @@ public class PaymentService : IPaymentService
                 Status = RefundStatuses.Completed,
                 Provider = payment.Provider,
                 ProviderRefundId = providerRefundId,
+                AttemptCount = 1,
                 RequestedByUserId = actorUserId,
-                CreatedAt = now
+                CreatedAt = now,
+                UpdatedAt = now
             }, cancellationToken);
         }
         else
         {
             refund.Status = RefundStatuses.Completed;
+            refund.Amount = payment.Amount;
             refund.ProviderRefundId ??= providerRefundId;
             refund.Reason ??= reason;
+            refund.FailureCode = null;
+            refund.UpdatedAt = now;
         }
 
         if (newlyRefunded)
@@ -610,27 +846,9 @@ public class PaymentService : IPaymentService
         if (reservation.Status == ReservationStatuses.Refunded) return;
 
         var previous = reservation.Status;
-        if (previous is ReservationStatuses.PendingPayment or ReservationStatuses.Confirmed)
+        if (ReservationStatuses.IsActive(previous))
         {
-            var schedule = await _context.ExperienceSchedules
-                .SingleAsync(item => item.Id == reservation.ScheduleId, cancellationToken);
-            if (schedule.StartsAt > now)
-            {
-                var previousSpots = schedule.AvailableSpots;
-                schedule.AvailableSpots = Math.Min(
-                    schedule.Capacity,
-                    schedule.AvailableSpots + reservation.Quantity);
-                schedule.UpdatedAt = now;
-                await _context.CapacityAudits.AddAsync(new CapacityAudit
-                {
-                    ScheduleId = schedule.Id,
-                    Reservation = reservation,
-                    PreviousSpots = previousSpots,
-                    NewSpots = schedule.AvailableSpots,
-                    Reason = "PaymentRefunded",
-                    CreatedAt = now
-                }, cancellationToken);
-            }
+            await ReleaseCapacityAsync(reservation, now, "PaymentRefunded", cancellationToken);
         }
 
         reservation.Status = ReservationStatuses.Refunded;
@@ -641,15 +859,119 @@ public class PaymentService : IPaymentService
             $"El reembolso de {payment.Amount:0.00} {payment.Currency} fue registrado.", reservation);
     }
 
-    private PaymentBreakdown CalculateBreakdown(decimal subtotal)
+    private async Task RecordPartialRefundAsync(
+        Payment payment,
+        decimal refundedAmount,
+        string? providerRefundId,
+        DateTime now,
+        CancellationToken cancellationToken)
     {
-        var serviceFeePercent = _configuration.GetValue<decimal?>("Payments:ServiceFeePercent") ?? 5m;
-        var commissionPercent = _configuration.GetValue<decimal?>("Payments:CommissionPercent") ?? 12m;
-        var currency = _configuration["Payments:Currency"] ?? "USD";
+        var totalRefunded = Math.Min(payment.Amount, Math.Max(payment.RefundedAmount ?? 0m, refundedAmount));
+        if (totalRefunded >= payment.Amount)
+        {
+            await CompleteRefundAsync(payment, payment.UserId,
+                "Reembolso completado por el proveedor de pagos.", providerRefundId, now, cancellationToken);
+            return;
+        }
 
-        var serviceFee = Math.Round(subtotal * serviceFeePercent / 100m, 2, MidpointRounding.AwayFromZero);
-        var commission = Math.Round(subtotal * commissionPercent / 100m, 2, MidpointRounding.AwayFromZero);
-        return new(currency, subtotal, serviceFee, subtotal + serviceFee, commission, subtotal - commission);
+        payment.RefundedAmount = totalRefunded;
+        payment.UpdatedAt = now;
+        var refund = await _context.Refunds.SingleOrDefaultAsync(
+            item => item.PaymentId == payment.Id, cancellationToken);
+        if (refund is null)
+        {
+            await _context.Refunds.AddAsync(new Refund
+            {
+                Payment = payment,
+                Amount = totalRefunded,
+                Reason = "Reembolso parcial registrado por el proveedor de pagos.",
+                Status = RefundStatuses.Partial,
+                Provider = payment.Provider,
+                ProviderRefundId = providerRefundId,
+                RequestedByUserId = payment.UserId,
+                AttemptCount = 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            }, cancellationToken);
+        }
+        else
+        {
+            refund.Amount = totalRefunded;
+            refund.Status = RefundStatuses.Partial;
+            refund.ProviderRefundId ??= providerRefundId;
+            refund.FailureCode = null;
+            refund.UpdatedAt = now;
+        }
+    }
+
+    private async Task RecordRefundFailureAsync(
+        Payment payment,
+        string? providerRefundId,
+        string failureCode,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        payment.Status = PaymentStatuses.RefundPending;
+        payment.FailureCode = failureCode;
+        payment.UpdatedAt = now;
+        await TransitionReservationToRefundPendingAsync(
+            payment, payment.UserId, "El proveedor no pudo completar el reembolso.", now, cancellationToken);
+
+        var refund = await _context.Refunds.SingleOrDefaultAsync(
+            item => item.PaymentId == payment.Id, cancellationToken);
+        if (refund is null)
+        {
+            await _context.Refunds.AddAsync(new Refund
+            {
+                Payment = payment,
+                Amount = payment.Amount - (payment.RefundedAmount ?? 0m),
+                Reason = "El proveedor no pudo completar el reembolso.",
+                Status = RefundStatuses.Failed,
+                Provider = payment.Provider,
+                ProviderRefundId = providerRefundId,
+                FailureCode = failureCode,
+                RequestedByUserId = payment.UserId,
+                AttemptCount = 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            }, cancellationToken);
+        }
+        else
+        {
+            refund.Status = RefundStatuses.Failed;
+            refund.ProviderRefundId ??= providerRefundId;
+            refund.FailureCode = failureCode;
+            refund.UpdatedAt = now;
+        }
+
+        await AddAttemptAsync(payment, PaymentGatewayAttemptOutcomes.RefundFailed,
+            providerRefundId, failureCode, now, cancellationToken);
+    }
+
+    private async Task ReleaseCapacityAsync(
+        Reservation reservation,
+        DateTime now,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        var schedule = await _context.ExperienceSchedules
+            .SingleAsync(item => item.Id == reservation.ScheduleId, cancellationToken);
+        if (schedule.StartsAt <= now) return;
+
+        var previousSpots = schedule.AvailableSpots;
+        schedule.AvailableSpots = Math.Min(
+            schedule.Capacity,
+            schedule.AvailableSpots + reservation.Quantity);
+        schedule.UpdatedAt = now;
+        await _context.CapacityAudits.AddAsync(new CapacityAudit
+        {
+            ScheduleId = schedule.Id,
+            Reservation = reservation,
+            PreviousSpots = previousSpots,
+            NewSpots = schedule.AvailableSpots,
+            Reason = reason,
+            CreatedAt = now
+        }, cancellationToken);
     }
 
     private async Task<PaymentResponse?> BuildResponseAsync(int id) =>
@@ -749,11 +1071,4 @@ public class PaymentService : IPaymentService
     private static string Hash(string value) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 
-    private record PaymentBreakdown(
-        string Currency,
-        decimal Subtotal,
-        decimal ServiceFee,
-        decimal Total,
-        decimal Commission,
-        decimal HostNet);
 }
