@@ -358,6 +358,18 @@ cambio, moderación, notificaciones y outbox, reseñas.
 
 ### 8.3 Comandos
 
+Las pruebas de integración reaplican todo el esquema y toman locks exclusivos sobre las tablas,
+así que exigen una base **local**: si la cadena de conexión apunta a un host remoto, fallan de
+inmediato con instrucciones en vez de ejecutarse. Para levantarla:
+
+```bash
+docker run -d --name goisland-tests -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=goisland_tests -p 5432:5432 postgres:16
+```
+
+```bash
+dotnet user-secrets set "ConnectionStrings:TestConnection" "Host=localhost;Port=5432;Database=goisland_tests;Username=postgres;Password=postgres" --project backend/GoIsland.Api
+```
+
 ```bash
 dotnet test backend/GoIsland.Api.Tests/GoIsland.Api.Tests.csproj -c Release
 ```

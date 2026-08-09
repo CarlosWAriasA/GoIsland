@@ -42,8 +42,13 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
+        // TestConnection tiene prioridad para poder apuntar a una base local sin tocar la
+        // configuracion de desarrollo, que suele apuntar al entorno administrado.
+        var connectionString = configuration.GetConnectionString("TestConnection")
+            ?? configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection no esta configurado.");
+
+        GuardAgainstRemoteDatabase(connectionString);
 
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
@@ -113,6 +118,64 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
 
         // Fuerza una consulta real y falla temprano si el esquema no esta aplicado.
         await Context.Users.AsNoTracking().AnyAsync();
+    }
+
+    private const string AllowRemoteVariable = "GOISLAND_ALLOW_REMOTE_TEST_DB";
+
+    /// <summary>
+    /// Las pruebas reaplican todo el esquema y toman locks exclusivos sobre las tablas, asi que
+    /// no deben ejecutarse contra una base compartida o de produccion. Se exige una base local
+    /// salvo que se autorice explicitamente lo contrario.
+    /// </summary>
+    private static void GuardAgainstRemoteDatabase(string connectionString)
+    {
+        if (string.Equals(
+                Environment.GetEnvironmentVariable(AllowRemoteVariable),
+                "true",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var host = ResolveHost(connectionString);
+        string[] localHosts = ["localhost", "127.0.0.1", "::1", "host.docker.internal", "postgres", "db"];
+        if (localHosts.Contains(host, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Las pruebas de integracion apuntan a '{host}', que no es una base local. " +
+            "Reaplican todo el esquema y bloquean tablas, asi que no deben correr contra una " +
+            "base compartida.\n\n" +
+            "Levanta una base local:\n" +
+            "  docker run -d --name goisland-tests -e POSTGRES_PASSWORD=postgres " +
+            "-e POSTGRES_DB=goisland_tests -p 5432:5432 postgres:16\n\n" +
+            "Y apunta las pruebas a ella:\n" +
+            "  dotnet user-secrets set \"ConnectionStrings:TestConnection\" " +
+            "\"Host=localhost;Port=5432;Database=goisland_tests;Username=postgres;Password=postgres\" " +
+            "--project GoIsland.Api\n\n" +
+            $"Para autorizar una base remota a proposito: {AllowRemoteVariable}=true");
+    }
+
+    /// <summary>Obtiene el host tanto de una cadena clave=valor como de un URI postgresql://.</summary>
+    private static string ResolveHost(string connectionString)
+    {
+        var trimmed = connectionString.TrimStart();
+        if (trimmed.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
+            || trimmed.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        {
+            return Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) ? uri.Host : trimmed;
+        }
+
+        try
+        {
+            return new NpgsqlConnectionStringBuilder(connectionString).Host ?? string.Empty;
+        }
+        catch (ArgumentException)
+        {
+            return string.Empty;
+        }
     }
 
     /// <summary>
