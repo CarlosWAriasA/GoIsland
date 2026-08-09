@@ -226,18 +226,6 @@ export const ExperienceMapPage = () => {
               <option value="200">Hasta $200 USD</option>
             </SelectField>
           </div>
-
-          {hasActiveFilters && (
-            <div className="map-page__reset-col">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleResetAll}
-              >
-                <RotateCcw size={15} aria-hidden="true" /> Limpiar filtros
-              </Button>
-            </div>
-          )}
         </div>
       )}
 
