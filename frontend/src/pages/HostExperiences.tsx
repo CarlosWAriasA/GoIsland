@@ -1,6 +1,8 @@
 import {
   CalendarDays,
   ChevronDown,
+  Eye,
+  EyeOff,
   ImagePlus,
   Infinity as InfinityIcon,
   LocateFixed,
@@ -373,6 +375,7 @@ export const HostExperiences = () => {
   const [showForm, setShowForm] = useState(false);
   const [openItineraryIndex, setOpenItineraryIndex] = useState<number | null>(null);
   const [experienceToDelete, setExperienceToDelete] = useState<ManagedExperience | null>(null);
+  const [experienceToHide, setExperienceToHide] = useState<ManagedExperience | null>(null);
   const [existingImages, setExistingImages] = useState<ExperienceImage[]>([]);
   const [removedImageIds, setRemovedImageIds] = useState<number[]>([]);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -683,6 +686,23 @@ export const HostExperiences = () => {
       toast.error(apiError.message);
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const changeVisibility = async (experience: ManagedExperience, isHidden: boolean) => {
+    setBusyId(experience.id);
+    setError(null);
+    try {
+      const updated = await hostExperienceService.setVisibility(experience.id, isHidden);
+      setExperiences((current) => current.map((item) => item.id === updated.id ? updated : item));
+      toast.success(isHidden
+        ? 'La experiencia ya no aparece en el catálogo.'
+        : 'La experiencia volvió al catálogo.');
+    } catch (requestError: unknown) {
+      toast.error(toApiError(requestError).message);
+    } finally {
+      setBusyId(null);
+      setExperienceToHide(null);
     }
   };
 
@@ -1173,9 +1193,12 @@ export const HostExperiences = () => {
                       {experience.location ? formatLocationLabel(experience.location) : 'Lugar por definir'}
                     </p>
                   </div>
-                  <StatusBadge tone={getModerationTone(experience.approvalStatus)}>
-                    {getModerationLabel(experience.approvalStatus)}
-                  </StatusBadge>
+                  <div className="management-card__badges">
+                    <StatusBadge tone={getModerationTone(experience.approvalStatus)}>
+                      {getModerationLabel(experience.approvalStatus)}
+                    </StatusBadge>
+                    {experience.isHidden && <StatusBadge tone="neutral">Oculta</StatusBadge>}
+                  </div>
                 </div>
                 {experience.rejectionReason && (
                   <Alert tone="error"><strong>Motivo:</strong> {experience.rejectionReason}</Alert>
@@ -1205,7 +1228,26 @@ export const HostExperiences = () => {
                       <Send size={17} aria-hidden="true" />Enviar a revisión
                     </Button>
                   )}
-                  {experience.approvalStatus === 'Draft' && (
+                  {experience.approvalStatus === 'Approved' && (
+                    experience.isHidden ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => void changeVisibility(experience, false)}
+                        isLoading={busyId === experience.id}
+                      >
+                        <Eye size={17} aria-hidden="true" />Mostrar
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => setExperienceToHide(experience)}
+                        disabled={busyId === experience.id}
+                      >
+                        <EyeOff size={17} aria-hidden="true" />Ocultar
+                      </Button>
+                    )
+                  )}
+                  {!experience.hasReservations && (
                     <Button
                       variant="danger"
                       onClick={() => setExperienceToDelete(experience)}
@@ -1242,9 +1284,31 @@ export const HostExperiences = () => {
       )}
       {drawer}
       <ConfirmDialog
+        open={experienceToHide !== null}
+        title="Ocultar experiencia"
+        message={experienceToHide ? (
+          <>
+            “{experienceToHide.title}” dejará de aparecer en el catálogo y no aceptará nuevas
+            reservas. Las reservas ya confirmadas siguen en pie y puedes volver a mostrarla cuando
+            quieras.
+          </>
+        ) : ''}
+        confirmLabel="Ocultar experiencia"
+        isConfirming={busyId !== null}
+        onClose={() => setExperienceToHide(null)}
+        onConfirm={() => {
+          if (experienceToHide) void changeVisibility(experienceToHide, true);
+        }}
+      />
+      <ConfirmDialog
         open={experienceToDelete !== null}
         title="Eliminar experiencia"
-        message={experienceToDelete ? <>¿Quieres eliminar el borrador “{experienceToDelete.title}”?</> : ''}
+        message={experienceToDelete ? (
+          <>
+            ¿Quieres eliminar “{experienceToDelete.title}”? Se borran también sus fotos y horarios,
+            y no se puede deshacer.
+          </>
+        ) : ''}
         confirmLabel="Eliminar experiencia"
         isConfirming={busyId !== null}
         onClose={() => setExperienceToDelete(null)}

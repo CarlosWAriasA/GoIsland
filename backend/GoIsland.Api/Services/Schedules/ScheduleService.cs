@@ -495,6 +495,7 @@ public class ScheduleService : IScheduleService
             .Where(experience => experience.Id == experienceId
                 && experience.IsApproved
                 && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && !experience.IsHidden
                 && _context.HostProfiles.Any(profile => profile.UserId == experience.HostId
                     && profile.VerificationStatus == HostVerificationStatuses.Approved))
             .Select(experience => (bool?)experience.IsUnlimitedCapacity)

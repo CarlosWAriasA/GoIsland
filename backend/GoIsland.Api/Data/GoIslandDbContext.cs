@@ -135,6 +135,7 @@ public class GoIslandDbContext : DbContext
                 .IsRequired();
             entity.Property(experience => experience.IsApproved).HasColumnName("is_approved").IsRequired();
             entity.Property(experience => experience.ApprovalStatus).HasColumnName("approval_status").HasMaxLength(40).IsRequired();
+            entity.Property(experience => experience.IsHidden).HasColumnName("is_hidden").IsRequired();
             entity.Property(experience => experience.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
             entity.Property(experience => experience.ReviewedAt).HasColumnName("reviewed_at");
             entity.Property(experience => experience.ReviewedByAdminId).HasColumnName("reviewed_by_admin_id");

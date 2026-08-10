@@ -143,6 +143,28 @@ public class HostExperiencesController : ControllerBase
         return ToImageActionResult(await _imageService.DeleteAsync(userId, id, imageId));
     }
 
+    [HttpPost("{id:int}/hide")]
+    public async Task<IActionResult> Hide(int id)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        }
+
+        return ToActionResult(await _service.SetVisibilityAsync(userId, id, isHidden: true));
+    }
+
+    [HttpPost("{id:int}/unhide")]
+    public async Task<IActionResult> Unhide(int id)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        }
+
+        return ToActionResult(await _service.SetVisibilityAsync(userId, id, isHidden: false));
+    }
+
     [HttpPost("{id:int}/submit")]
     public async Task<IActionResult> Submit(int id)
     {

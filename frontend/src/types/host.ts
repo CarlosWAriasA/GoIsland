@@ -65,6 +65,8 @@ export interface ManagedExperience extends ManagedExperienceRequest {
   availableSpots: number;
   images: import('./experience').ExperienceImage[];
   approvalStatus: ExperienceApprovalStatus;
+  isHidden: boolean;
+  hasReservations: boolean;
   rejectionReason: string | null;
   reviewedAt: string | null;
   reviewedByAdminId: number | null;

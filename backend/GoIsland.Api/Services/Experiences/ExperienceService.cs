@@ -75,6 +75,7 @@ public class ExperienceService : IExperienceService
         var candidates = await _context.Experiences.AsNoTracking()
             .Where(item => item.IsApproved
                 && item.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && !item.IsHidden
                 && _context.HostProfiles.Any(profile => profile.UserId == item.HostId
                     && profile.VerificationStatus == HostVerificationStatuses.Approved)
                 && item.Latitude.HasValue

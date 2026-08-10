@@ -37,6 +37,9 @@ public class HostExperienceResponse
     public string SchedulingMode { get; set; } = ExperienceSchedulingModes.HostScheduled;
     public IReadOnlyCollection<ExperienceImageResponse> Images { get; set; } = [];
     public string ApprovalStatus { get; set; } = string.Empty;
+    public bool IsHidden { get; set; }
+    /// <summary>Con reservas de por medio la experiencia ya no se puede eliminar, solo ocultar.</summary>
+    public bool HasReservations { get; set; }
     public string? RejectionReason { get; set; }
     public DateTime? ReviewedAt { get; set; }
     public int? ReviewedByAdminId { get; set; }

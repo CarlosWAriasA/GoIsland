@@ -35,6 +35,7 @@ public sealed class PaymentQuotesController : ControllerBase
             .Where(item => item.Id == experienceId
                 && item.IsApproved
                 && item.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && !item.IsHidden
                 && _context.HostProfiles.Any(profile => profile.UserId == item.HostId
                     && profile.VerificationStatus == HostVerificationStatuses.Approved))
             .Select(item => new { item.Price })

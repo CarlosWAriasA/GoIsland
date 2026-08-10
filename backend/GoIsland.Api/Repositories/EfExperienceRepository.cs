@@ -26,6 +26,7 @@ public class EfExperienceRepository : IExperienceRepository
                 experience.Id == id
                 && experience.IsApproved
                 && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && !experience.IsHidden
                 && _context.HostProfiles.Any(profile => profile.UserId == experience.HostId
                     && profile.VerificationStatus == HostVerificationStatuses.Approved));
         if (experience is not null) await ApplyPublicAvailabilityAsync([experience]);
@@ -42,6 +43,7 @@ public class EfExperienceRepository : IExperienceRepository
                 experience.Slug == slug
                 && experience.IsApproved
                 && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && !experience.IsHidden
                 && _context.HostProfiles.Any(profile => profile.UserId == experience.HostId
                     && profile.VerificationStatus == HostVerificationStatuses.Approved));
         if (experience is not null) await ApplyPublicAvailabilityAsync([experience]);
@@ -77,6 +79,7 @@ public class EfExperienceRepository : IExperienceRepository
                 experience.Id == id
                 && experience.IsApproved
                 && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && !experience.IsHidden
                 && _context.HostProfiles.Any(profile => profile.UserId == experience.HostId
                     && profile.VerificationStatus == HostVerificationStatuses.Approved));
     }
@@ -87,6 +90,7 @@ public class EfExperienceRepository : IExperienceRepository
             .AsNoTracking()
             .Where(experience => experience.IsApproved
                 && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved
+                && !experience.IsHidden
                 && _context.HostProfiles.Any(profile => profile.UserId == experience.HostId
                     && profile.VerificationStatus == HostVerificationStatuses.Approved));
 

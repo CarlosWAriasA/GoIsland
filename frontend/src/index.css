@@ -3520,6 +3520,13 @@ input[type='number']::-webkit-inner-spin-button {
   align-items: flex-start;
 }
 
+.management-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
 .management-card__header p {
   display: flex;
   margin-top: 0.4rem;

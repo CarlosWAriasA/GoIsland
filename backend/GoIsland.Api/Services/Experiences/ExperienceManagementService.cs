@@ -156,20 +156,23 @@ public class ExperienceManagementService : IExperienceManagementService
             return new(ExperienceManagementStatus.NotFound);
         }
 
+        // Las reservas son el historial de otras personas: si existen, la experiencia se oculta,
+        // no se borra.
         if (await _context.Reservations.AnyAsync(reservation => reservation.ExperienceId == id))
         {
             return new(
                 ExperienceManagementStatus.Conflict,
                 await ToResponseAsync(id),
-                "No puedes eliminar una experiencia que tiene reservas.");
+                "Esta experiencia tiene reservas y no se puede eliminar. Ocúltala para retirarla del catálogo.");
         }
 
-        if (await _context.ExperienceSchedules.AnyAsync(schedule => schedule.ExperienceId == id))
+        // Sin reservas, los horarios son andamiaje del anfitrión y se van con la experiencia.
+        var schedules = await _context.ExperienceSchedules
+            .Where(schedule => schedule.ExperienceId == id)
+            .ToArrayAsync();
+        if (schedules.Length > 0)
         {
-            return new(
-                ExperienceManagementStatus.Conflict,
-                await ToResponseAsync(id),
-                "Elimina primero los horarios de esta experiencia.");
+            _context.ExperienceSchedules.RemoveRange(schedules);
         }
 
         var externalImageIds = experience.Images.Where(image =>
@@ -196,6 +199,38 @@ public class ExperienceManagementService : IExperienceManagementService
             }
         }
         return new(ExperienceManagementStatus.Success);
+    }
+
+    public async Task<ExperienceManagementResult> SetVisibilityAsync(int hostUserId, int id, bool isHidden)
+    {
+        if (!await IsApprovedHostAsync(hostUserId))
+        {
+            return new(ExperienceManagementStatus.Forbidden);
+        }
+
+        var experience = await _context.Experiences
+            .SingleOrDefaultAsync(item => item.Id == id && item.HostId == hostUserId);
+        if (experience is null)
+        {
+            return new(ExperienceManagementStatus.NotFound);
+        }
+
+        // Solo lo publicado tiene visibilidad que administrar: un borrador o una experiencia
+        // suspendida ya está fuera del catálogo por otras razones.
+        if (experience.ApprovalStatus != ExperienceApprovalStatuses.Approved)
+        {
+            return new(ExperienceManagementStatus.InvalidTransition, await ToResponseAsync(id));
+        }
+
+        if (experience.IsHidden == isHidden)
+        {
+            return new(ExperienceManagementStatus.Success, await ToResponseAsync(id));
+        }
+
+        experience.IsHidden = isHidden;
+        experience.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return new(ExperienceManagementStatus.Success, await ToResponseAsync(id));
     }
 
     public async Task<ExperienceManagementResult> SubmitAsync(int hostUserId, int id)
@@ -444,6 +479,9 @@ public class ExperienceManagementService : IExperienceManagementService
                        })
                        .ToArray(),
                    ApprovalStatus = experience.ApprovalStatus,
+                   IsHidden = experience.IsHidden,
+                   HasReservations = _context.Reservations.Any(
+                       reservation => reservation.ExperienceId == experience.Id),
                    RejectionReason = experience.RejectionReason,
                    ReviewedAt = experience.ReviewedAt,
                    ReviewedByAdminId = experience.ReviewedByAdminId,

@@ -90,7 +90,9 @@ public class ReservationService : IReservationService
                                && profile.VerificationStatus == HostVerificationStatuses.Approved
                            select new { Schedule = schedule, Experience = experience })
             .SingleOrDefaultAsync();
-        if (match is null || match.Experience.ApprovalStatus != ExperienceApprovalStatuses.Approved)
+        if (match is null
+            || match.Experience.ApprovalStatus != ExperienceApprovalStatuses.Approved
+            || match.Experience.IsHidden)
         {
             return new(ReservationCreationStatus.ScheduleNotFound);
         }
@@ -199,6 +201,7 @@ public class ReservationService : IReservationService
         if (experience is null
             || !experience.IsApproved
             || experience.ApprovalStatus != ExperienceApprovalStatuses.Approved
+            || experience.IsHidden
             || experience.SchedulingMode != ExperienceSchedulingModes.SelfGuided)
         {
             return new(ReservationCreationStatus.ExperienceNotFound);
