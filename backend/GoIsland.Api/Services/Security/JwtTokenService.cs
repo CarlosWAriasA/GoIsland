@@ -45,6 +45,13 @@ public class JwtTokenService : IJwtTokenService
             new(ClaimTypes.Role, user.Role)
         };
 
+        // El permiso de administracion viaja como un rol adicional, no como reemplazo, para que
+        // quien administra conserve tambien sus accesos de turista o anfitrion.
+        if (user.IsAdmin)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, UserRoles.Admin));
+        }
+
         var token = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,

@@ -88,13 +88,13 @@ export const Navbar = () => {
                 </>
               )}
 
-              {user?.role === 'Admin' && (
+              {user?.isAdmin && (
                 <NavLink to="/admin/moderation" className={getNavLinkClass} onClick={closeMenu}>
                   Moderación
                 </NavLink>
               )}
 
-              {user?.role !== 'Host' && user?.role !== 'Admin' && (
+              {user?.role !== 'Host' && (
                 <NavLink to="/host-profile" className={getNavLinkClass} onClick={closeMenu}>
                   Ser anfitrión
                 </NavLink>
@@ -112,20 +112,14 @@ export const Navbar = () => {
               </div>
             </>
           ) : (
-            <>
-              <NavLink to="/host-profile" className={getNavLinkClass} onClick={closeMenu}>
-                Ser anfitrión
-              </NavLink>
-
-              <div className="site-nav__auth">
-                <Link to="/login" className="site-nav__login" onClick={closeMenu}>
-                  Iniciar sesión
-                </Link>
-                <Link to="/register" className="site-nav__register" onClick={closeMenu}>
-                  Crear cuenta
-                </Link>
-              </div>
-            </>
+            <div className="site-nav__auth">
+              <Link to="/login" className="site-nav__login" onClick={closeMenu}>
+                Iniciar sesión
+              </Link>
+              <Link to="/register" className="site-nav__register" onClick={closeMenu}>
+                Crear cuenta
+              </Link>
+            </div>
           )}
         </nav>
       </div>

@@ -56,7 +56,7 @@ public class ReviewIntegrationTests : PostgresIntegrationTestBase
     public async Task HiddenReview_DisappearsFromPublicReputation_AndKeepsAudit()
     {
         var seed = await SeedAsync(ReservationStatuses.Completed);
-        var admin = NewUser("Admin", UserRoles.Admin);
+        var admin = NewUser("Admin", UserRoles.Tourist, isAdmin: true);
         Context.Users.Add(admin);
         await Context.SaveChangesAsync();
         var service = GetRequiredService<IReviewService>();
@@ -113,8 +113,12 @@ public class ReviewIntegrationTests : PostgresIntegrationTestBase
         return (tourist, experience, reservation);
     }
 
-    private static User NewUser(string name, string role) => new()
+    private static User NewUser(string name, string role, bool isAdmin = false) => new()
     {
-        FullName = name, Email = $"{Guid.NewGuid():N}@goisland.test", PasswordHash = "hash-integracion", Role = role
+        FullName = name,
+        Email = $"{Guid.NewGuid():N}@goisland.test",
+        PasswordHash = "hash-integracion",
+        Role = role,
+        IsAdmin = isAdmin
     };
 }

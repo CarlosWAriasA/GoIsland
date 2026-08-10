@@ -10,6 +10,7 @@ import ErrorState from '../components/ErrorState';
 import Input from '../components/Input';
 import Skeleton from '../components/Skeleton';
 import Typewriter from '../components/Typewriter';
+import { useAuth } from '../hooks/useAuth';
 import { useRevealOnScroll } from '../hooks/useRevealOnScroll';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
@@ -40,6 +41,8 @@ const FeaturedSkeleton = () => (
 export const Home = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, isAuthenticated } = useAuth();
+  const canBecomeHost = isAuthenticated && user?.role !== 'Host';
   const [term, setTerm] = useState('');
   const featuredQuery = useQuery({
     queryKey: experienceKeys.featured(),
@@ -159,7 +162,9 @@ export const Home = () => {
 
       <section className="container home-actions" data-reveal>
         <Link className="button-link button-link--primary" to="/experiences">Explorar experiencias</Link>
-        <Link className="button-link button-link--outline" to="/host-profile">Quiero ser anfitrión</Link>
+        {canBecomeHost && (
+          <Link className="button-link button-link--outline" to="/host-profile">Quiero ser anfitrión</Link>
+        )}
       </section>
     </div>
   );

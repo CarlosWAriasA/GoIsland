@@ -27,7 +27,8 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
             FullName = "Admin Integracion",
             Email = $"admin-{marker}@goisland.test",
             PasswordHash = "hash-no-usado",
-            Role = UserRoles.Admin
+            Role = UserRoles.Tourist,
+            IsAdmin = true
         };
         Context.Users.Add(admin);
         await Context.SaveChangesAsync();
@@ -75,7 +76,8 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
             FullName = "Admin Integracion",
             Email = $"admin-rechazo-{marker}@goisland.test",
             PasswordHash = "hash-no-usado",
-            Role = UserRoles.Admin
+            Role = UserRoles.Tourist,
+            IsAdmin = true
         };
         Context.Users.Add(admin);
         await Context.SaveChangesAsync();
@@ -107,29 +109,81 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
-    public async Task Administrator_CannotApplyForHostProfile()
+    public async Task Administrator_CanApplyForHostProfileAndKeepsAdminPermission()
     {
         var hostService = GetRequiredService<IHostService>();
         var marker = Guid.NewGuid().ToString("N");
         var admin = new User
         {
-            FullName = "Admin Sin Solicitud",
+            FullName = "Admin Anfitrion",
             Email = $"admin-apply-{marker}@goisland.test",
             PasswordHash = "hash-no-usado",
-            Role = UserRoles.Admin
+            Role = UserRoles.Tourist,
+            IsAdmin = true
+        };
+        var reviewer = new User
+        {
+            FullName = "Admin Revisor",
+            Email = $"admin-revisor-{marker}@goisland.test",
+            PasswordHash = "hash-no-usado",
+            Role = UserRoles.Tourist,
+            IsAdmin = true
+        };
+        Context.Users.AddRange(admin, reviewer);
+        await Context.SaveChangesAsync();
+
+        var application = await hostService.ApplyAsync(admin.Id, new HostApplicationRequest
+        {
+            DisplayName = "Admin anfitrion",
+            Description = "Administrar no impide participar como anfitrion en la plataforma.",
+            PhoneNumber = "+1 809 555 0177"
+        });
+        Assert.Equal(HostOperationStatus.Success, application.Status);
+
+        var approved = await hostService.ReviewAsync(
+            application.Profile!.Id,
+            reviewer.Id,
+            HostReviewAction.Approve,
+            null);
+        Assert.Equal(HostOperationStatus.Success, approved.Status);
+
+        var stored = await Context.Users.FindAsync(admin.Id);
+        Assert.Equal(UserRoles.Host, stored!.Role);
+        Assert.True(stored.IsAdmin);
+    }
+
+    [Fact]
+    public async Task Administrator_CannotReviewOwnHostApplication()
+    {
+        var hostService = GetRequiredService<IHostService>();
+        var marker = Guid.NewGuid().ToString("N");
+        var admin = new User
+        {
+            FullName = "Admin Autorevision",
+            Email = $"admin-autorevision-{marker}@goisland.test",
+            PasswordHash = "hash-no-usado",
+            Role = UserRoles.Tourist,
+            IsAdmin = true
         };
         Context.Users.Add(admin);
         await Context.SaveChangesAsync();
 
-        var result = await hostService.ApplyAsync(admin.Id, new HostApplicationRequest
+        var application = await hostService.ApplyAsync(admin.Id, new HostApplicationRequest
         {
-            DisplayName = "Admin no anfitrion",
-            Description = "Esta solicitud debe rechazarse por la regla de separacion de roles.",
-            PhoneNumber = "+1 809 555 0177"
+            DisplayName = "Admin autorevision",
+            Description = "La solicitud de quien administra debe revisarla otra persona.",
+            PhoneNumber = "+1 809 555 0166"
         });
+        var result = await hostService.ReviewAsync(
+            application.Profile!.Id,
+            admin.Id,
+            HostReviewAction.Approve,
+            null);
 
         Assert.Equal(HostOperationStatus.Forbidden, result.Status);
-        Assert.False(await Context.HostProfiles.AnyAsync(profile => profile.UserId == admin.Id));
+        Assert.Equal(
+            HostVerificationStatuses.Pending,
+            (await Context.HostProfiles.FindAsync(application.Profile.Id))!.VerificationStatus);
     }
 
     [Fact]
@@ -192,7 +246,8 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
             FullName = "Admin suspensión",
             Email = $"suspended-admin-{marker}@goisland.test",
             PasswordHash = "hash-integracion",
-            Role = UserRoles.Admin
+            Role = UserRoles.Tourist,
+            IsAdmin = true
         };
         Context.Users.AddRange(host, tourist, admin);
         await Context.SaveChangesAsync();

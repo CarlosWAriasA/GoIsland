@@ -15,7 +15,7 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         var publicService = GetRequiredService<IExperienceService>();
         var marker = Guid.NewGuid().ToString("N");
         var host = await CreateApprovedHostAsync(marker);
-        var admin = await CreateUserAsync($"admin-{marker}@goisland.test", UserRoles.Admin);
+        var admin = await CreateUserAsync($"admin-{marker}@goisland.test", UserRoles.Tourist, isAdmin: true);
         var location = $"Ubicacion-{marker}";
         var category = $"Categoria-{marker}";
 
@@ -59,7 +59,7 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         var publicService = GetRequiredService<IExperienceService>();
         var marker = Guid.NewGuid().ToString("N");
         var host = await CreateApprovedHostAsync(marker);
-        var admin = await CreateUserAsync($"admin-search-{marker}@goisland.test", UserRoles.Admin);
+        var admin = await CreateUserAsync($"admin-search-{marker}@goisland.test", UserRoles.Tourist, isAdmin: true);
 
         foreach (var (title, price, language, difficulty) in new[]
         {
@@ -137,7 +137,7 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         var marker = Guid.NewGuid().ToString("N");
         var owner = await CreateApprovedHostAsync($"owner-{marker}");
         var otherHost = await CreateApprovedHostAsync($"other-{marker}");
-        var admin = await CreateUserAsync($"admin-{marker}@goisland.test", UserRoles.Admin);
+        var admin = await CreateUserAsync($"admin-{marker}@goisland.test", UserRoles.Tourist, isAdmin: true);
 
         var incomplete = await service.CreateAsync(owner.Id, new CreateExperienceRequest
         {
@@ -377,14 +377,15 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         await Context.SaveChangesAsync();
     }
 
-    private async Task<User> CreateUserAsync(string email, string role)
+    private async Task<User> CreateUserAsync(string email, string role, bool isAdmin = false)
     {
         var user = new User
         {
             FullName = "Usuario Integracion",
             Email = email,
             PasswordHash = "hash-no-usado",
-            Role = role
+            Role = role,
+            IsAdmin = isAdmin
         };
         Context.Users.Add(user);
         await Context.SaveChangesAsync();
@@ -432,7 +433,7 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         var service = GetRequiredService<IExperienceManagementService>();
         var marker = Guid.NewGuid().ToString("N");
         var host = await CreateApprovedHostAsync(marker);
-        var admin = await CreateUserAsync($"admin-accents-{marker}@goisland.test", UserRoles.Admin);
+        var admin = await CreateUserAsync($"admin-accents-{marker}@goisland.test", UserRoles.Tourist, isAdmin: true);
 
         var created = await service.CreateAsync(host.Id, CreateRequest(
             $"Bahía de Samaná {marker}",

@@ -359,6 +359,7 @@ public class AuthService : IAuthService
             FullName = user.FullName,
             Email = user.Email,
             Role = user.Role,
+            IsAdmin = user.IsAdmin,
             HasPassword = HasLocalPassword(user),
             CreatedAt = user.CreatedAt
         };

@@ -1754,6 +1754,13 @@ textarea {
 
 .profile-summary h2 { margin-bottom: 0.6rem; font-size: 1.45rem; }
 
+.profile-summary__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
 .profile-details {
   display: grid;
   width: 100%;
@@ -4261,6 +4268,14 @@ input[type='number']::-webkit-inner-spin-button {
   gap: 1rem;
   margin-bottom: 1.5rem;
   padding: 1.5rem;
+}
+
+.review-form {
+  margin-top: 1.5rem;
+}
+
+.review-form h2 {
+  font-size: 1.2rem;
 }
 
 .notification-toggle {

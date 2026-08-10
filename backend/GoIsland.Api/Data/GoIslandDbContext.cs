@@ -60,6 +60,10 @@ public class GoIslandDbContext : DbContext
             entity.Property(user => user.Email).HasColumnName("email").HasMaxLength(254).IsRequired();
             entity.Property(user => user.PasswordHash).HasColumnName("password_hash").IsRequired();
             entity.Property(user => user.Role).HasColumnName("role").HasMaxLength(40).IsRequired();
+            entity.Property(user => user.IsAdmin)
+                .HasColumnName("is_admin")
+                .HasDefaultValue(false)
+                .IsRequired();
             entity.Property(user => user.FailedLoginAttempts)
                 .HasColumnName("failed_login_attempts")
                 .HasDefaultValue(0)

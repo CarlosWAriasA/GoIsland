@@ -543,7 +543,8 @@ public class PaymentIntegrationTests : PostgresIntegrationTestBase
             FullName = "Administrador Pagos",
             Email = $"pagos-admin-{marker}@goisland.test",
             PasswordHash = "hash-integracion",
-            Role = UserRoles.Admin
+            Role = UserRoles.Tourist,
+            IsAdmin = true
         };
         Context.Users.AddRange(host, admin);
         await Context.SaveChangesAsync();

@@ -10,7 +10,6 @@ import { useAuth } from '../hooks/useAuth';
 import { getFieldError, toApiError } from '../services/apiError';
 
 const getRoleLabel = (role: string) => {
-  if (role === 'Admin' || role === 'Administrator') return 'Administrador';
   if (role === 'Host') return 'Anfitrión';
   return 'Turista';
 };
@@ -73,7 +72,10 @@ export const Profile = () => {
             {user.fullName ? user.fullName.charAt(0).toUpperCase() : ''}
           </div>
           <h2 id="profile-summary-title">{user?.fullName}</h2>
-          <StatusBadge tone="info">{getRoleLabel(user?.role || '')}</StatusBadge>
+          <div className="profile-summary__badges">
+            <StatusBadge tone="info">{getRoleLabel(user?.role || '')}</StatusBadge>
+            {user?.isAdmin && <StatusBadge tone="warning">Administrador</StatusBadge>}
+          </div>
           <dl className="profile-details">
             <div>
               <dt>Correo electrónico</dt>

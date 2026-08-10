@@ -303,6 +303,13 @@ public class ExperienceManagementService : IExperienceManagementService
             return new(ExperienceManagementStatus.NotFound);
         }
 
+        // Un administrador tambien puede publicar experiencias, asi que las suyas las modera otra
+        // persona.
+        if (experience.HostId == adminUserId)
+        {
+            return new(ExperienceManagementStatus.Forbidden, await ToResponseAsync(id));
+        }
+
         var normalizedReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
         if ((action is ExperienceReviewAction.Reject or ExperienceReviewAction.Suspend)
             && normalizedReason is null)

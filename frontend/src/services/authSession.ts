@@ -21,6 +21,8 @@ const isUserResponse = (value: unknown): value is UserResponse => {
     && typeof user.fullName === 'string'
     && typeof user.email === 'string'
     && typeof user.role === 'string'
+    // isAdmin llegó después, así que una sesión guardada antes del cambio no debe expulsarse.
+    && (typeof user.isAdmin === 'boolean' || user.isAdmin === undefined)
     && (typeof user.hasPassword === 'boolean' || user.hasPassword === undefined)
     && typeof user.createdAt === 'string';
 };

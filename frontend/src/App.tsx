@@ -24,6 +24,19 @@ const RouteFocusManager = () => {
   return null;
 };
 
+// La ruta activa vive dentro del router, así que el límite de error se monta aquí para poder
+// olvidar el fallo en cuanto la persona navega a otra pantalla.
+const RoutedContent = () => {
+  const { pathname } = useLocation();
+
+  return (
+    <ErrorBoundary resetKey={pathname}>
+      <RouteFocusManager />
+      <AppRoutes />
+    </ErrorBoundary>
+  );
+};
+
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
@@ -37,10 +50,7 @@ export const App: React.FC = () => {
             <OfflineBanner />
 
             <main id="main-content" tabIndex={-1} className="app-main">
-              <ErrorBoundary>
-                <RouteFocusManager />
-                <AppRoutes />
-              </ErrorBoundary>
+              <RoutedContent />
             </main>
 
             <Footer />

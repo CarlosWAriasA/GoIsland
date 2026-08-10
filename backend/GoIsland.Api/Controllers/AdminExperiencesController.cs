@@ -57,6 +57,9 @@ public class AdminExperiencesController : ControllerBase
         {
             ExperienceManagementStatus.Success => Ok(result.Experience),
             ExperienceManagementStatus.NotFound => NotFound(new { message = "No se encontro la experiencia." }),
+            ExperienceManagementStatus.Forbidden => StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = "No puedes moderar tus propias experiencias." }),
             ExperienceManagementStatus.ReasonRequired => BadRequest(new { message = "Debes indicar el motivo de la decisión." }),
             ExperienceManagementStatus.InvalidTransition => Conflict(new { message = "No puedes aplicar esa decisión al estado actual de la experiencia." }),
             ExperienceManagementStatus.Incomplete => BadRequest(new

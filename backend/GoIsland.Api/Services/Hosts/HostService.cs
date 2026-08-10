@@ -132,6 +132,13 @@ public class HostService : IHostService
             return new(HostOperationStatus.NotFound);
         }
 
+        // Un administrador tambien puede postularse como anfitrion, asi que su propia solicitud
+        // tiene que revisarla otra persona.
+        if (profile.UserId == adminUserId)
+        {
+            return new(HostOperationStatus.Forbidden, await ToResponseAsync(profile));
+        }
+
         var normalizedReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
         if (action is HostReviewAction.Reject or HostReviewAction.Suspend && normalizedReason is null)
         {

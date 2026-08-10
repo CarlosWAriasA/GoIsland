@@ -453,7 +453,7 @@ export const ReservationDetail = () => {
   const isSelfGuided = reservation.schedulingMode === 'SelfGuided';
   const canRescheduleSelfGuided = isSelfGuided && new Date(reservation.startsAt) > new Date();
   const isOwner = user?.id === reservation.userId;
-  const isAdmin = user?.role === 'Admin';
+  const isAdmin = user?.isAdmin ?? false;
   const latestPayment = payments[0] ?? null;
   const currentPayment = stripeCheckout?.payment ?? latestPayment;
   const showPaymentSection = (isOwner || isAdmin)
