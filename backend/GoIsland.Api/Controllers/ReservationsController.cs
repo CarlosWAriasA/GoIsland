@@ -157,11 +157,7 @@ public class ReservationsController : ControllerBase
         ReservationChangeRequestOperationStatus.DifferentExperience => Conflict(
             new { message = "Solo puedes solicitar una reprogramación dentro de la misma experiencia." }),
         ReservationChangeRequestOperationStatus.ScheduleUnavailable => Conflict(
-<<<<<<< HEAD
-            new { message = "El horario ya no esta disponible." }),
-=======
             new { message = "El horario ya no está disponible." }),
->>>>>>> 6640fdd59f4b26b3fe39013ac2d3eb99a1dacb49
         ReservationChangeRequestOperationStatus.InsufficientSpots => Conflict(
             new { message = "El horario no tiene suficientes cupos." }),
         _ => StatusCode(StatusCodes.Status500InternalServerError)

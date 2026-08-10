@@ -16,3 +16,12 @@ export interface ReviewInput {
   rating: number;
   comment: string;
 }
+
+export type ReviewModerationStatus = 'Visible' | 'Hidden' | 'Deleted' | 'Reported';
+
+export interface AdminReviewListParams {
+  query?: string;
+  status?: ReviewModerationStatus;
+  page?: number;
+  pageSize?: number;
+}

@@ -62,11 +62,7 @@ public class HostReservationsController : ControllerBase
         if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
         var requests = await _changeRequestService.GetForHostAsync(userId, request);
         return requests is null
-<<<<<<< HEAD
-            ? StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrion no esta aprobado o fue suspendido." })
-=======
             ? StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrión no está aprobado o fue suspendido." })
->>>>>>> 6640fdd59f4b26b3fe39013ac2d3eb99a1dacb49
             : Ok(requests);
     }
 
@@ -89,21 +85,13 @@ public class HostReservationsController : ControllerBase
         ReservationChangeRequestOperationStatus.ReasonRequired => BadRequest(
             new { message = "Indica el motivo del rechazo." }),
         ReservationChangeRequestOperationStatus.ScheduleUnavailable => Conflict(
-<<<<<<< HEAD
-            new { message = "El horario solicitado ya no esta disponible." }),
-=======
             new { message = "El horario solicitado ya no está disponible." }),
->>>>>>> 6640fdd59f4b26b3fe39013ac2d3eb99a1dacb49
         ReservationChangeRequestOperationStatus.InsufficientSpots => Conflict(
             new { message = "El horario solicitado no tiene suficientes cupos." }),
         ReservationChangeRequestOperationStatus.RefundFailed => StatusCode(StatusCodes.Status502BadGateway,
             new { message = "No pudimos procesar el reembolso. Inténtalo nuevamente." }),
         ReservationChangeRequestOperationStatus.ConcurrencyConflict => Conflict(
-<<<<<<< HEAD
-            new { message = "La disponibilidad cambio. Intenta nuevamente." }),
-=======
             new { message = "La disponibilidad cambió. Intenta nuevamente." }),
->>>>>>> 6640fdd59f4b26b3fe39013ac2d3eb99a1dacb49
         _ => StatusCode(StatusCodes.Status500InternalServerError)
     };
 

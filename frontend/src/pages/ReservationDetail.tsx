@@ -572,13 +572,7 @@ export const ReservationDetail = () => {
                       <ShieldCheck size={18} /> Reembolsar pago
                     </Button>
                   </div>
-<<<<<<< HEAD
-                  <span className="field-hint">
-                    Este motivo quedará guardado para futuras consultas (mínimo 3 caracteres).
-                  </span>
-=======
                   <span className="field-hint">Mínimo 3 caracteres.</span>
->>>>>>> 6640fdd59f4b26b3fe39013ac2d3eb99a1dacb49
                 </div>
               )}
             </>
@@ -596,11 +590,7 @@ export const ReservationDetail = () => {
       {isOwner && isSelfGuided && reservation.status === 'Confirmed' && new Date(reservation.endsAt) <= new Date() && (
         <section className="surface-panel reservation-actions" aria-labelledby="reservation-complete-title">
           <h2 id="reservation-complete-title">¿Ya realizaste esta visita?</h2>
-<<<<<<< HEAD
-          <p>Confirma tu asistencia a esta visita autoguiada para compartir tu reseña y opinión.</p>
-=======
           <p>Confírmalo para dejar tu reseña.</p>
->>>>>>> 6640fdd59f4b26b3fe39013ac2d3eb99a1dacb49
           <Button
             variant="primary"
             onClick={() => void completeReservation()}

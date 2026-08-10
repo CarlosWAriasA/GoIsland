@@ -1,4 +1,4 @@
-import { LocateFixed, MapPinned, Navigation, RotateCcw, Search } from 'lucide-react';
+import { Compass, Layers, LocateFixed, MapPinned, MousePointerClick, Navigation, RotateCcw, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -21,6 +21,31 @@ import type { Experience } from '../types';
 const formatPrice = (price: number) => price === 0
   ? 'Gratis'
   : new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'USD' }).format(price);
+
+const REGION_SHORTCUTS_LIMIT = 7;
+
+const getZone = (location: string) => {
+  const parts = formatLocationLabel(location).split(',');
+  return parts[parts.length - 1].trim();
+};
+
+const MAP_TIPS = [
+  {
+    icon: MousePointerClick,
+    title: 'Toca un marcador',
+    text: 'Se abre una ficha con la foto, el precio y el enlace al detalle de la experiencia.',
+  },
+  {
+    icon: Layers,
+    title: 'Combina filtros',
+    text: 'Categoría y precio máximo se aplican al mismo tiempo sobre lo que ves en el mapa.',
+  },
+  {
+    icon: Compass,
+    title: 'Usa “Cerca de mí”',
+    text: 'Con el permiso de ubicación mostramos lo que hay a menos de 50 km y su distancia.',
+  },
+] as const;
 
 export const ExperienceMapPage = () => {
   const navigate = useNavigate();
@@ -63,6 +88,22 @@ export const ExperienceMapPage = () => {
     });
     return Array.from(set).sort();
   }, [catalogExperiences]);
+
+  const zoneCounters = useMemo(() => {
+    const counters = new Map<string, number>();
+    catalogExperiences.forEach((exp) => {
+      const zone = getZone(exp.location);
+      if (zone) counters.set(zone, (counters.get(zone) ?? 0) + 1);
+    });
+    return counters;
+  }, [catalogExperiences]);
+
+  const zonesCount = zoneCounters.size;
+
+  const regionShortcuts = useMemo(() => Array.from(zoneCounters.entries())
+    .sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0], 'es'))
+    .slice(0, REGION_SHORTCUTS_LIMIT)
+    .map(([zone]) => zone), [zoneCounters]);
 
   const filteredExperiences = useMemo(() => {
     return experiences.filter((item) => {
@@ -167,26 +208,72 @@ export const ExperienceMapPage = () => {
   );
 
   return (
-    <div className="container map-page animate-fade-in">
-      <header className="page-heading map-page__heading">
-        <div>
-          <span className="page-heading__eyebrow">Explora por ubicación</span>
-          <h1>Experiencias en el mapa</h1>
-          <p>Encuentra experiencias cerca de ti o explora cada región.</p>
-        </div>
-        <div className="map-page__actions">
-          <Button onClick={findNearby} isLoading={locating}>
-            <LocateFixed size={18} aria-hidden="true" /> Cerca de mí
-          </Button>
-          {hasActiveFilters && (
-            <Button type="button" variant="outline" onClick={handleResetAll}>
-              <RotateCcw size={16} aria-hidden="true" /> Limpiar mapa
-            </Button>
+    <div className="map-page animate-fade-in">
+      <header className="map-hero">
+        <div className="map-hero__content">
+          <div className="map-hero__intro">
+            <span className="map-hero__eyebrow">Explora por ubicación</span>
+            <h1>Experiencias en el mapa</h1>
+            <p>
+              Desde las bahías del norte hasta el sur profundo. Ubica cada actividad,
+              compara precios sobre el terreno y encuentra lo que tienes cerca.
+            </p>
+            <div className="map-page__actions">
+              <Button onClick={findNearby} isLoading={locating}>
+                <LocateFixed size={18} aria-hidden="true" /> Cerca de mí
+              </Button>
+              {hasActiveFilters && (
+                <Button type="button" variant="outline" onClick={handleResetAll}>
+                  <RotateCcw size={16} aria-hidden="true" /> Limpiar mapa
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {!loading && !error && catalogExperiences.length > 0 && (
+            <dl className="map-hero__stats">
+              <div>
+                <dt>Experiencias ubicadas</dt>
+                <dd>{catalogExperiences.length}</dd>
+              </div>
+              <div>
+                <dt>Categorías</dt>
+                <dd>{categories.length}</dd>
+              </div>
+              <div>
+                <dt>Zonas distintas</dt>
+                <dd>{zonesCount}</dd>
+              </div>
+            </dl>
           )}
         </div>
       </header>
 
+      <div className="container map-page__body">
       <ToastFeedback message={notice} tone="info" />
+
+      {!loading && !error && regionShortcuts.length > 0 && (
+        <nav className="map-page__regions" aria-label="Zonas con experiencias">
+          <span className="map-page__regions-label">Ir a una zona</span>
+          <ul>
+            {regionShortcuts.map((region) => {
+              const isActive = normalizeSearchText(searchTerm.trim()) === normalizeSearchText(region);
+              return (
+                <li key={region}>
+                  <button
+                    type="button"
+                    className={`map-page__region-chip ${isActive ? 'is-active' : ''}`}
+                    onClick={() => setSearchTerm(isActive ? '' : region)}
+                    aria-pressed={isActive}
+                  >
+                    {region}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      )}
 
       {!loading && !error && (
         <div className="map-page__filters surface-panel">
@@ -253,6 +340,15 @@ export const ExperienceMapPage = () => {
               onPointClick={openExperience}
               label="Mapa de experiencias disponibles"
             />
+            <div className="map-page__aside">
+            <div className="map-page__results-heading">
+              <h2>
+                {filteredExperiences.length === 0
+                  ? 'Sin resultados'
+                  : `${filteredExperiences.length} ${filteredExperiences.length === 1 ? 'experiencia' : 'experiencias'}`}
+              </h2>
+              <p>Selecciona una para centrarla en el mapa.</p>
+            </div>
             {filteredExperiences.length === 0 ? (
               <EmptyState
                 title="Sin experiencias encontradas"
@@ -295,8 +391,31 @@ export const ExperienceMapPage = () => {
                 })}
               </ol>
             )}
+            </div>
           </div>
         )}
+
+      <section className="map-page__guide" aria-labelledby="map-guide-title">
+        <h2 id="map-guide-title">Cómo sacarle partido al mapa</h2>
+        <ul className="map-guide__grid">
+          {MAP_TIPS.map((tip) => {
+            const Icon = tip.icon;
+            return (
+              <li className="surface-panel map-guide__card" key={tip.title}>
+                <span className="map-guide__icon" aria-hidden="true"><Icon size={20} /></span>
+                <h3>{tip.title}</h3>
+                <p>{tip.text}</p>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="map-page__footnote">
+          Solo aparecen en el mapa las experiencias con ubicación publicada.
+          {' '}
+          <Link to="/experiences">Consulta el catálogo completo</Link> para ver todas.
+        </p>
+      </section>
+      </div>
     </div>
   );
 };

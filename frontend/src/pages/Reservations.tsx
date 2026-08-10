@@ -210,17 +210,11 @@ export const Reservations = () => {
           <ErrorState description={error} onRetry={() => setRetryCount((current) => current + 1)} />
         ) : displayedReservations.length === 0 ? (
           <EmptyState
-<<<<<<< HEAD
-            title="No se encontraron reservas"
-            description={currentScope !== 'all' ? "No tienes reservas en este período." : "Explora el catálogo y crea una reserva cuando encuentres una experiencia para ti."}
-            action={<Link className="button-link button-link--outline" to="/experiences">Explorar experiencias</Link>}
-=======
             title={currentScope !== 'all' ? 'Sin reservas en este período' : 'Todavía no tienes reservas'}
             description={currentScope !== 'all' ? 'Cambia el filtro para ver otras fechas.' : 'Cuando reserves una experiencia, aparecerá aquí.'}
             action={currentScope === 'all'
               ? <Link className="button-link button-link--outline" to="/experiences">Explorar experiencias</Link>
               : undefined}
->>>>>>> 6640fdd59f4b26b3fe39013ac2d3eb99a1dacb49
           />
         ) : (
           <div className="reservation-list">

@@ -2,6 +2,7 @@ import {
   BadgeCheck,
   BriefcaseBusiness,
   Clock3,
+  EyeOff,
   ImageIcon,
   Images,
   MapPin,
@@ -26,15 +27,19 @@ import ToastFeedback from '../components/ToastFeedback';
 import { resolveApiAssetUrl } from '../services/api';
 import { toApiError } from '../services/apiError';
 import { hostService } from '../services/hostService';
+import { reviewService } from '../services/reviewService';
 import { formatLocationLabel } from '../services/googleMapsService';
 import type {
   ExperienceApprovalStatus,
   HostProfile,
   HostVerificationStatus,
   ManagedExperience,
+  Review,
+  ReviewModerationStatus,
 } from '../types';
 import { getModerationLabel, getModerationTone } from '../utils/moderationStatus';
 import { getCancellationPolicyLabel, getDifficultyLabel } from '../utils/experienceLabels';
+import { getReviewModerationLabel, getReviewModerationTone } from '../utils/reviewModerationStatus';
 
 const ExperienceMap = lazy(() => import('../components/ExperienceMap'));
 
@@ -258,6 +263,8 @@ const ModerationExperienceDetail = ({ experience }: ModerationExperienceDetailPr
   );
 };
 
+type ReviewFilter = ReviewModerationStatus | 'All';
+
 type PendingReasonAction =
   | { scope: 'host'; target: HostProfile; action: HostAction }
   | { scope: 'experience'; target: ManagedExperience; action: ExperienceAction };
@@ -279,6 +286,12 @@ export const AdminModeration = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [pendingReasonAction, setPendingReasonAction] = useState<PendingReasonAction | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('Visible');
+  const [reviewQuery, setReviewQuery] = useState('');
+  const [reviewPage, setReviewPage] = useState(1);
+  const [reviewTotalPages, setReviewTotalPages] = useState(0);
+  const [pendingHideReview, setPendingHideReview] = useState<Review | null>(null);
   const [selectedExperience, setSelectedExperience] = useState<ManagedExperience | null>(null);
 
   const retryLoad = () => {
@@ -302,12 +315,20 @@ export const AdminModeration = () => {
         page: experiencePage,
         pageSize: PAGE_SIZE,
       }, controller.signal),
+      reviewService.forAdmin({
+        query: reviewQuery.trim() || undefined,
+        status: reviewFilter === 'All' ? undefined : reviewFilter,
+        page: reviewPage,
+        pageSize: PAGE_SIZE,
+      }, controller.signal),
     ])
-      .then(([hostData, experienceData]) => {
+      .then(([hostData, experienceData, reviewData]) => {
         setApplications(hostData.items);
         setHostTotalPages(hostData.totalPages);
         setExperiences(experienceData.items);
         setExperienceTotalPages(experienceData.totalPages);
+        setReviews(reviewData.items);
+        setReviewTotalPages(reviewData.totalPages);
         setError(null);
       })
       .catch((requestError: unknown) => {
@@ -317,7 +338,30 @@ export const AdminModeration = () => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [experienceFilter, experiencePage, experienceQuery, hostFilter, hostPage, hostQuery, retryCount]);
+  }, [experienceFilter, experiencePage, experienceQuery, hostFilter, hostPage, hostQuery,
+    retryCount, reviewFilter, reviewPage, reviewQuery]);
+
+  const hideReview = async (review: Review, reason: string) => {
+    setBusyKey(`review-${review.id}`);
+    setError(null);
+    setSuccess(null);
+    try {
+      const updated = await reviewService.hide(review.id, reason);
+      setReviews((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setSuccess(`La reseña de ${review.authorName} fue ocultada.`);
+      setRetryCount((current) => current + 1);
+    } catch (requestError: unknown) {
+      setError(toApiError(requestError, 'No fue posible ocultar la reseña.').message);
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const confirmHideReview = async (reason: string) => {
+    if (!pendingHideReview) return;
+    await hideReview(pendingHideReview, reason);
+    setPendingHideReview(null);
+  };
 
   const decideHost = async (profile: HostProfile, action: HostAction, reason?: string) => {
     setBusyKey(`host-${profile.id}`);
@@ -618,6 +662,90 @@ export const AdminModeration = () => {
           </nav>
         )}
       </section>
+
+      <section className="moderation-section" aria-labelledby="review-moderation-title">
+        <div className="moderation-section__heading">
+          <div>
+            <span className="page-heading__eyebrow">Contenido de la comunidad</span>
+            <h2 id="review-moderation-title">Reseñas publicadas</h2>
+          </div>
+          <div className="moderation-section__filters">
+            <Input
+              label="Buscar reseñas"
+              placeholder="Autor o comentario"
+              value={reviewQuery}
+              maxLength={160}
+              onChange={(event) => {
+                setReviewQuery(event.target.value);
+                setReviewPage(1);
+              }}
+            />
+            <SelectField
+              label="Filtrar reseñas"
+              value={reviewFilter}
+              onChange={(event) => {
+                setReviewFilter(event.target.value as ReviewFilter);
+                setReviewPage(1);
+              }}
+            >
+              <option value="Visible">Publicadas</option>
+              <option value="Reported">Reportadas</option>
+              <option value="Hidden">Ocultas</option>
+              <option value="Deleted">Eliminadas</option>
+              <option value="All">Todas</option>
+            </SelectField>
+          </div>
+        </div>
+
+        {reviews.length === 0 ? (
+          <EmptyState
+            title="No hay reseñas en este estado"
+            description="Cambia el filtro para revisar el resto de las reseñas."
+          />
+        ) : (
+          <div className="operations-list" aria-label="Reseñas publicadas">
+            {reviews.map((review) => (
+              <article className="operations-row operations-row--reviews" key={review.id}>
+                <div className="operations-row__main">
+                  <div className="operations-row__primary">
+                    <span className="operations-row__reference">Reseña #{review.id}</span>
+                    <h3>{review.authorName}</h3>
+                    <small>Reserva #{review.reservationId} · Experiencia #{review.experienceId}</small>
+                  </div>
+                  <div className="operations-row__cell">
+                    <span>Calificación</span>
+                    <strong>{review.rating} de 5</strong>
+                    <small>{formatDate(review.createdAt)}</small>
+                  </div>
+                  <StatusBadge tone={getReviewModerationTone(review.moderationStatus)}>
+                    {getReviewModerationLabel(review.moderationStatus)}
+                  </StatusBadge>
+                  <div className="operations-row__actions">
+                    {review.moderationStatus !== 'Hidden' && review.moderationStatus !== 'Deleted' && (
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => setPendingHideReview(review)}
+                        isLoading={busyKey === `review-${review.id}`}
+                      ><EyeOff size={16} aria-hidden="true" />Ocultar</Button>
+                    )}
+                  </div>
+                </div>
+                <div className="operations-row__details">
+                  <p className="operations-row__comment">{review.comment}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+        {reviewTotalPages > 1 && (
+          <nav className="catalog-pagination" aria-label="Páginas de reseñas">
+            <Button variant="outline" disabled={reviewPage <= 1} onClick={() => setReviewPage(reviewPage - 1)}>Anterior</Button>
+            <span>Página {reviewPage} de {reviewTotalPages}</span>
+            <Button variant="outline" disabled={reviewPage >= reviewTotalPages} onClick={() => setReviewPage(reviewPage + 1)}>Siguiente</Button>
+          </nav>
+        )}
+      </section>
       <Dialog
         open={selectedExperience !== null}
         title={selectedExperience ? `Revisar: ${selectedExperience.title}` : 'Revisar experiencia'}
@@ -672,6 +800,19 @@ export const AdminModeration = () => {
       >
         {selectedExperience && <ModerationExperienceDetail experience={selectedExperience} />}
       </Dialog>
+      <PromptDialog
+        open={pendingHideReview !== null}
+        title="Ocultar reseña"
+        description={pendingHideReview
+          ? `La reseña de ${pendingHideReview.authorName} dejará de mostrarse en el catálogo.`
+          : undefined}
+        label="Motivo"
+        placeholder="Explica por qué se oculta (mínimo 3 caracteres)"
+        confirmLabel="Ocultar reseña"
+        isConfirming={busyKey !== null}
+        onClose={() => setPendingHideReview(null)}
+        onConfirm={confirmHideReview}
+      />
       <PromptDialog
         open={pendingReasonAction !== null}
         title={pendingReasonAction?.action === 'reject'

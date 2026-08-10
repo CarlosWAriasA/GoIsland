@@ -1,7 +1,14 @@
 import { api } from './api';
-import type { PagedResponse, Review, ReviewInput } from '../types';
+import type { AdminReviewListParams, PagedResponse, Review, ReviewInput } from '../types';
 
 export const reviewService = {
+  forAdmin: async (
+    params: AdminReviewListParams,
+    signal?: AbortSignal,
+  ): Promise<PagedResponse<Review>> =>
+    (await api.get<PagedResponse<Review>>('/admin/reviews', { params, signal })).data,
+  hide: async (id: number, reason: string): Promise<Review> =>
+    (await api.post<Review>(`/admin/reviews/${id}/hide`, { reason })).data,
   forExperience: async (
     experienceId: number,
     signal?: AbortSignal,
