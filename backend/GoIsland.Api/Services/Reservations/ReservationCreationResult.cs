@@ -8,6 +8,7 @@ public enum ReservationCreationStatus
     ExperienceNotFound,
     ScheduleNotFound,
     ScheduleUnavailable,
+    OutsideBookingWindow,
     InsufficientSpots,
     AmountOutOfRange,
     ConcurrencyConflict,

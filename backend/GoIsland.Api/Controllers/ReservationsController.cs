@@ -7,6 +7,7 @@ using GoIsland.Api.Services.Payments;
 using GoIsland.Api.Services.Reservations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace GoIsland.Api.Controllers;
 
@@ -18,16 +19,23 @@ public class ReservationsController : ControllerBase
     private readonly IReservationService _reservationService;
     private readonly IPaymentService _paymentService;
     private readonly IReservationChangeRequestService _changeRequestService;
+    private readonly ReservationExpirationOptions _expirationOptions;
 
     public ReservationsController(
         IReservationService reservationService,
         IPaymentService paymentService,
-        IReservationChangeRequestService changeRequestService)
+        IReservationChangeRequestService changeRequestService,
+        IOptions<ReservationExpirationOptions> expirationOptions)
     {
         _reservationService = reservationService;
         _paymentService = paymentService;
         _changeRequestService = changeRequestService;
+        _expirationOptions = expirationOptions.Value;
     }
+
+    private string BookingWindowMessage => _expirationOptions.BookingCutoffMinutes > 0
+        ? $"Elige una fecha y hora con al menos {_expirationOptions.BookingCutoffMinutes} minutos de anticipación y dentro de los próximos 12 meses."
+        : "Elige una fecha y hora futura dentro de los próximos 12 meses.";
 
     [HttpPost]
     public async Task<ActionResult<ReservationResponse>> Create(CreateReservationRequest request)
@@ -54,6 +62,8 @@ public class ReservationsController : ControllerBase
                 new { message = "No encontramos ese horario disponible. Elige otra fecha e inténtalo nuevamente." }),
             ReservationCreationStatus.ScheduleUnavailable => Conflict(
                 new { message = "El horario ya no está disponible para nuevas reservas." }),
+            ReservationCreationStatus.OutsideBookingWindow => Conflict(
+                new { message = $"Este horario ya cerró sus reservas. {BookingWindowMessage}" }),
             ReservationCreationStatus.InsufficientSpots => Conflict(
                 new { message = "La experiencia no tiene suficientes cupos disponibles." }),
             ReservationCreationStatus.AmountOutOfRange => BadRequest(
@@ -93,6 +103,8 @@ public class ReservationsController : ControllerBase
                 new { message = "No encontramos la experiencia indicada." }),
             ReservationCreationStatus.ScheduleUnavailable => Conflict(
                 new { message = "La fecha y hora elegidas no están disponibles." }),
+            ReservationCreationStatus.OutsideBookingWindow => Conflict(
+                new { message = BookingWindowMessage }),
             ReservationCreationStatus.InsufficientSpots => Conflict(
                 new { message = "La cantidad ingresada no es válida." }),
             ReservationCreationStatus.PaymentRequired => Conflict(
@@ -182,6 +194,7 @@ public class ReservationsController : ControllerBase
         ReservationCreationStatus.ExperienceNotFound or ReservationCreationStatus.ScheduleNotFound =>
             NotFound(new { message = "No se encontro la reserva o el horario." }),
         ReservationCreationStatus.ScheduleUnavailable => Conflict(new { message = "El horario ya no está disponible." }),
+        ReservationCreationStatus.OutsideBookingWindow => Conflict(new { message = BookingWindowMessage }),
         ReservationCreationStatus.InsufficientSpots => Conflict(new { message = "El horario no tiene suficientes cupos." }),
         ReservationCreationStatus.DifferentExperience => Conflict(new { message = "Solo puedes reprogramar dentro de la misma experiencia." }),
         ReservationCreationStatus.InvalidTransition => Conflict(new { message = "La reserva no admite esa acción en su estado o fecha actual." }),

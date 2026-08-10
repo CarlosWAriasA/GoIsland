@@ -14,6 +14,7 @@ public class ReservationResponse
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
     public string SchedulingMode { get; set; } = string.Empty;
+    public string ExperienceTimeZoneId { get; set; } = string.Empty;
     public DateTime StartsAt { get; set; }
     public DateTime EndsAt { get; set; }
     public int Quantity { get; set; }

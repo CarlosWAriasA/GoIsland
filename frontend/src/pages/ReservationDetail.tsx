@@ -25,7 +25,9 @@ import { getPaymentStatusLabel, getPaymentStatusTone } from '../utils/paymentSta
 import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
 import { getChangeRequestStatusLabel, getChangeRequestTypeLabel } from '../utils/reservationChangeRequestStatus';
 import { buildGoogleMapsUrl, getReturnPath } from '../utils/navigation';
-import { getMinDateTimeLocal, isoToDateTimeLocalValue } from '../utils/dateTimeLocal';
+import {
+  BOOKING_LEAD_MINUTES, DEFAULT_TIME_ZONE, getMinDateTimeLocal, isWithinBookingWindow, isoToDateTimeLocalValue,
+} from '../utils/dateTimeLocal';
 import { reviewService } from '../services/reviewService';
 import { experienceKeys } from '../queries/queryKeys';
 import type { ExperienceSchedule, Payment, PaymentCheckout, Reservation, Review } from '../types';
@@ -86,6 +88,7 @@ export const ReservationDetail = () => {
   const [awaitingPaymentId, setAwaitingPaymentId] = useState<number | null>(null);
   const loading = isValidId && result?.requestKey !== requestKey;
   const currentResult = result?.requestKey === requestKey ? result : null;
+  const experienceTimeZone = currentResult?.reservation?.experienceTimeZoneId || DEFAULT_TIME_ZONE;
   const created = location.state?.created === true;
   const focusEdit = location.state?.focusEdit === true;
   const editSectionRef = useRef<HTMLDivElement | null>(null);
@@ -136,7 +139,10 @@ export const ReservationDetail = () => {
         if (!controller.signal.aborted) {
           setResult({ requestKey, reservation, schedules, payments, review, error: null, notFound: false });
           setSelectedScheduleId(String(schedules.find((item) => item.id !== reservation.scheduleId)?.id ?? ''));
-          setNewStartsAtLocal(isoToDateTimeLocalValue(reservation.startsAt));
+          setNewStartsAtLocal(isoToDateTimeLocalValue(
+            reservation.startsAt,
+            reservation.experienceTimeZoneId || DEFAULT_TIME_ZONE,
+          ));
           setNewQuantity(String(reservation.quantity));
           setRating(String(review?.rating ?? 5));
           setReviewComment(review?.comment ?? '');
@@ -281,6 +287,10 @@ export const ReservationDetail = () => {
   const rescheduleSelfGuided = async () => {
     const parsedQuantity = Number(newQuantity);
     if (!newStartsAtLocal || !Number.isInteger(parsedQuantity) || parsedQuantity < 1) return;
+    if (!isWithinBookingWindow(newStartsAtLocal, experienceTimeZone)) {
+      setActionError(`Agenda con al menos ${BOOKING_LEAD_MINUTES} minutos de anticipación y hasta 12 meses en el futuro.`);
+      return;
+    }
     setBusyAction('reschedule');
     setActionError(null);
     try {
@@ -685,7 +695,8 @@ export const ReservationDetail = () => {
                 <Input
                   label="Nueva fecha y hora"
                   type="datetime-local"
-                  min={getMinDateTimeLocal()}
+                  min={getMinDateTimeLocal(experienceTimeZone)}
+                  hint={`Hora local de la experiencia. Agenda con al menos ${BOOKING_LEAD_MINUTES} minutos de anticipación.`}
                   value={newStartsAtLocal}
                   onChange={(event) => setNewStartsAtLocal(event.target.value)}
                   required

@@ -79,7 +79,7 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
             new CreateReservationRequest { ScheduleId = schedule.Id, Quantity = 1 },
             "inside-cutoff");
 
-        Assert.Equal(ReservationCreationStatus.ScheduleUnavailable, result.Status);
+        Assert.Equal(ReservationCreationStatus.OutsideBookingWindow, result.Status);
         Assert.False(await Context.Reservations.AnyAsync(item => item.ScheduleId == schedule.Id));
     }
 
@@ -362,7 +362,7 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
-    public async Task CreateSelfScheduled_PastDate_RejectsWithScheduleUnavailable()
+    public async Task CreateSelfScheduled_PastDate_RejectsWithOutsideBookingWindow()
     {
         var (user, experience) = await SeedSelfGuidedExperienceAsync();
         var service = GetRequiredService<IReservationService>();
@@ -374,7 +374,7 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
             Quantity = 1
         }, "past-date");
 
-        Assert.Equal(ReservationCreationStatus.ScheduleUnavailable, result.Status);
+        Assert.Equal(ReservationCreationStatus.OutsideBookingWindow, result.Status);
     }
 
     [Fact]

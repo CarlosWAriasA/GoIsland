@@ -101,9 +101,13 @@ public class ReservationService : IReservationService
 
         var now = DateTime.UtcNow;
         var bookingDeadline = match.Schedule.StartsAt - _expirationOptions.BookingCutoff;
-        if (match.Schedule.Status != ScheduleStatuses.Scheduled || now >= bookingDeadline)
+        if (match.Schedule.Status != ScheduleStatuses.Scheduled)
         {
             return new(ReservationCreationStatus.ScheduleUnavailable);
+        }
+        if (now >= bookingDeadline)
+        {
+            return new(ReservationCreationStatus.OutsideBookingWindow);
         }
 
         if (match.Schedule.AvailableSpots < request.Quantity)
@@ -800,7 +804,7 @@ public class ReservationService : IReservationService
         var startsAt = TimeZoneInfo.ConvertTimeToUtc(localStart, timeZone);
         if (startsAt <= now.Add(_expirationOptions.BookingCutoff) || startsAt > now.AddMonths(12))
         {
-            return new(null, ReservationCreationStatus.ScheduleUnavailable);
+            return new(null, ReservationCreationStatus.OutsideBookingWindow);
         }
 
         var durationMinutes = experience.DurationMinutes ?? 120;
@@ -960,6 +964,7 @@ public class ReservationService : IReservationService
             Latitude = experience.Latitude,
             Longitude = experience.Longitude,
             SchedulingMode = experience.SchedulingMode,
+            ExperienceTimeZoneId = experience.TimeZoneId,
             StartsAt = schedule.StartsAt,
             EndsAt = schedule.EndsAt,
             Quantity = reservation.Quantity,

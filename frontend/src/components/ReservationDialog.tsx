@@ -12,7 +12,9 @@ import { getFieldError, toApiError } from '../services/apiError';
 import { reservationService } from '../services/reservationService';
 import { experienceService } from '../services/experienceService';
 import { experienceKeys, reservationKeys } from '../queries/queryKeys';
-import { getDefaultDateTimeLocal, getMinDateTimeLocal } from '../utils/dateTimeLocal';
+import {
+  BOOKING_LEAD_MINUTES, DEFAULT_TIME_ZONE, getDefaultDateTimeLocal, getMinDateTimeLocal, isWithinBookingWindow,
+} from '../utils/dateTimeLocal';
 import type { Experience, ExperienceSchedule } from '../types';
 import { isValidReservationQuantity } from '../utils/reservationQuantity';
 
@@ -46,6 +48,7 @@ export const ReservationDialog = ({
   experience, schedules, onClose,
 }: ReservationDialogProps) => {
   const isSelfGuided = experience.schedulingMode === 'SelfGuided';
+  const timeZone = experience.timeZoneId || DEFAULT_TIME_ZONE;
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,7 +56,7 @@ export const ReservationDialog = ({
   const requestInFlight = useRef(false);
 
   const [scheduleId, setScheduleId] = useState(String(schedules[0]?.id ?? ''));
-  const [startsAtLocal, setStartsAtLocal] = useState(getDefaultDateTimeLocal);
+  const [startsAtLocal, setStartsAtLocal] = useState(() => getDefaultDateTimeLocal(timeZone));
   const [quantity, setQuantity] = useState('1');
   const [fieldErrors, setFieldErrors] = useState<ReservationFieldErrors>({});
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -108,11 +111,8 @@ export const ReservationDialog = ({
     if (isSelfGuided) {
       if (!startsAtLocal) {
         errors.startsAt = 'Selecciona una fecha y hora para tu visita.';
-      } else {
-        const selectedDate = new Date(startsAtLocal);
-        if (isNaN(selectedDate.getTime()) || selectedDate <= new Date()) {
-          errors.startsAt = 'La fecha y hora de la visita debe ser en el futuro.';
-        }
+      } else if (!isWithinBookingWindow(startsAtLocal, timeZone)) {
+        errors.startsAt = `Agenda con al menos ${BOOKING_LEAD_MINUTES} minutos de anticipación y hasta 12 meses en el futuro.`;
       }
     } else {
       if (!selectedSchedule) {
@@ -208,7 +208,8 @@ export const ReservationDialog = ({
           <Input
             label="Fecha y hora de visita"
             type="datetime-local"
-            min={getMinDateTimeLocal()}
+            min={getMinDateTimeLocal(timeZone)}
+            hint={`Hora local de la experiencia. Agenda con al menos ${BOOKING_LEAD_MINUTES} minutos de anticipación.`}
             value={startsAtLocal}
             onChange={(event) => { setStartsAtLocal(event.target.value); setFieldErrors((current) => ({ ...current, startsAt: undefined })); }}
             error={fieldErrors.startsAt}
