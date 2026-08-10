@@ -93,17 +93,12 @@ export const Notifications = () => {
   };
 
   if (error && !preferences) {
-    return (
-      <div className="container management-page">
-        <ErrorState description={error} onRetry={() => setReloadCount((current) => current + 1)} />
-      </div>
-    );
+    return <ErrorState description={error} onRetry={() => setReloadCount((current) => current + 1)} />;
   }
 
   if (!preferences) {
     return (
-      <div className="container management-page" role="status" aria-busy="true">
-        <Skeleton className="management-skeleton" />
+      <div role="status" aria-busy="true">
         <Skeleton className="management-skeleton" />
         <span className="visually-hidden">Cargando notificaciones…</span>
       </div>
@@ -111,15 +106,17 @@ export const Notifications = () => {
   }
 
   return (
-    <div className="container management-page animate-fade-in">
-      <header className="page-heading"><span className="page-heading__eyebrow">Notificaciones</span><h1>Configuración de avisos</h1>
-        <p>Elige dónde quieres recibir las novedades sobre tus reservas, pagos y experiencias.</p></header>
+    <div className="account-section">
+      <div className="account-section__heading">
+        <h2>Avisos</h2>
+        <p>Elige dónde quieres recibir las novedades sobre tus reservas, pagos y experiencias.</p>
+      </div>
       <ToastFeedback message={error} tone="error" />
       <ToastFeedback message={saved ? 'Preferencias guardadas.' : null} tone="success" />
       <ToastFeedback message={pushFeedback} tone={pushStatus === 'active' ? 'success' : 'warning'} />
 
       <section className="surface-panel notification-preferences" aria-labelledby="notification-preferences-title">
-        <h2 id="notification-preferences-title">Preferencias</h2>
+        <h3 id="notification-preferences-title">Preferencias</h3>
         {([
           ['dashboardEnabled', Bell, 'En la aplicación', 'Mostrar tus avisos en el panel lateral de tu cuenta.'],
           ['emailEnabled', Mail, 'Por correo electrónico', 'Enviar tus avisos al correo de tu cuenta.'],

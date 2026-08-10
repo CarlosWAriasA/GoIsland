@@ -21,6 +21,7 @@ import Skeleton from '../components/Skeleton';
 import Typewriter from '../components/Typewriter';
 import { useAuth } from '../hooks/useAuth';
 import { useRevealOnScroll } from '../hooks/useRevealOnScroll';
+import { resolveApiAssetUrl } from '../services/api';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
 import { formatLocationLabel } from '../services/googleMapsService';
@@ -29,16 +30,31 @@ import type { Experience } from '../types';
 
 const FEATURED_LIMIT = 6;
 
-const categoryTiles = [
-  { label: 'Acuático', photo: 'acuatico', hint: 'Buceo, snorkel y navegación' },
-  { label: 'Naturaleza', photo: 'naturaleza', hint: 'Cascadas, montañas y senderos' },
-  { label: 'Gastronomía', photo: 'gastronomia', hint: 'Cocina criolla y mercados' },
-  { label: 'Aventura', photo: 'playa', hint: 'Rutas activas al aire libre' },
-  { label: 'Arte y cultura', photo: 'ciudad', hint: 'Historia, música y barrios' },
-  { label: 'Cruceros', photo: 'cruceros', hint: 'Salidas en barco y bahías' },
-] as const;
-
+const CATEGORIES_LIMIT = 6;
 const DESTINATIONS_LIMIT = 6;
+
+// Las categorías salen del catálogo real y se ilustran con la portada de una de sus
+// experiencias, no con fotos de banco: la guía pide fotografía auténtica del destino
+// y así la retícula nunca muestra una imagen que no corresponde a lo que se vende.
+const pickCategories = (experiences: Experience[]) => {
+  const groups = new Map<string, { count: number; image?: string }>();
+  experiences.forEach((experience) => {
+    if (!experience.category) return;
+    const current = groups.get(experience.category) ?? { count: 0 };
+    current.count += 1;
+    if (!current.image) {
+      const cover = experience.images.find((image) => image.isCover) ?? experience.images[0];
+      if (cover) current.image = resolveApiAssetUrl(cover.cardUrl);
+    }
+    groups.set(experience.category, current);
+  });
+  return Array.from(groups.entries())
+    .filter(([, group]) => group.image)
+    .sort((first, second) => second[1].count - first[1].count
+      || first[0].localeCompare(second[0], 'es'))
+    .slice(0, CATEGORIES_LIMIT)
+    .map(([label, group]) => ({ label, image: group.image!, count: group.count }));
+};
 
 const pickDestinations = (experiences: Experience[]) => {
   const counters = new Map<string, number>();
@@ -111,12 +127,14 @@ export const Home = () => {
     refetchInterval: queryRefresh.catalog,
     refetchOnMount: 'always',
   });
-  const destinationsQuery = useQuery({
+  const catalogQuery = useQuery({
     queryKey: experienceKeys.map(),
     queryFn: ({ signal }) => experienceService.getExperiences(signal, { pageSize: 100 }),
     refetchInterval: queryRefresh.catalog,
   });
-  const destinations = pickDestinations(destinationsQuery.data?.items ?? []);
+  const catalog = catalogQuery.data?.items ?? [];
+  const destinations = pickDestinations(catalog);
+  const categories = pickCategories(catalog);
   const featured = pickFeatured(featuredQuery.data?.items ?? []);
   const totalAvailable = featuredQuery.data?.totalItems ?? 0;
   const error = !featuredQuery.data && featuredQuery.error
@@ -186,31 +204,6 @@ export const Home = () => {
         </div>
       </section>
 
-      <section className="container home-section" data-reveal aria-labelledby="categories-title">
-        <div className="home-section__heading">
-          <h2 className="home-section__title" id="categories-title">Explora por categoría</h2>
-          <Link className="home-section__link" to="/experiences">
-            Ver el catálogo completo <ArrowRight size={17} aria-hidden="true" />
-          </Link>
-        </div>
-
-        <ul className="category-tiles">
-          {categoryTiles.map((tile) => (
-            <li key={tile.label}>
-              <Link
-                className={`category-tile category-tile--${tile.photo}`}
-                to={`/experiences?category=${encodeURIComponent(tile.label)}`}
-              >
-                <span className="category-tile__body">
-                  <strong>{tile.label}</strong>
-                  <small>{tile.hint}</small>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
       <section className="container home-section" data-reveal aria-labelledby="featured-title" aria-busy={loading}>
         <div className="home-section__heading">
           <h2 className="home-section__title" id="featured-title">Experiencias destacadas</h2>
@@ -241,21 +234,35 @@ export const Home = () => {
         )}
       </section>
 
-      <section className="container home-section" data-reveal aria-labelledby="trust-title">
-        <h2 className="home-section__title" id="trust-title">Por qué reservar aquí</h2>
-        <ul className="trust-grid">
-          {trustPoints.map((point) => {
-            const Icon = point.icon;
-            return (
-              <li className="surface-panel trust-card" key={point.title}>
-                <span className="trust-card__icon" aria-hidden="true"><Icon size={20} /></span>
-                <h3>{point.title}</h3>
-                <p>{point.text}</p>
+      {categories.length > 0 && (
+        <section className="container home-section" data-reveal aria-labelledby="categories-title">
+          <div className="home-section__heading">
+            <h2 className="home-section__title" id="categories-title">Explora por categoría</h2>
+            <Link className="home-section__link" to="/experiences">
+              Ver el catálogo completo <ArrowRight size={17} aria-hidden="true" />
+            </Link>
+          </div>
+
+          <ul className="category-tiles">
+            {categories.map((category) => (
+              <li key={category.label}>
+                <Link
+                  className="category-tile"
+                  style={{ backgroundImage: `url("${category.image}")` }}
+                  to={`/experiences?category=${encodeURIComponent(category.label)}`}
+                >
+                  <span className="category-tile__body">
+                    <strong>{category.label}</strong>
+                    <small>
+                      {category.count === 1 ? '1 experiencia' : `${category.count} experiencias`}
+                    </small>
+                  </span>
+                </Link>
               </li>
-            );
-          })}
-        </ul>
-      </section>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="container home-section" data-reveal aria-labelledby="map-band-title">
         <div className="home-band">
@@ -292,6 +299,21 @@ export const Home = () => {
             <p>Crea tu reserva con tu cuenta y sigue su estado desde “Mis reservas”.</p>
           </li>
         </ol>
+
+        <ul className="trust-strip">
+          {trustPoints.map((point) => {
+            const Icon = point.icon;
+            return (
+              <li key={point.title}>
+                <Icon size={17} aria-hidden="true" />
+                <span>
+                  <strong>{point.title}</strong>
+                  {point.text}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
       <section className="container home-section" data-reveal aria-labelledby="host-cta-title">

@@ -59,6 +59,14 @@ interface ReservationsResult {
   error: string | null;
 }
 
+interface ActivitySummary {
+  total: number;
+  upcoming: number;
+  awaitingPayment: number;
+  completed: number;
+  nextVisit: Reservation | null;
+}
+
 export const Reservations = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryString = searchParams.toString();
@@ -76,6 +84,7 @@ export const Reservations = () => {
   const queryDraft = queryState.source === queryString ? queryState.value : currentQuery;
   const [retryCount, setRetryCount] = useState(0);
   const [result, setResult] = useState<ReservationsResult | null>(null);
+  const [summary, setSummary] = useState<ActivitySummary | null>(null);
   const requestKey = `${queryString}:${retryCount}`;
   const loading = result?.requestKey !== requestKey;
   const reservations = result?.requestKey === requestKey ? result.reservations : [];
@@ -92,6 +101,33 @@ export const Reservations = () => {
     if ((values.page ?? 1) > 1) next.set('page', String(values.page));
     setSearchParams(next);
   };
+
+  // Resumen de la cuenta completa: se pide aparte porque la lista de abajo va
+  // filtrada y sus totales no describirían toda la actividad.
+  useEffect(() => {
+    const controller = new AbortController();
+
+    reservationService.getMy({ pageSize: 100 }, controller.signal)
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        const now = Date.now();
+        const upcoming = data.items
+          .filter((item) => item.status === 'Confirmed' && new Date(item.startsAt).getTime() >= now)
+          .sort((first, second) => first.startsAt.localeCompare(second.startsAt));
+        setSummary({
+          total: data.totalItems,
+          upcoming: upcoming.length,
+          awaitingPayment: data.items.filter((item) => item.status === 'PendingPayment').length,
+          completed: data.items.filter((item) => item.status === 'Completed').length,
+          nextVisit: upcoming[0] ?? null,
+        });
+      })
+      .catch(() => {
+        // El resumen es información de apoyo: si falla, la lista sigue sirviendo.
+      });
+
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -132,10 +168,33 @@ export const Reservations = () => {
   return (
     <div className="container reservations-page animate-fade-in">
       <header className="page-heading reservations-page__heading">
-        <span className="page-heading__eyebrow">Tu actividad</span>
-        <h1>Mis reservas</h1>
-        <p>Consulta las reservas creadas con tu cuenta y su estado real.</p>
+        <span className="page-heading__eyebrow">Tu cuenta</span>
+        <h1>Mi actividad</h1>
+        <p>Todo lo que has reservado con GoIsland y en qué estado está.</p>
       </header>
+
+      {summary && summary.total > 0 && (
+        <ul className="activity-summary">
+          <li>
+            <strong>{summary.upcoming}</strong>
+            <span>Visitas por delante</span>
+          </li>
+          <li>
+            <strong>{summary.awaitingPayment}</strong>
+            <span>Pendientes de pago</span>
+          </li>
+          <li>
+            <strong>{summary.completed}</strong>
+            <span>Ya disfrutadas</span>
+          </li>
+          {summary.nextVisit && (
+            <li className="activity-summary__next">
+              <strong>{formatDate(summary.nextVisit.startsAt)}</strong>
+              <span>{summary.nextVisit.experienceTitle}</span>
+            </li>
+          )}
+        </ul>
+      )}
 
       <form
         className="management-list-toolbar surface-panel"

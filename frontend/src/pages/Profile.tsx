@@ -1,6 +1,7 @@
 import { Mail, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -8,6 +9,8 @@ import StatusBadge from '../components/StatusBadge';
 import ToastFeedback from '../components/ToastFeedback';
 import { useAuth } from '../hooks/useAuth';
 import { getFieldError, toApiError } from '../services/apiError';
+import { reservationService } from '../services/reservationService';
+import { reservationKeys } from '../queries/queryKeys';
 
 const getRoleLabel = (role: string) => {
   if (role === 'Host') return 'Anfitrión';
@@ -25,6 +28,11 @@ const formatDate = (dateString?: string) => {
 
 export const Profile = () => {
   const { user, authenticationMethod, updateUser, isLoading } = useAuth();
+  // Solo interesa el total, así que se pide la página mínima.
+  const activityQuery = useQuery({
+    queryKey: [...reservationKeys.all, 'count'],
+    queryFn: ({ signal }) => reservationService.getMy({ pageSize: 1 }, signal),
+  });
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,19 +67,18 @@ export const Profile = () => {
   if (!user) return null;
 
   return (
-    <div className="container profile-page animate-fade-in">
-      <header className="page-heading">
-        <span className="page-heading__eyebrow">Tu cuenta</span>
-        <h1>Mi perfil</h1>
-        <p>Mantén actualizados tus datos.</p>
-      </header>
+    <div className="account-section">
+      <div className="account-section__heading">
+        <h2>Perfil</h2>
+        <p>Así te identifican los anfitriones cuando reservas con ellos.</p>
+      </div>
 
       <div className="profile-grid">
         <section className="profile-summary surface-panel" aria-labelledby="profile-summary-title">
           <div className="profile-avatar" aria-hidden="true">
             {user.fullName ? user.fullName.charAt(0).toUpperCase() : ''}
           </div>
-          <h2 id="profile-summary-title">{user?.fullName}</h2>
+          <h3 id="profile-summary-title">{user?.fullName}</h3>
           <div className="profile-summary__badges">
             <StatusBadge tone="info">{getRoleLabel(user?.role || '')}</StatusBadge>
             {user?.isAdmin && <StatusBadge tone="warning">Administrador</StatusBadge>}
@@ -84,6 +91,14 @@ export const Profile = () => {
             <div>
               <dt>Miembro desde</dt>
               <dd>{formatDate(user?.createdAt)}</dd>
+            </div>
+            <div>
+              <dt>Reservas creadas</dt>
+              <dd>
+                {activityQuery.isPending
+                  ? '—'
+                  : activityQuery.data?.totalItems ?? 0}
+              </dd>
             </div>
           </dl>
           {authenticationMethod === 'Google' || user?.hasPassword === false ? (
@@ -99,7 +114,7 @@ export const Profile = () => {
         </section>
 
         <section className="profile-form surface-panel" aria-labelledby="profile-form-title">
-          <h2 id="profile-form-title">Datos personales</h2>
+          <h3 id="profile-form-title">Datos personales</h3>
           <ToastFeedback message={success} tone="success" />
           <ToastFeedback message={error} tone="error" />
 

@@ -1,4 +1,4 @@
-import { Compass, Layers, LocateFixed, MapPinned, MousePointerClick, Navigation, RotateCcw, Search } from 'lucide-react';
+import { LocateFixed, MapPinned, Navigation, RotateCcw, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -28,24 +28,6 @@ const getZone = (location: string) => {
   const parts = formatLocationLabel(location).split(',');
   return parts[parts.length - 1].trim();
 };
-
-const MAP_TIPS = [
-  {
-    icon: MousePointerClick,
-    title: 'Toca un marcador',
-    text: 'Se abre una ficha con la foto, el precio y el enlace al detalle de la experiencia.',
-  },
-  {
-    icon: Layers,
-    title: 'Combina filtros',
-    text: 'Categoría y precio máximo se aplican al mismo tiempo sobre lo que ves en el mapa.',
-  },
-  {
-    icon: Compass,
-    title: 'Usa “Cerca de mí”',
-    text: 'Con el permiso de ubicación mostramos lo que hay a menos de 50 km y su distancia.',
-  },
-] as const;
 
 export const ExperienceMapPage = () => {
   const navigate = useNavigate();
@@ -401,26 +383,11 @@ export const ExperienceMapPage = () => {
           </div>
         )}
 
-      <section className="map-page__guide" aria-labelledby="map-guide-title">
-        <h2 id="map-guide-title">Cómo sacarle partido al mapa</h2>
-        <ul className="map-guide__grid">
-          {MAP_TIPS.map((tip) => {
-            const Icon = tip.icon;
-            return (
-              <li className="surface-panel map-guide__card" key={tip.title}>
-                <span className="map-guide__icon" aria-hidden="true"><Icon size={20} /></span>
-                <h3>{tip.title}</h3>
-                <p>{tip.text}</p>
-              </li>
-            );
-          })}
-        </ul>
-        <p className="map-page__footnote">
-          Solo aparecen en el mapa las experiencias con ubicación publicada.
-          {' '}
-          <Link to="/experiences">Consulta el catálogo completo</Link> para ver todas.
-        </p>
-      </section>
+      <p className="map-page__footnote">
+        Solo aparecen en el mapa las experiencias con ubicación publicada.
+        {' '}
+        <Link to="/experiences">Consulta el catálogo completo</Link> para ver todas.
+      </p>
       </div>
     </div>
   );

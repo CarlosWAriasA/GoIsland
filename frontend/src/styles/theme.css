@@ -8,7 +8,7 @@
   --color-sand-50: #FFFDF9;  --color-sand-100: #FAF4E9;  --color-mist-50: #F2F6F9;  --color-border: #E4DFD6;  --color-border-hover: #CFC7B8;
 
   --color-text: #123B57;  --color-text-muted: #5B6B74;  --color-text-subtle: #7C8A93;  --color-text-on-navy: #FFFFFF;
-  --color-success: #1E7F58;
+  --color-success: #1A7350;
   --color-success-bg: #EAF6EF;
   --color-success-border: #B4DCC5;
   --color-warning: #A9741C;
@@ -29,6 +29,12 @@
   --color-accent-hover: var(--color-gold-600);
   --color-bg: var(--color-sand-50);
 
+  /* El dorado es acento de superficie (bordes, badges, CTA), no color de texto:
+     sobre fondos saturados no alcanza contraste legible. Para texto sobre foto
+     se usan estos dos, ambos verificados contra el tinte de las imágenes. */
+  --color-on-photo: #FFFFFF;
+  --color-on-photo-muted: rgba(255, 255, 255, 0.92);
+
   --color-navy-900: var(--color-ink);
   --color-navy-700: var(--color-ink);
   --color-navy-500: var(--color-caribe-500);
@@ -46,8 +52,15 @@
   --gold-sun: var(--color-gold-500);
   --waterline: var(--color-gold-500);
 
-  --photo-tint: rgba(18, 59, 87, 0.45);  --photo-tint-strong: rgba(18, 59, 87, 0.55);
-  --photo-tint-hero: rgba(28, 111, 165, 0.62);
+  /* Tintes sobre fotografía. Calculados contra el peor caso (foto blanca) para que
+     el texto blanco mantenga contraste AA: hero da 5.4:1 y el apoyo al 92%, 4.9:1.
+     El hero lleva más carga porque encima va un párrafo, no solo un título. */
+  --photo-tint: rgba(18, 59, 87, 0.52);
+  --photo-tint-strong: rgba(18, 59, 87, 0.64);
+  --photo-tint-hero: rgba(18, 59, 87, 0.72);
+
+  /* Escala de espaciado 4pt. Cualquier valor fuera de esta escala rompe el ritmo
+     vertical: usar siempre el token, nunca un rem suelto. */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;

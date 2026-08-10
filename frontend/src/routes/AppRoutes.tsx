@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import RoleRoute from './RoleRoute';
 
@@ -12,6 +12,7 @@ const Login = React.lazy(() => import('../pages/Login'));
 const Register = React.lazy(() => import('../pages/Register'));
 const ForgotPassword = React.lazy(() => import('../pages/ForgotPassword'));
 const ResetPassword = React.lazy(() => import('../pages/ResetPassword'));
+const AccountLayout = React.lazy(() => import('../pages/AccountLayout'));
 const Profile = React.lazy(() => import('../pages/Profile'));
 const ChangePassword = React.lazy(() => import('../pages/ChangePassword'));
 const Reservations = React.lazy(() => import('../pages/Reservations'));
@@ -48,12 +49,18 @@ export const AppRoutes: React.FC = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       
       <Route element={<ProtectedRoute />}>
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/account/password" element={<ChangePassword />} />
+        {/* Cuenta unificada: perfil, avisos y seguridad como secciones de una misma
+            pantalla, en vez de tres páginas sueltas sin navegación entre ellas. */}
+        <Route path="/account" element={<AccountLayout />}>
+          <Route index element={<Profile />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="password" element={<ChangePassword />} />
+        </Route>
+        <Route path="/profile" element={<Navigate to="/account" replace />} />
+        <Route path="/notifications" element={<Navigate to="/account/notifications" replace />} />
         <Route path="/reservations" element={<Reservations />} />
         <Route path="/reservations/:id" element={<ReservationDetail />} />
         <Route path="/host-profile" element={<HostProfile />} />
-        <Route path="/notifications" element={<Notifications />} />
 
         <Route element={<RoleRoute allowedRoles={['Host']} />}>
           <Route path="/host/dashboard" element={<HostDashboard />} />

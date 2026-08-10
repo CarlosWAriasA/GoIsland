@@ -26,7 +26,7 @@ export const RoleRoute = ({ allowedRoles }: RoleRouteProps) => {
   const hasAccess = allowedRoles.includes(user.role)
     || (allowedRoles.includes('Admin') && user.isAdmin);
   if (!hasAccess) {
-    return <Navigate to="/profile" replace />;
+    return <Navigate to="/account" replace />;
   }
 
   return <Outlet />;

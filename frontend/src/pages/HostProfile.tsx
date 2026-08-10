@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, Phone, UserRound } from 'lucide-react';
+import { BriefcaseBusiness, CalendarRange, Phone, ShieldCheck, UserRound, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
@@ -119,12 +119,42 @@ export const HostProfile = () => {
   const canResubmit = profile?.verificationStatus === 'Rejected';
 
   return (
-    <div className="container management-page animate-fade-in">
-      <header className="page-heading">
-        <span className="page-heading__eyebrow">Comunidad local</span>
-        <h1>{profile ? 'Mi perfil de anfitrión' : 'Conviértete en anfitrión'}</h1>
-        <p>Comparte lo que mejor conoces de tu zona.</p>
-      </header>
+    <div className="host-profile-page animate-fade-in">
+      {!profile && (
+        <header className="host-intro">
+          <div className="host-intro__content">
+            <span className="host-intro__eyebrow">Comunidad local</span>
+            <h1>Enseña tu isla a quien viene a conocerla</h1>
+            <p>
+              Si conoces una ruta, una cocina o un rincón que no sale en las guías,
+              aquí puedes convertirlo en una experiencia y recibir reservas con el pago resuelto.
+            </p>
+            <ul className="host-intro__points">
+              <li>
+                <CalendarRange size={18} aria-hidden="true" />
+                <span><strong>Tú pones las fechas.</strong> Defines horarios, cupos y precio.</span>
+              </li>
+              <li>
+                <Wallet size={18} aria-hidden="true" />
+                <span><strong>Cobro por adelantado.</strong> La reserva llega ya pagada vía Stripe.</span>
+              </li>
+              <li>
+                <ShieldCheck size={18} aria-hidden="true" />
+                <span><strong>Perfiles verificados.</strong> Revisamos cada solicitud antes de publicarla.</span>
+              </li>
+            </ul>
+          </div>
+        </header>
+      )}
+
+      <div className="container management-page">
+      {profile && (
+        <header className="page-heading">
+          <span className="page-heading__eyebrow">Comunidad local</span>
+          <h1>Mi perfil de anfitrión</h1>
+          <p>Estos son los datos que ven los viajeros antes de reservar contigo.</p>
+        </header>
+      )}
 
       {profile && (
         <section className="management-summary surface-panel" aria-labelledby="host-status-title">
@@ -203,6 +233,7 @@ export const HostProfile = () => {
           </Button>
         </form>
       </section>
+      </div>
     </div>
   );
 };

@@ -27,7 +27,7 @@ export const ChangePassword = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (authenticationMethod === 'Google' || user?.hasPassword === false) {
-    return <Navigate to="/profile" replace />;
+    return <Navigate to="/account" replace />;
   }
 
   const validate = () => {
@@ -71,18 +71,17 @@ export const ChangePassword = () => {
   };
 
   return (
-    <div className="container account-page animate-fade-in">
-      <header className="page-heading">
-        <span className="page-heading__eyebrow">Seguridad</span>
-        <h1>Cambiar contraseña</h1>
+    <div className="account-section">
+      <div className="account-section__heading">
+        <h2>Seguridad</h2>
         <p>Actualiza la contraseña utilizada para acceder a tu cuenta.</p>
-      </header>
+      </div>
 
       <section className="account-form surface-panel" aria-labelledby="change-password-form-title">
         <div className="account-form__heading">
           <KeyRound aria-hidden="true" />
           <div>
-            <h2 id="change-password-form-title">Credenciales de acceso</h2>
+            <h3 id="change-password-form-title">Credenciales de acceso</h3>
             <p>La nueva contraseña debe ser diferente a la actual.</p>
           </div>
         </div>
@@ -123,7 +122,7 @@ export const ChangePassword = () => {
             required
           />
           <div className="account-form__actions">
-            <Link className="button-link button-link--outline" to="/profile">Volver al perfil</Link>
+            <Link className="button-link button-link--outline" to="/account">Volver al perfil</Link>
             <Button type="submit" isLoading={isSubmitting}>Guardar contraseña</Button>
           </div>
         </form>
