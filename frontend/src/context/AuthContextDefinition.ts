@@ -8,10 +8,13 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   sessionExpired: boolean;
+  /** La sesión se cerró a propósito, así que no hay que pedir explicaciones al redirigir. */
+  signedOut: boolean;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => void;
+  acknowledgeSignOut: () => void;
   updateUser: (fullName: string) => Promise<void>;
   refreshUser: () => Promise<UserResponse>;
 }

@@ -18,6 +18,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authenticationMethod, setAuthenticationMethod] = useState<AuthenticationMethod | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
 
   const clearAuthentication = useCallback((expired: boolean) => {
     setToken(null);
@@ -135,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthenticationMethod(response.authenticationMethod);
     setUser(response.user);
     setSessionExpired(false);
+    setSignedOut(false);
     saveAuthSession(response);
   };
 
@@ -164,9 +166,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // La navegación de salida se procesa como transición, así que las rutas protegidas todavía
+  // pueden renderizarse con la sesión ya cerrada. La marca evita que pidan iniciar sesión a
+  // quien acaba de cerrarla a propósito.
   const logout = () => {
+    setSignedOut(true);
     clearAuthentication(false);
   };
+
+  const acknowledgeSignOut = useCallback(() => setSignedOut(false), []);
 
   const loginWithGoogle = async (credential: string) => {
     setIsLoading(true);
@@ -214,10 +222,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!token,
         isLoading,
         sessionExpired,
+        signedOut,
         login,
         register,
         loginWithGoogle,
         logout,
+        acknowledgeSignOut,
         updateUser,
         refreshUser,
       }}
