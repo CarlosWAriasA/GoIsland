@@ -70,6 +70,26 @@ const pickDestinations = (experiences: Experience[]) => {
     .map(([zone]) => zone);
 };
 
+// Se ilustra con la experiencia mejor valorada que tenga foto: es un criterio
+// real del catálogo y evita que salgan publicaciones de prueba sin reseñas.
+const pickStepsPhoto = (experiences: Experience[]) => {
+  const candidates = experiences
+    .filter((experience) => experience.reviewCount > 0 && experience.images.length > 0)
+    .sort((first, second) => (second.averageRating ?? 0) - (first.averageRating ?? 0)
+      || second.reviewCount - first.reviewCount);
+  const chosen = candidates[0] ?? experiences.find((experience) => experience.images.length > 0);
+  if (!chosen) return null;
+
+  const cover = chosen.images.find((image) => image.isCover) ?? chosen.images[0];
+  return cover
+    ? {
+      title: chosen.title,
+      location: formatLocationLabel(chosen.location),
+      image: resolveApiAssetUrl(cover.url),
+    }
+    : null;
+};
+
 const trustPoints = [
   {
     icon: ShieldCheck,
@@ -135,6 +155,7 @@ export const Home = () => {
   const catalog = catalogQuery.data?.items ?? [];
   const destinations = pickDestinations(catalog);
   const categories = pickCategories(catalog);
+  const stepsPhoto = pickStepsPhoto(catalog);
   const featured = pickFeatured(featuredQuery.data?.items ?? []);
   const totalAvailable = featuredQuery.data?.totalItems ?? 0;
   const error = !featuredQuery.data && featuredQuery.error
@@ -280,40 +301,58 @@ export const Home = () => {
         </div>
       </section>
 
-      <section className="container home-section" id="como-funciona" data-reveal aria-labelledby="how-title">
-        <h2 className="home-section__title" id="how-title">Cómo funciona</h2>
-        <ol className="how-steps">
-          <li className="surface-panel how-step">
-            <span className="how-step__icon" aria-hidden="true"><Search size={22} /></span>
-            <h3>1. Explora el catálogo</h3>
-            <p>Filtra por nombre, ubicación, categoría y rango de precio para encontrar la actividad que buscas.</p>
-          </li>
-          <li className="surface-panel how-step">
-            <span className="how-step__icon" aria-hidden="true"><CalendarCheck size={22} /></span>
-            <h3>2. Elige fecha y cupos</h3>
-            <p>Consulta las fechas y los cupos disponibles.</p>
-          </li>
-          <li className="surface-panel how-step">
-            <span className="how-step__icon" aria-hidden="true"><TicketCheck size={22} /></span>
-            <h3>3. Reserva</h3>
-            <p>Crea tu reserva con tu cuenta y sigue su estado desde “Mis reservas”.</p>
-          </li>
-        </ol>
+      <section className="home-steps-band" id="como-funciona" data-reveal aria-labelledby="how-title">
+        <div className="container home-steps">
+          {/* Columna de foto: usa una portada real del catálogo, así el bloque no
+              queda en blanco y la imagen corresponde a algo que se puede reservar. */}
+          <figure className="home-steps__figure">
+            {stepsPhoto
+              ? <img src={stepsPhoto.image} alt="" loading="lazy" decoding="async" />
+              : <span className="home-steps__figure-fallback" aria-hidden="true" />}
+            {stepsPhoto && (
+              <figcaption>
+                <strong>{stepsPhoto.title}</strong>
+                <small>{stepsPhoto.location}</small>
+              </figcaption>
+            )}
+          </figure>
 
-        <ul className="trust-strip">
-          {trustPoints.map((point) => {
-            const Icon = point.icon;
-            return (
-              <li key={point.title}>
-                <Icon size={17} aria-hidden="true" />
-                <span>
-                  <strong>{point.title}</strong>
-                  {point.text}
-                </span>
+          <div className="home-steps__content">
+            <h2 className="home-section__title" id="how-title">Cómo funciona</h2>
+            <ol className="how-steps">
+              <li className="how-step">
+                <span className="how-step__icon" aria-hidden="true"><Search size={22} /></span>
+                <h3>1. Explora el catálogo</h3>
+                <p>Filtra por nombre, ubicación, categoría y rango de precio para encontrar la actividad que buscas.</p>
               </li>
-            );
-          })}
-        </ul>
+              <li className="how-step">
+                <span className="how-step__icon" aria-hidden="true"><CalendarCheck size={22} /></span>
+                <h3>2. Elige fecha y cupos</h3>
+                <p>Consulta las fechas y los cupos disponibles.</p>
+              </li>
+              <li className="how-step">
+                <span className="how-step__icon" aria-hidden="true"><TicketCheck size={22} /></span>
+                <h3>3. Reserva</h3>
+                <p>Crea tu reserva con tu cuenta y sigue su estado desde “Mis reservas”.</p>
+              </li>
+            </ol>
+
+            <ul className="trust-strip">
+              {trustPoints.map((point) => {
+                const Icon = point.icon;
+                return (
+                  <li key={point.title}>
+                    <Icon size={17} aria-hidden="true" />
+                    <span>
+                      <strong>{point.title}</strong>
+                      {point.text}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
       </section>
 
       <section className="container home-section" data-reveal aria-labelledby="host-cta-title">

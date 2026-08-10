@@ -82,18 +82,6 @@ export const Navbar = () => {
             </>
           )}
 
-          {/* En móvil el menú se despliega y estos accesos van dentro; en escritorio
-              viven en el bloque de la derecha, así que aquí se ocultan. */}
-          {!isAuthenticated && (
-            <div className="site-nav__auth">
-              <Link to="/login" className="site-nav__login" onClick={closeMenu}>
-                Iniciar sesión
-              </Link>
-              <Link to="/register" className="site-nav__register" onClick={closeMenu}>
-                Crear cuenta
-              </Link>
-            </div>
-          )}
         </nav>
 
         {/* Bloque derecho: acción de captación, avisos y cuenta. Fuera del menú
@@ -109,6 +97,17 @@ export const Navbar = () => {
             <div className="site-header__session">
               <NotificationBell />
               <UserMenu user={user} onLogout={handleLogout} />
+            </div>
+          )}
+
+          {!isAuthenticated && (
+            <div className="site-nav__auth">
+              <Link to="/login" className="site-nav__login" onClick={closeMenu}>
+                Iniciar sesión
+              </Link>
+              <Link to="/register" className="site-nav__register" onClick={closeMenu}>
+                Crear cuenta
+              </Link>
             </div>
           )}
 
