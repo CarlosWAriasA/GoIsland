@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ArrowLeft, CalendarDays, CreditCard, MapPin, MapPinned, ReceiptText, ShieldCheck, TicketCheck, UsersRound } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
@@ -26,6 +27,7 @@ import { getChangeRequestStatusLabel, getChangeRequestTypeLabel } from '../utils
 import { buildGoogleMapsUrl, getReturnPath } from '../utils/navigation';
 import { getMinDateTimeLocal, isoToDateTimeLocalValue } from '../utils/dateTimeLocal';
 import { reviewService } from '../services/reviewService';
+import { experienceKeys } from '../queries/queryKeys';
 import type { ExperienceSchedule, Payment, PaymentCheckout, Reservation, Review } from '../types';
 
 const formatPrice = (price: number, currency = 'USD') => price === 0
@@ -64,6 +66,7 @@ export const ReservationDetail = () => {
   const [retryCount, setRetryCount] = useState(0);
   const requestKey = `${parsedId}::${retryCount}`;
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [result, setResult] = useState<ReservationDetailResult | null>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [newStartsAtLocal, setNewStartsAtLocal] = useState('');
@@ -365,6 +368,13 @@ export const ReservationDetail = () => {
     if (succeeded) setRefundToConfirm(null);
   };
 
+  const refreshExperienceReviews = (experienceId: number) => {
+    void queryClient.invalidateQueries({ queryKey: experienceKeys.reviews(experienceId) });
+    void queryClient.invalidateQueries({ queryKey: experienceKeys.details() });
+    void queryClient.invalidateQueries({ queryKey: experienceKeys.searches() });
+    void queryClient.invalidateQueries({ queryKey: experienceKeys.featured() });
+  };
+
   const saveReview = async () => {
     const comment = reviewComment.trim();
     if (comment.length < 10) { setActionError('La reseña debe tener al menos 10 caracteres.'); return; }
@@ -376,6 +386,7 @@ export const ReservationDetail = () => {
         ? await reviewService.update(currentResult.review.id, input)
         : await reviewService.create(parsedId, input);
       setResult((current) => current?.requestKey === requestKey ? { ...current, review } : current);
+      refreshExperienceReviews(review.experienceId);
       setActionMessage('Tu reseña verificada fue guardada.');
     } catch (requestError: unknown) {
       setActionError(toApiError(requestError, 'No fue posible guardar la reseña.').message);
@@ -384,11 +395,13 @@ export const ReservationDetail = () => {
 
   const deleteReview = async () => {
     if (!currentResult?.review) return;
+    const { id: reviewId, experienceId } = currentResult.review;
     setBusyAction('review');
     try {
-      await reviewService.remove(currentResult.review.id);
+      await reviewService.remove(reviewId);
       setResult((current) => current?.requestKey === requestKey ? { ...current, review: null } : current);
       setReviewComment('');
+      refreshExperienceReviews(experienceId);
       setActionMessage('Tu reseña fue eliminada.');
     } catch (requestError: unknown) {
       setActionError(toApiError(requestError, 'No fue posible eliminar la reseña.').message);

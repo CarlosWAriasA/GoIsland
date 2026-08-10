@@ -122,7 +122,7 @@ export const ExperienceDetail = () => {
   const availabilityQuery = useQuery({
     queryKey: experienceKeys.availability(experience?.id ?? 0),
     queryFn: ({ signal }) => experienceService.getAvailability(experience!.id, undefined, signal),
-    enabled: experience !== null,
+    enabled: experience !== null && experience.isApproved,
     staleTime: 10_000,
     refetchInterval: queryRefresh.availability,
     refetchOnMount: 'always',
@@ -310,8 +310,10 @@ export const ExperienceDetail = () => {
 
   const isSelfGuided = experience.schedulingMode === 'SelfGuided';
   const nextSchedule = schedules[0];
-  const canReserve = isSelfGuided || Boolean(nextSchedule
-    && (nextSchedule.isUnlimitedCapacity || nextSchedule.availableSpots > 0));
+  // Solo llega una experiencia sin publicar cuando quien la mira ya tiene una reserva en ella.
+  const isPublished = experience.isApproved;
+  const canReserve = isPublished && (isSelfGuided || Boolean(nextSchedule
+    && (nextSchedule.isUnlimitedCapacity || nextSchedule.availableSpots > 0)));
 
   const hasBeforeGoing = Boolean(
     experience.meetingPointInstructions
@@ -447,7 +449,12 @@ export const ExperienceDetail = () => {
             <span>Precio por persona</span>
             <strong>{formatPrice(experience.price)}</strong>
           </div>
-          {isSelfGuided ? null : nextSchedule ? (
+          {!isPublished ? (
+            <Alert tone="info">
+              Esta experiencia no está publicada en el catálogo ahora mismo.
+              Puedes verla porque tienes una reserva en ella.
+            </Alert>
+          ) : isSelfGuided ? null : nextSchedule ? (
             <>
               <dl className="experience-detail__facts">
                 <div>

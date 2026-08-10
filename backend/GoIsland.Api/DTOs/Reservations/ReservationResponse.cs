@@ -23,6 +23,7 @@ public class ReservationResponse
     public DateTime? ExpiresAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
+    public bool HasReview { get; set; }
     public IReadOnlyCollection<ReservationStatusHistoryResponse> StatusHistory { get; set; } = [];
     public ReservationChangeRequestResponse? PendingChangeRequest { get; set; }
 }

@@ -56,6 +56,7 @@ export interface Reservation {
   expiresAt: string | null;
   updatedAt: string;
   cancelledAt: string | null;
+  hasReview: boolean;
   statusHistory: ReservationStatusHistory[];
   pendingChangeRequest: ReservationChangeRequest | null;
 }

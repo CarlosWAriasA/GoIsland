@@ -1,4 +1,4 @@
-import { CalendarDays, MapPin, MapPinned, Pencil, ReceiptText, TicketCheck, UsersRound } from 'lucide-react';
+import { CalendarDays, MapPin, MapPinned, Pencil, ReceiptText, Star, TicketCheck, UsersRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Button from '../components/Button';
@@ -221,6 +221,7 @@ export const Reservations = () => {
                 && reservation.status === 'Confirmed' && new Date(reservation.endsAt) <= new Date();
               const canEditVisit = isSelfGuided
                 && reservation.status === 'Confirmed' && new Date(reservation.startsAt) > new Date();
+              const canReview = reservation.status === 'Completed';
               return (
                 <article className="surface-panel reservation-card" key={reservation.id}>
                   <div className="reservation-card__header">
@@ -276,9 +277,11 @@ export const Reservations = () => {
                     >
                       {canCompleteVisit
                         ? <><TicketCheck size={17} aria-hidden="true" /> Marcar realizada y reseñar</>
-                        : canEditVisit
-                          ? <><Pencil size={17} aria-hidden="true" /> Editar reserva</>
-                          : <><TicketCheck size={17} aria-hidden="true" /> Ver detalle</>}
+                        : canReview
+                          ? <><Star size={17} aria-hidden="true" /> {reservation.hasReview ? 'Ver tu reseña' : 'Dejar tu reseña'}</>
+                          : canEditVisit
+                            ? <><Pencil size={17} aria-hidden="true" /> Editar reserva</>
+                            : <><TicketCheck size={17} aria-hidden="true" /> Ver detalle</>}
                     </Link>
                   </div>
                 </article>

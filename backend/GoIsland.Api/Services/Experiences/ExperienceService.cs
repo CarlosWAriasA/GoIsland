@@ -20,13 +20,18 @@ public class ExperienceService : IExperienceService
     public Task<PagedResponse<ExperienceResponse>> GetAllAsync(SearchExperiencesRequest request) =>
         SearchAsync(request);
 
-    public async Task<ExperienceResponse?> GetByIdAsync(int id)
+    public async Task<ExperienceResponse?> GetByIdAsync(int id, int? viewerUserId = null)
     {
         var experience = await _unitOfWork.Experiences.GetByIdAsync(id);
+        if (experience is null && viewerUserId is int userId)
+        {
+            experience = await _unitOfWork.Experiences.GetBookedByIdAsync(id, userId);
+        }
+
         return experience is null ? null : (await AddRatingsAsync([experience])).Single();
     }
 
-    public async Task<ExperienceResponse?> GetBySlugAsync(string slug)
+    public async Task<ExperienceResponse?> GetBySlugAsync(string slug, int? viewerUserId = null)
     {
         var normalizedSlug = slug.Trim().ToLowerInvariant();
         if (normalizedSlug.Length is < 1 or > 180)
@@ -35,6 +40,11 @@ public class ExperienceService : IExperienceService
         }
 
         var experience = await _unitOfWork.Experiences.GetBySlugAsync(normalizedSlug);
+        if (experience is null && viewerUserId is int userId)
+        {
+            experience = await _unitOfWork.Experiences.GetBookedBySlugAsync(normalizedSlug, userId);
+        }
+
         return experience is null ? null : (await AddRatingsAsync([experience])).Single();
     }
 

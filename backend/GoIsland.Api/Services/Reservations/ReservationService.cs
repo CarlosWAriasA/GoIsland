@@ -968,7 +968,9 @@ public class ReservationService : IReservationService
             ReservationDate = reservation.ReservationDate,
             ExpiresAt = reservation.ExpiresAt,
             UpdatedAt = reservation.UpdatedAt,
-            CancelledAt = reservation.CancelledAt
+            CancelledAt = reservation.CancelledAt,
+            HasReview = _context.Reviews.Any(review => review.ReservationId == reservation.Id
+                && review.ModerationStatus != ReviewModerationStatuses.Deleted)
         };
 
     private async Task AddHistoryAsync(

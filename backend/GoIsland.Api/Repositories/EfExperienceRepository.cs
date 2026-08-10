@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using GoIsland.Api.Data;
 using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Experiences;
@@ -43,6 +44,28 @@ public class EfExperienceRepository : IExperienceRepository
                 && experience.ApprovalStatus == ExperienceApprovalStatuses.Approved
                 && _context.HostProfiles.Any(profile => profile.UserId == experience.HostId
                     && profile.VerificationStatus == HostVerificationStatuses.Approved));
+        if (experience is not null) await ApplyPublicAvailabilityAsync([experience]);
+        return experience;
+    }
+
+    public Task<Experience?> GetBookedByIdAsync(int id, int userId) =>
+        FindBookedAsync(experience => experience.Id == id, userId);
+
+    public Task<Experience?> GetBookedBySlugAsync(string slug, int userId) =>
+        FindBookedAsync(experience => experience.Slug == slug, userId);
+
+    private async Task<Experience?> FindBookedAsync(
+        Expression<Func<Experience, bool>> predicate,
+        int userId)
+    {
+        var experience = await _context.Experiences
+            .AsNoTracking()
+            .Include(experience => experience.Images)
+            .Include(experience => experience.Itinerary)
+            .Where(predicate)
+            .FirstOrDefaultAsync(experience => _context.Reservations
+                .Any(reservation => reservation.ExperienceId == experience.Id
+                    && reservation.UserId == userId));
         if (experience is not null) await ApplyPublicAvailabilityAsync([experience]);
         return experience;
     }
