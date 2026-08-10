@@ -2,13 +2,14 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import RoleRoute from './RoleRoute';
+import { loadLoginPage } from './loginPage';
 
 const Home = React.lazy(() => import('../pages/Home'));
 const Experiences = React.lazy(() => import('../pages/Experiences'));
 const ExperienceMapPage = React.lazy(() => import('../pages/ExperienceMapPage'));
 const ExperienceDetail = React.lazy(() => import('../pages/ExperienceDetail'));
 const PublicInfoPage = React.lazy(() => import('../pages/PublicInfoPage'));
-const Login = React.lazy(() => import('../pages/Login'));
+const Login = React.lazy(loadLoginPage);
 const Register = React.lazy(() => import('../pages/Register'));
 const ForgotPassword = React.lazy(() => import('../pages/ForgotPassword'));
 const ResetPassword = React.lazy(() => import('../pages/ResetPassword'));

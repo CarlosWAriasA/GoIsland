@@ -9,6 +9,7 @@ import type {
 import { authService } from '../services/authService';
 import { setAuthToken, setUnauthorizedHandler } from '../services/api';
 import { clearAuthSession, loadAuthSession, saveAuthSession } from '../services/authSession';
+import { loadLoginPage } from '../routes/loginPage';
 import { AuthContext } from './AuthContextDefinition';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -78,6 +79,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUnauthorizedHandler(null);
     };
   }, [clearAuthentication]);
+
+  // Toda sesión abierta termina en el login, y descargar esa pantalla justo al cerrarla dejaba a
+  // merced de la red el único destino que queda sin sesión. Se trae por adelantado mientras hay
+  // conexión de sobra, y se reintenta al recuperarla si el primer intento no llegó a completarse.
+  useEffect(() => {
+    if (!token) return;
+
+    let loaded = false;
+    const preload = () => {
+      if (loaded) return;
+      void loadLoginPage().then(() => { loaded = true; }, () => {
+        // Sin conexión no hay nada que hacer todavía: se reintenta cuando vuelva.
+      });
+    };
+
+    preload();
+    window.addEventListener('online', preload);
+    return () => window.removeEventListener('online', preload);
+  }, [token]);
 
   useEffect(() => {
     if (!expiresAt) return;

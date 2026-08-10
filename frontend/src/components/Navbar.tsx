@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { loadLoginPage } from '../routes/loginPage';
 import Button from './Button';
 import Logo from './Logo';
 import NotificationBell from './NotificationBell';
@@ -21,10 +22,22 @@ export const Navbar = () => {
 
   const closeMenu = () => setMenuOpen(false);
 
+  // Cambiar de pantalla dentro de la aplicación necesita que el fragmento del login esté
+  // descargado. Normalmente ya lo está, porque se pide en cuanto hay sesión, pero si esa descarga
+  // no llegó a completarse se recurre a pedir la dirección al servidor: es más lento, aunque
+  // garantiza que cerrar sesión siempre termine en el login y nunca en una pantalla de error.
   const handleLogout = () => {
     closeMenu();
-    logout();
-    navigate('/login', { replace: true, state: { loggedOut: true } });
+    void loadLoginPage().then(
+      () => {
+        logout();
+        navigate('/login', { replace: true, state: { loggedOut: true } });
+      },
+      () => {
+        logout();
+        window.location.assign('/login');
+      },
+    );
   };
 
   return (
