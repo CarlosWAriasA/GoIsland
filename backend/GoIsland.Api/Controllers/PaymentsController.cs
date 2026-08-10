@@ -54,6 +54,8 @@ public class PaymentsController : ControllerBase
             PaymentOperationStatus.PaymentNotFound => NotFound(new { message = "No se encontro el pago." }),
             PaymentOperationStatus.InvalidTransition => Conflict(
                 new { message = "Este pago ya no está disponible para completarse." }),
+            PaymentOperationStatus.ReservationExpired => Conflict(
+                new { message = "El tiempo para completar este pago terminó." }),
             PaymentOperationStatus.GatewayRejected => StatusCode(
                 StatusCodes.Status502BadGateway,
                 new { message = "No pudimos preparar el pago. Inténtalo nuevamente." }),

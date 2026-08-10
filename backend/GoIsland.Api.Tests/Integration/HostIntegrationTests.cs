@@ -27,7 +27,8 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
             FullName = "Admin Integracion",
             Email = $"admin-{marker}@goisland.test",
             PasswordHash = "hash-no-usado",
-            Role = UserRoles.Admin
+            Role = UserRoles.Tourist,
+            IsAdmin = true
         };
         Context.Users.Add(admin);
         await Context.SaveChangesAsync();
@@ -75,7 +76,8 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
             FullName = "Admin Integracion",
             Email = $"admin-rechazo-{marker}@goisland.test",
             PasswordHash = "hash-no-usado",
-            Role = UserRoles.Admin
+            Role = UserRoles.Tourist,
+            IsAdmin = true
         };
         Context.Users.Add(admin);
         await Context.SaveChangesAsync();
@@ -107,29 +109,81 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
-    public async Task Administrator_CannotApplyForHostProfile()
+    public async Task Administrator_CanApplyForHostProfileAndKeepsAdminPermission()
     {
         var hostService = GetRequiredService<IHostService>();
         var marker = Guid.NewGuid().ToString("N");
         var admin = new User
         {
-            FullName = "Admin Sin Solicitud",
+            FullName = "Admin Anfitrion",
             Email = $"admin-apply-{marker}@goisland.test",
             PasswordHash = "hash-no-usado",
-            Role = UserRoles.Admin
+            Role = UserRoles.Tourist,
+            IsAdmin = true
+        };
+        var reviewer = new User
+        {
+            FullName = "Admin Revisor",
+            Email = $"admin-revisor-{marker}@goisland.test",
+            PasswordHash = "hash-no-usado",
+            Role = UserRoles.Tourist,
+            IsAdmin = true
+        };
+        Context.Users.AddRange(admin, reviewer);
+        await Context.SaveChangesAsync();
+
+        var application = await hostService.ApplyAsync(admin.Id, new HostApplicationRequest
+        {
+            DisplayName = "Admin anfitrion",
+            Description = "Administrar no impide participar como anfitrion en la plataforma.",
+            PhoneNumber = "+1 809 555 0177"
+        });
+        Assert.Equal(HostOperationStatus.Success, application.Status);
+
+        var approved = await hostService.ReviewAsync(
+            application.Profile!.Id,
+            reviewer.Id,
+            HostReviewAction.Approve,
+            null);
+        Assert.Equal(HostOperationStatus.Success, approved.Status);
+
+        var stored = await Context.Users.FindAsync(admin.Id);
+        Assert.Equal(UserRoles.Host, stored!.Role);
+        Assert.True(stored.IsAdmin);
+    }
+
+    [Fact]
+    public async Task Administrator_CannotReviewOwnHostApplication()
+    {
+        var hostService = GetRequiredService<IHostService>();
+        var marker = Guid.NewGuid().ToString("N");
+        var admin = new User
+        {
+            FullName = "Admin Autorevision",
+            Email = $"admin-autorevision-{marker}@goisland.test",
+            PasswordHash = "hash-no-usado",
+            Role = UserRoles.Tourist,
+            IsAdmin = true
         };
         Context.Users.Add(admin);
         await Context.SaveChangesAsync();
 
-        var result = await hostService.ApplyAsync(admin.Id, new HostApplicationRequest
+        var application = await hostService.ApplyAsync(admin.Id, new HostApplicationRequest
         {
-            DisplayName = "Admin no anfitrion",
-            Description = "Esta solicitud debe rechazarse por la regla de separacion de roles.",
-            PhoneNumber = "+1 809 555 0177"
+            DisplayName = "Admin autorevision",
+            Description = "La solicitud de quien administra debe revisarla otra persona.",
+            PhoneNumber = "+1 809 555 0166"
         });
+        var result = await hostService.ReviewAsync(
+            application.Profile!.Id,
+            admin.Id,
+            HostReviewAction.Approve,
+            null);
 
         Assert.Equal(HostOperationStatus.Forbidden, result.Status);
-        Assert.False(await Context.HostProfiles.AnyAsync(profile => profile.UserId == admin.Id));
+        Assert.Equal(
+            HostVerificationStatuses.Pending,
+            (await Context.HostProfiles.FindAsync(application.Profile.Id))!.VerificationStatus);
     }
 
     [Fact]
@@ -167,5 +221,99 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
         Assert.Equal(2, page.TotalItems);
         Assert.Equal(2, page.TotalPages);
         Assert.Contains(marker, page.Items.Single().DisplayName);
+    }
+
+    [Fact]
+    public async Task Suspension_UnpublishesExperiencesAndClosesFutureSchedulesWithoutCancellingReservations()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = new User
+        {
+            FullName = "Anfitrión suspendido",
+            Email = $"suspended-host-{marker}@goisland.test",
+            PasswordHash = "hash-integracion",
+            Role = UserRoles.Host
+        };
+        var tourist = new User
+        {
+            FullName = "Turista con reserva",
+            Email = $"suspended-tourist-{marker}@goisland.test",
+            PasswordHash = "hash-integracion",
+            Role = UserRoles.Tourist
+        };
+        var admin = new User
+        {
+            FullName = "Admin suspensión",
+            Email = $"suspended-admin-{marker}@goisland.test",
+            PasswordHash = "hash-integracion",
+            Role = UserRoles.Tourist,
+            IsAdmin = true
+        };
+        Context.Users.AddRange(host, tourist, admin);
+        await Context.SaveChangesAsync();
+        var profile = new HostProfile
+        {
+            UserId = host.Id,
+            DisplayName = host.FullName,
+            Description = "Perfil aprobado antes de la suspensión.",
+            PhoneNumber = "+1 809 555 0123",
+            VerificationStatus = HostVerificationStatuses.Approved
+        };
+        var experience = new Experience
+        {
+            HostId = host.Id,
+            Title = $"Experiencia suspendida {marker}",
+            Description = "Experiencia publicada antes de suspender al anfitrión.",
+            Location = "Santo Domingo",
+            Category = "Cultura",
+            Price = 50m,
+            Capacity = 8,
+            AvailableSpots = 7,
+            IsApproved = true,
+            ApprovalStatus = ExperienceApprovalStatuses.Approved
+        };
+        Context.HostProfiles.Add(profile);
+        Context.Experiences.Add(experience);
+        await Context.SaveChangesAsync();
+        var schedule = new ExperienceSchedule
+        {
+            ExperienceId = experience.Id,
+            StartsAt = DateTime.UtcNow.AddDays(5),
+            EndsAt = DateTime.UtcNow.AddDays(5).AddHours(2),
+            Capacity = 8,
+            AvailableSpots = 7,
+            Status = ScheduleStatuses.Scheduled
+        };
+        Context.ExperienceSchedules.Add(schedule);
+        await Context.SaveChangesAsync();
+        var reservation = new Reservation
+        {
+            UserId = tourist.Id,
+            ExperienceId = experience.Id,
+            ScheduleId = schedule.Id,
+            Quantity = 1,
+            Status = ReservationStatuses.Confirmed,
+            TotalAmount = 50m
+        };
+        Context.Reservations.Add(reservation);
+        await Context.SaveChangesAsync();
+
+        var result = await GetRequiredService<IHostService>().ReviewAsync(
+            profile.Id,
+            admin.Id,
+            HostReviewAction.Suspend,
+            "Incumplimiento revisado por administración.");
+
+        Context.ChangeTracker.Clear();
+        Assert.Equal(HostOperationStatus.Success, result.Status);
+        Assert.Equal(HostVerificationStatuses.Suspended,
+            await Context.HostProfiles.Where(item => item.Id == profile.Id).Select(item => item.VerificationStatus).SingleAsync());
+        Assert.False(await Context.Experiences.Where(item => item.Id == experience.Id).Select(item => item.IsApproved).SingleAsync());
+        Assert.Equal(ExperienceApprovalStatuses.Suspended,
+            await Context.Experiences.Where(item => item.Id == experience.Id).Select(item => item.ApprovalStatus).SingleAsync());
+        Assert.Equal(ScheduleStatuses.Closed,
+            await Context.ExperienceSchedules.Where(item => item.Id == schedule.Id).Select(item => item.Status).SingleAsync());
+        Assert.Equal(ReservationStatuses.Confirmed,
+            await Context.Reservations.Where(item => item.Id == reservation.Id).Select(item => item.Status).SingleAsync());
     }
 }

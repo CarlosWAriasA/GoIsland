@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export const ProtectedRoute = () => {
-  const { isAuthenticated, isLoading, sessionExpired } = useAuth();
+  const { isAuthenticated, isLoading, sessionExpired, signedOut } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -15,6 +15,12 @@ export const ProtectedRoute = () => {
   }
 
   if (!isAuthenticated) {
+    // Quien cierra sesión ya sabe por qué sale de la página: no hay nada que avisarle ni a
+    // dónde devolverlo cuando vuelva a entrar.
+    if (signedOut) {
+      return <Navigate to="/login" replace state={{ loggedOut: true }} />;
+    }
+
     const from = `${location.pathname}${location.search}${location.hash}`;
     return (
       <Navigate

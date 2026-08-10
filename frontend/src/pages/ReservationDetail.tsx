@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ArrowLeft, CalendarDays, CreditCard, MapPin, MapPinned, ReceiptText, ShieldCheck, TicketCheck, UsersRound } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
@@ -24,8 +25,11 @@ import { getPaymentStatusLabel, getPaymentStatusTone } from '../utils/paymentSta
 import { getReservationStatusLabel, getReservationStatusTone } from '../utils/reservationStatus';
 import { getChangeRequestStatusLabel, getChangeRequestTypeLabel } from '../utils/reservationChangeRequestStatus';
 import { buildGoogleMapsUrl, getReturnPath } from '../utils/navigation';
-import { getMinDateTimeLocal, isoToDateTimeLocalValue } from '../utils/dateTimeLocal';
+import {
+  BOOKING_LEAD_MINUTES, DEFAULT_TIME_ZONE, getMinDateTimeLocal, isWithinBookingWindow, isoToDateTimeLocalValue,
+} from '../utils/dateTimeLocal';
 import { reviewService } from '../services/reviewService';
+import { experienceKeys } from '../queries/queryKeys';
 import type { ExperienceSchedule, Payment, PaymentCheckout, Reservation, Review } from '../types';
 
 const formatPrice = (price: number, currency = 'USD') => price === 0
@@ -64,6 +68,7 @@ export const ReservationDetail = () => {
   const [retryCount, setRetryCount] = useState(0);
   const requestKey = `${parsedId}::${retryCount}`;
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [result, setResult] = useState<ReservationDetailResult | null>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [newStartsAtLocal, setNewStartsAtLocal] = useState('');
@@ -72,7 +77,9 @@ export const ReservationDetail = () => {
   const [pendingConfirmation, setPendingConfirmation] = useState<'cancel' | 'deleteReview' | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const [refundReason, setRefundReason] = useState('');
+  const [refundToConfirm, setRefundToConfirm] = useState<Payment | null>(null);
   const [cancelRequestReason, setCancelRequestReason] = useState('');
   const [rescheduleRequestReason, setRescheduleRequestReason] = useState('');
   const [rating, setRating] = useState('5');
@@ -81,6 +88,7 @@ export const ReservationDetail = () => {
   const [awaitingPaymentId, setAwaitingPaymentId] = useState<number | null>(null);
   const loading = isValidId && result?.requestKey !== requestKey;
   const currentResult = result?.requestKey === requestKey ? result : null;
+  const experienceTimeZone = currentResult?.reservation?.experienceTimeZoneId || DEFAULT_TIME_ZONE;
   const created = location.state?.created === true;
   const focusEdit = location.state?.focusEdit === true;
   const editSectionRef = useRef<HTMLDivElement | null>(null);
@@ -104,27 +112,37 @@ export const ReservationDetail = () => {
     const controller = new AbortController();
     reservationService.getById(parsedId, controller.signal)
       .then(async (reservation) => {
-        let schedules: ExperienceSchedule[] = [];
-        if (reservation.status === 'PendingPayment' || reservation.status === 'Confirmed') {
-          schedules = await experienceService.getAvailability(
-            reservation.experienceId,
-            undefined,
-            controller.signal,
-          );
+        const availabilityPromise = reservation.status === 'PendingPayment' || reservation.status === 'Confirmed'
+          ? experienceService.getAvailability(reservation.experienceId, undefined, controller.signal)
+          : Promise.resolve([] as ExperienceSchedule[]);
+        const reviewsPromise = reservation.status === 'Completed'
+          ? reviewService.forExperience(reservation.experienceId, controller.signal, reservation.id)
+          : Promise.resolve(null);
+        const [availabilityResult, paymentsResult, reviewsResult] = await Promise.allSettled([
+          availabilityPromise,
+          paymentService.getForReservation(parsedId, controller.signal),
+          reviewsPromise,
+        ] as const);
+        if (controller.signal.aborted) return;
+        const schedules = availabilityResult.status === 'fulfilled' ? availabilityResult.value : [];
+        const payments = paymentsResult.status === 'fulfilled' ? paymentsResult.value : [];
+        const reviews = reviewsResult.status === 'fulfilled' ? reviewsResult.value : null;
+        const secondaryFailure = [availabilityResult, paymentsResult, reviewsResult]
+          .find((candidate) => candidate.status === 'rejected');
+        if (secondaryFailure?.status === 'rejected') {
+          setActionError(toApiError(
+            secondaryFailure.reason,
+            'Parte de la información no está disponible. Puedes intentar actualizar la página.',
+          ).message);
         }
-        const payments = await paymentService.getForReservation(parsedId, controller.signal);
-        const reviews = reservation.status === 'Completed'
-          ? await reviewService.forExperience(
-            reservation.experienceId,
-            controller.signal,
-            reservation.id,
-          )
-          : null;
         const review = reviews?.items.find((item) => item.reservationId === reservation.id) ?? null;
         if (!controller.signal.aborted) {
           setResult({ requestKey, reservation, schedules, payments, review, error: null, notFound: false });
           setSelectedScheduleId(String(schedules.find((item) => item.id !== reservation.scheduleId)?.id ?? ''));
-          setNewStartsAtLocal(isoToDateTimeLocalValue(reservation.startsAt));
+          setNewStartsAtLocal(isoToDateTimeLocalValue(
+            reservation.startsAt,
+            reservation.experienceTimeZoneId || DEFAULT_TIME_ZONE,
+          ));
           setNewQuantity(String(reservation.quantity));
           setRating(String(review?.rating ?? 5));
           setReviewComment(review?.comment ?? '');
@@ -160,18 +178,24 @@ export const ReservationDetail = () => {
         if (payment.status !== 'Pending') {
           setAwaitingPaymentId(null);
           setStripeCheckout(null);
-          setActionMessage(payment.status === 'Paid'
-            ? 'Pago confirmado. Tu reserva está lista.'
-            : 'El pago no pudo completarse. Puedes intentarlo nuevamente.');
+          setPaymentNotice(null);
+          if (payment.status === 'Paid') setActionMessage('Pago confirmado. Tu reserva está lista.');
+          else setActionError('El pago no pudo completarse. Puedes intentarlo nuevamente.');
           setRetryCount((current) => current + 1);
           return;
         }
         attempts += 1;
         if (attempts < 20) timer = setTimeout(() => void poll(), 1500);
-        else setActionMessage('Seguimos verificando el pago. Puedes actualizar esta página en unos momentos.');
+        else {
+          setAwaitingPaymentId(null);
+          setPaymentNotice('El pago sigue pendiente. Puedes volver a comprobarlo desde esta sección.');
+        }
       } catch (requestError: unknown) {
         if (!axios.isCancel(requestError)) {
           setActionError(toApiError(requestError, 'No pudimos verificar el pago.').message);
+          attempts += 1;
+          if (attempts < 20) timer = setTimeout(() => void poll(), 2500);
+          else setAwaitingPaymentId(null);
         }
       }
     };
@@ -263,6 +287,10 @@ export const ReservationDetail = () => {
   const rescheduleSelfGuided = async () => {
     const parsedQuantity = Number(newQuantity);
     if (!newStartsAtLocal || !Number.isInteger(parsedQuantity) || parsedQuantity < 1) return;
+    if (!isWithinBookingWindow(newStartsAtLocal, experienceTimeZone)) {
+      setActionError(`Agenda con al menos ${BOOKING_LEAD_MINUTES} minutos de anticipación y hasta 12 meses en el futuro.`);
+      return;
+    }
     setBusyAction('reschedule');
     setActionError(null);
     try {
@@ -283,8 +311,10 @@ export const ReservationDetail = () => {
     try {
       await execute();
       setActionMessage(message);
+      return true;
     } catch (error: unknown) {
       setActionError(toApiError(error, 'No fue posible procesar el pago.').message);
+      return false;
     } finally {
       setRetryCount((current) => current + 1);
       setBusyAction(null);
@@ -295,6 +325,7 @@ export const ReservationDetail = () => {
     setBusyAction('pay');
     setActionError(null);
     setActionMessage(null);
+    setPaymentNotice(null);
     try {
       const pending = currentResult?.payments[0]?.status === 'Pending'
         ? currentResult.payments[0]
@@ -328,17 +359,30 @@ export const ReservationDetail = () => {
     }
   };
 
-  const refundPayment = (paymentId: number) => {
+  const requestRefund = (payment: Payment) => {
     const reason = refundReason.trim();
     if (reason.length < 3) {
       setActionError('Indica el motivo del reembolso (mínimo 3 caracteres).');
       return;
     }
-    void runPaymentAction(
+    setActionError(null);
+    setRefundToConfirm(payment);
+  };
+
+  const refundPayment = async (paymentId: number) => {
+    const succeeded = await runPaymentAction(
       'refund',
-      () => paymentService.refund(paymentId, reason),
+      () => paymentService.refund(paymentId, refundReason.trim()),
       'El reembolso quedó registrado y la reserva pasó a estado reembolsado.',
     );
+    if (succeeded) setRefundToConfirm(null);
+  };
+
+  const refreshExperienceReviews = (experienceId: number) => {
+    void queryClient.invalidateQueries({ queryKey: experienceKeys.reviews(experienceId) });
+    void queryClient.invalidateQueries({ queryKey: experienceKeys.details() });
+    void queryClient.invalidateQueries({ queryKey: experienceKeys.searches() });
+    void queryClient.invalidateQueries({ queryKey: experienceKeys.featured() });
   };
 
   const saveReview = async () => {
@@ -352,6 +396,7 @@ export const ReservationDetail = () => {
         ? await reviewService.update(currentResult.review.id, input)
         : await reviewService.create(parsedId, input);
       setResult((current) => current?.requestKey === requestKey ? { ...current, review } : current);
+      refreshExperienceReviews(review.experienceId);
       setActionMessage('Tu reseña verificada fue guardada.');
     } catch (requestError: unknown) {
       setActionError(toApiError(requestError, 'No fue posible guardar la reseña.').message);
@@ -360,11 +405,13 @@ export const ReservationDetail = () => {
 
   const deleteReview = async () => {
     if (!currentResult?.review) return;
+    const { id: reviewId, experienceId } = currentResult.review;
     setBusyAction('review');
     try {
-      await reviewService.remove(currentResult.review.id);
+      await reviewService.remove(reviewId);
       setResult((current) => current?.requestKey === requestKey ? { ...current, review: null } : current);
       setReviewComment('');
+      refreshExperienceReviews(experienceId);
       setActionMessage('Tu reseña fue eliminada.');
     } catch (requestError: unknown) {
       setActionError(toApiError(requestError, 'No fue posible eliminar la reseña.').message);
@@ -416,11 +463,10 @@ export const ReservationDetail = () => {
   const isSelfGuided = reservation.schedulingMode === 'SelfGuided';
   const canRescheduleSelfGuided = isSelfGuided && new Date(reservation.startsAt) > new Date();
   const isOwner = user?.id === reservation.userId;
-  const isAdmin = user?.role === 'Admin';
+  const isAdmin = user?.isAdmin ?? false;
   const latestPayment = payments[0] ?? null;
   const currentPayment = stripeCheckout?.payment ?? latestPayment;
   const showPaymentSection = (isOwner || isAdmin)
-    && reservation.status !== 'Expired'
     && (currentPayment !== null || reservation.status === 'PendingPayment');
 
   return (
@@ -434,6 +480,7 @@ export const ReservationDetail = () => {
       />
       <ToastFeedback message={actionMessage} tone="success" />
       <ToastFeedback message={actionError} tone="error" />
+      <ToastFeedback message={paymentNotice} tone="info" />
       {reservation.status === 'PendingPayment' && reservation.expiresAt && (
         <ReservationExpirationCountdown
           expiresAt={reservation.expiresAt}
@@ -519,7 +566,7 @@ export const ReservationDetail = () => {
             </>
           )}
 
-          {currentPayment?.status === 'Pending' && (
+          {currentPayment?.status === 'Pending' && reservation.status === 'PendingPayment' && (
             <>
               <dl className="reservation-payment__breakdown">
                 <div><dt>Subtotal</dt><dd>{formatPrice(currentPayment.subtotalAmount, currentPayment.currency)}</dd></div>
@@ -540,7 +587,7 @@ export const ReservationDetail = () => {
                   onSubmitted={() => {
                     setStripeCheckout(null);
                     setAwaitingPaymentId(currentPayment.id);
-                    setActionMessage('Estamos confirmando tu pago.');
+                    setPaymentNotice('Estamos confirmando tu pago.');
                   }}
                 />
               ) : isOwner && awaitingPaymentId !== currentPayment.id && (
@@ -567,9 +614,37 @@ export const ReservationDetail = () => {
                       onChange={(event) => setRefundReason(event.target.value)}
                       required
                     />
-                    <Button variant="danger" onClick={() => refundPayment(currentPayment.id)}
+                    <Button variant="danger" onClick={() => requestRefund(currentPayment)}
                       isLoading={busyAction === 'refund'} disabled={busyAction !== null}>
-                      <ShieldCheck size={18} /> Reembolsar pago
+                      <ShieldCheck size={18} /> Confirmar reembolso
+                    </Button>
+                  </div>
+                  <span className="field-hint">Mínimo 3 caracteres.</span>
+                </div>
+              )}
+            </>
+          )}
+
+          {currentPayment?.status === 'RefundPending' && (
+            <>
+              <Alert tone="info">
+                El reembolso está en proceso. Te avisaremos cuando se complete.
+              </Alert>
+              <dl className="reservation-payment__breakdown">
+                <div><dt>Monto solicitado</dt><dd>{formatPrice(currentPayment.totalAmount, currentPayment.currency)}</dd></div>
+              </dl>
+              {isAdmin && currentPayment.failureCode && (
+                <div className="reservation-payment__refund">
+                  <div className="reservation-payment__refund-row">
+                    <Input
+                      label="Motivo del reintento"
+                      value={refundReason}
+                      onChange={(event) => setRefundReason(event.target.value)}
+                      required
+                    />
+                    <Button variant="danger" onClick={() => requestRefund(currentPayment)}
+                      isLoading={busyAction === 'refund'} disabled={busyAction !== null}>
+                      <ShieldCheck size={18} /> Confirmar reintento
                     </Button>
                   </div>
                   <span className="field-hint">Mínimo 3 caracteres.</span>
@@ -620,7 +695,8 @@ export const ReservationDetail = () => {
                 <Input
                   label="Nueva fecha y hora"
                   type="datetime-local"
-                  min={getMinDateTimeLocal()}
+                  min={getMinDateTimeLocal(experienceTimeZone)}
+                  hint={`Hora local de la experiencia. Agenda con al menos ${BOOKING_LEAD_MINUTES} minutos de anticipación.`}
                   value={newStartsAtLocal}
                   onChange={(event) => setNewStartsAtLocal(event.target.value)}
                   required
@@ -729,6 +805,17 @@ export const ReservationDetail = () => {
         isConfirming={busyAction !== null}
         onClose={() => setPendingConfirmation(null)}
         onConfirm={() => void confirmPendingAction()}
+      />
+      <ConfirmDialog
+        open={refundToConfirm !== null}
+        title={refundToConfirm?.status === 'RefundPending' ? 'Reintentar reembolso' : 'Confirmar reembolso'}
+        message={refundToConfirm
+          ? `Se solicitará el reembolso de ${formatPrice(refundToConfirm.totalAmount, refundToConfirm.currency)}. Motivo: ${refundReason.trim()}`
+          : ''}
+        confirmLabel={refundToConfirm?.status === 'RefundPending' ? 'Reintentar reembolso' : 'Reembolsar pago'}
+        isConfirming={busyAction === 'refund'}
+        onClose={() => setRefundToConfirm(null)}
+        onConfirm={() => { if (refundToConfirm) void refundPayment(refundToConfirm.id); }}
       />
     </div>
   );

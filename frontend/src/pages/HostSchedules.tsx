@@ -150,6 +150,7 @@ export const HostSchedules = () => {
       hostExperienceService.getSchedules(experienceId, controller.signal),
     ])
       .then(([loadedExperience, loadedSchedules]) => {
+        setError(null);
         setExperience(loadedExperience);
         setSchedules(loadedSchedules);
         setBatchCapacity(loadedExperience.isUnlimitedCapacity ? 1 : loadedExperience.capacity);
@@ -479,7 +480,11 @@ export const HostSchedules = () => {
             <span className="visually-hidden">Cargando horarios…</span>
           </div>
         ) : error && schedules.length === 0
-        ? <ErrorState description={error} onRetry={() => { setLoading(true); setRetry((value) => value + 1); }} />
+        ? <ErrorState description={error} onRetry={() => {
+          setError(null);
+          setLoading(true);
+          setRetry((value) => value + 1);
+        }} />
         : schedules.length === 0 ? <EmptyState title="Sin horarios" description="Publica la primera fecha disponible para habilitar reservas." />
           : <div className="management-list">{schedules.map((schedule) => (
             <article className="management-card surface-panel" key={schedule.id}>

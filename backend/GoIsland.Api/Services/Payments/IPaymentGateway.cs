@@ -17,6 +17,10 @@ public interface IPaymentGateway
         GatewayRefundRequest request,
         CancellationToken cancellationToken = default);
 
+    Task<GatewayCancellationResult> CancelPaymentAsync(
+        string providerPaymentId,
+        CancellationToken cancellationToken = default);
+
     Task<GatewayPaymentSessionResult> GetPaymentSessionAsync(
         string providerPaymentId,
         CancellationToken cancellationToken = default);
@@ -49,6 +53,12 @@ public record GatewayRefundRequest(
 public record GatewayRefundResult(
     bool Accepted,
     string? ProviderRefundId,
+    string? FailureCode,
+    bool Completed = true);
+
+public record GatewayCancellationResult(
+    bool Cancelled,
+    bool Succeeded,
     string? FailureCode);
 
 public enum GatewayWebhookEventKind
@@ -56,7 +66,8 @@ public enum GatewayWebhookEventKind
     PaymentSucceeded,
     PaymentFailed,
     PaymentCanceled,
-    PaymentRefunded
+    PaymentRefunded,
+    RefundFailed
 }
 
 public record GatewayWebhookEvent(
@@ -65,4 +76,6 @@ public record GatewayWebhookEvent(
     string ProviderPaymentId,
     GatewayWebhookEventKind Kind,
     string? FailureCode = null,
-    string? ProviderRefundId = null);
+    string? ProviderRefundId = null,
+    decimal? RefundedAmount = null,
+    bool IsFullRefund = true);

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Alert from './Alert';
 import Button from './Button';
@@ -10,9 +10,13 @@ import SelectField from './SelectField';
 import { useAuth } from '../hooks/useAuth';
 import { getFieldError, toApiError } from '../services/apiError';
 import { reservationService } from '../services/reservationService';
+import { experienceService } from '../services/experienceService';
 import { experienceKeys, reservationKeys } from '../queries/queryKeys';
-import { getDefaultDateTimeLocal, getMinDateTimeLocal } from '../utils/dateTimeLocal';
+import {
+  BOOKING_LEAD_MINUTES, DEFAULT_TIME_ZONE, getDefaultDateTimeLocal, getMinDateTimeLocal, isWithinBookingWindow,
+} from '../utils/dateTimeLocal';
 import type { Experience, ExperienceSchedule } from '../types';
+import { isValidReservationQuantity } from '../utils/reservationQuantity';
 
 interface ReservationDialogProps {
   experience: Experience;
@@ -20,9 +24,15 @@ interface ReservationDialogProps {
   onClose: () => void;
 }
 
-const formatPrice = (price: number) => price === 0
+interface ReservationFieldErrors {
+  schedule?: string;
+  startsAt?: string;
+  quantity?: string;
+}
+
+const formatPrice = (price: number, currency = 'USD') => price === 0
   ? 'Gratis'
-  : new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'USD' }).format(price);
+  : new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(price);
 
 const formatSchedule = (startsAt: string, endsAt: string) => {
   const start = new Date(startsAt);
@@ -38,6 +48,7 @@ export const ReservationDialog = ({
   experience, schedules, onClose,
 }: ReservationDialogProps) => {
   const isSelfGuided = experience.schedulingMode === 'SelfGuided';
+  const timeZone = experience.timeZoneId || DEFAULT_TIME_ZONE;
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,9 +56,9 @@ export const ReservationDialog = ({
   const requestInFlight = useRef(false);
 
   const [scheduleId, setScheduleId] = useState(String(schedules[0]?.id ?? ''));
-  const [startsAtLocal, setStartsAtLocal] = useState(getDefaultDateTimeLocal);
+  const [startsAtLocal, setStartsAtLocal] = useState(() => getDefaultDateTimeLocal(timeZone));
   const [quantity, setQuantity] = useState('1');
-  const [fieldError, setFieldError] = useState<string>();
+  const [fieldErrors, setFieldErrors] = useState<ReservationFieldErrors>({});
   const [requestError, setRequestError] = useState<string | null>(null);
 
   const createReservation = useMutation({
@@ -76,43 +87,52 @@ export const ReservationDialog = ({
   const isSubmitting = createReservation.isPending || createSelfScheduledReservation.isPending;
   const selectedSchedule = schedules.find((schedule) => schedule.id === Number(scheduleId));
   const parsedQuantity = Number(quantity);
-  const total = Number.isInteger(parsedQuantity) && parsedQuantity > 0
-    ? experience.price * parsedQuantity : 0;
+  const hasValidQuantity = isValidReservationQuantity(parsedQuantity);
+  const quoteQuery = useQuery({
+    queryKey: experienceKeys.paymentQuote(experience.id, parsedQuantity),
+    queryFn: ({ signal }) => experienceService.getPaymentQuote(experience.id, parsedQuantity, signal),
+    enabled: experience.price > 0 && hasValidQuantity,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+  const currency = quoteQuery.data?.currency ?? 'USD';
+  const subtotal = experience.price === 0
+    ? (hasValidQuantity ? experience.price * parsedQuantity : 0)
+    : quoteQuery.data?.subtotalAmount;
+  const serviceFee = quoteQuery.data?.serviceFeeAmount;
+  const total = experience.price === 0 ? 0 : quoteQuery.data?.totalAmount;
 
   const validate = () => {
-    if (!Number.isInteger(parsedQuantity) || parsedQuantity < 1) {
-      setFieldError('La cantidad debe ser mayor que cero.');
-      return false;
+    const errors: ReservationFieldErrors = {};
+    if (!hasValidQuantity) {
+      errors.quantity = 'La cantidad debe estar entre 1 y 100.';
     }
 
     if (isSelfGuided) {
       if (!startsAtLocal) {
-        setFieldError('Selecciona una fecha y hora para tu visita.');
-        return false;
-      }
-      const selectedDate = new Date(startsAtLocal);
-      if (isNaN(selectedDate.getTime()) || selectedDate <= new Date()) {
-        setFieldError('La fecha y hora de la visita debe ser en el futuro.');
-        return false;
+        errors.startsAt = 'Selecciona una fecha y hora para tu visita.';
+      } else if (!isWithinBookingWindow(startsAtLocal, timeZone)) {
+        errors.startsAt = `Agenda con al menos ${BOOKING_LEAD_MINUTES} minutos de anticipación y hasta 12 meses en el futuro.`;
       }
     } else {
       if (!selectedSchedule) {
-        setFieldError('Selecciona un horario disponible.');
-        return false;
-      }
-      if (!selectedSchedule.isUnlimitedCapacity && parsedQuantity > selectedSchedule.availableSpots) {
-        setFieldError('El horario no tiene suficientes cupos disponibles.');
-        return false;
+        errors.schedule = 'Selecciona un horario disponible.';
+      } else if (!selectedSchedule.isUnlimitedCapacity && parsedQuantity > selectedSchedule.availableSpots) {
+        errors.quantity = 'El horario no tiene suficientes cupos disponibles.';
       }
     }
 
-    setFieldError(undefined);
-    return true;
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (requestInFlight.current || !validate()) return;
+    if (experience.price > 0 && !quoteQuery.data) {
+      setRequestError('No pudimos calcular el total. Inténtalo nuevamente.');
+      return;
+    }
     if (!isAuthenticated) {
       navigate('/login', { state: { from: location.pathname, message: isSelfGuided ? 'Inicia sesión para agendar tu visita.' : 'Inicia sesión para reservar.' } });
       return;
@@ -138,7 +158,11 @@ export const ReservationDialog = ({
       }
     } catch (error: unknown) {
       const apiError = toApiError(error, isSelfGuided ? 'No fue posible agendar la visita.' : 'No fue posible crear la reserva.');
-      setFieldError(getFieldError(apiError, 'StartsAtLocal') || getFieldError(apiError, 'Quantity') || getFieldError(apiError, 'ScheduleId'));
+      setFieldErrors({
+        startsAt: getFieldError(apiError, 'StartsAtLocal'),
+        quantity: getFieldError(apiError, 'Quantity'),
+        schedule: getFieldError(apiError, 'ScheduleId'),
+      });
       setRequestError(apiError.message);
       if (apiError.status === 409 && !isSelfGuided) {
         await queryClient.refetchQueries({
@@ -157,12 +181,19 @@ export const ReservationDialog = ({
       footer={(
         <>
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Volver</Button>
-          <Button type="submit" variant="primary" form="reservation-form" isLoading={isSubmitting} disabled={!isSelfGuided && !selectedSchedule}>
+          <Button
+            type="submit"
+            variant="primary"
+            form="reservation-form"
+            isLoading={isSubmitting}
+            disabled={(!isSelfGuided && !selectedSchedule)
+              || (experience.price > 0 && (!quoteQuery.data || quoteQuery.isFetching))}
+          >
             {isSelfGuided
               ? 'Confirmar visita'
               : experience.price === 0
                 ? 'Confirmar reserva'
-                : 'Continuar al pago'}
+                : 'Crear reserva'}
           </Button>
         </>
       )}
@@ -177,17 +208,18 @@ export const ReservationDialog = ({
           <Input
             label="Fecha y hora de visita"
             type="datetime-local"
-            min={getMinDateTimeLocal()}
+            min={getMinDateTimeLocal(timeZone)}
+            hint={`Hora local de la experiencia. Agenda con al menos ${BOOKING_LEAD_MINUTES} minutos de anticipación.`}
             value={startsAtLocal}
-            onChange={(event) => { setStartsAtLocal(event.target.value); setFieldError(undefined); }}
-            error={fieldError && startsAtLocal ? undefined : fieldError}
+            onChange={(event) => { setStartsAtLocal(event.target.value); setFieldErrors((current) => ({ ...current, startsAt: undefined })); }}
+            error={fieldErrors.startsAt}
             required
           />
         ) : (
           <SelectField
             label="Fecha y horario" value={scheduleId}
-            onChange={(event) => { setScheduleId(event.target.value); setFieldError(undefined); }}
-            error={!selectedSchedule ? fieldError : undefined}
+            onChange={(event) => { setScheduleId(event.target.value); setFieldErrors((current) => ({ ...current, schedule: undefined })); }}
+            error={fieldErrors.schedule}
             required
           >
             {schedules.map((schedule) => (
@@ -201,11 +233,14 @@ export const ReservationDialog = ({
         <Input
           label="Cantidad de personas" type="number" min="1"
           max={!isSelfGuided && selectedSchedule && !selectedSchedule.isUnlimitedCapacity
-            ? selectedSchedule.availableSpots
-            : undefined}
+            ? Math.min(100, selectedSchedule.availableSpots)
+            : 100}
           step="1" inputMode="numeric"
-          value={quantity} onChange={(event) => setQuantity(event.target.value)}
-          error={!isSelfGuided && selectedSchedule ? fieldError : isSelfGuided ? fieldError : undefined}
+          value={quantity} onChange={(event) => {
+            setQuantity(event.target.value);
+            setFieldErrors((current) => ({ ...current, quantity: undefined }));
+          }}
+          error={fieldErrors.quantity}
           hint={isSelfGuided
             ? 'Esta experiencia autoguiada no tiene límite de cupos'
             : selectedSchedule
@@ -218,10 +253,29 @@ export const ReservationDialog = ({
         />
 
         <dl className="reservation-form__summary">
-          <div><dt>Precio por persona</dt><dd>{formatPrice(experience.price)}</dd></div>
+          <div><dt>Precio por persona</dt><dd>{formatPrice(experience.price, currency)}</dd></div>
           <div><dt>Cantidad</dt><dd>{parsedQuantity > 0 ? parsedQuantity : '—'}</dd></div>
-          <div className="reservation-form__total"><dt>Total</dt><dd>{formatPrice(total)}</dd></div>
+          <div><dt>Subtotal</dt><dd>{subtotal === undefined ? 'Calculando…' : formatPrice(subtotal, currency)}</dd></div>
+          {experience.price > 0 && (
+            <div><dt>Cargo por servicio</dt><dd>{serviceFee === undefined ? 'Calculando…' : formatPrice(serviceFee, currency)}</dd></div>
+          )}
+          <div className="reservation-form__total">
+            <dt>Total a pagar</dt><dd>{total === undefined ? 'Calculando…' : formatPrice(total, currency)}</dd>
+          </div>
         </dl>
+
+        {experience.price > 0 && quoteQuery.isError && (
+          <Alert tone="error">
+            No pudimos calcular el total.{' '}
+            <button type="button" className="link-button" onClick={() => void quoteQuery.refetch()}>
+              Reintentar
+            </button>
+          </Alert>
+        )}
+
+        {!isSelfGuided && experience.price > 0 && (
+          <Alert tone="info">Crearás la reserva y podrás completar el pago seguro desde el siguiente paso.</Alert>
+        )}
 
         {!isSelfGuided && experience.price === 0 && (
           <Alert tone="info">Esta experiencia es gratis: tu reserva queda confirmada de inmediato.</Alert>

@@ -1,6 +1,8 @@
 import {
   CalendarDays,
   ChevronDown,
+  Eye,
+  EyeOff,
   ImagePlus,
   Infinity as InfinityIcon,
   LocateFixed,
@@ -76,6 +78,10 @@ const validateDraft = (form: ManagedExperienceRequest): ApiError | null => {
   if (title.length < 3) {
     const message = 'El título debe tener al menos 3 caracteres.';
     return { message, errors: { Title: [message] } };
+  }
+  if (form.schedulingMode === 'SelfGuided' && form.price !== 0) {
+    const message = 'Las experiencias con fechas libres deben ser gratuitas.';
+    return { message, errors: { Price: [message], SchedulingMode: [message] } };
   }
   return null;
 };
@@ -369,6 +375,7 @@ export const HostExperiences = () => {
   const [showForm, setShowForm] = useState(false);
   const [openItineraryIndex, setOpenItineraryIndex] = useState<number | null>(null);
   const [experienceToDelete, setExperienceToDelete] = useState<ManagedExperience | null>(null);
+  const [experienceToHide, setExperienceToHide] = useState<ManagedExperience | null>(null);
   const [existingImages, setExistingImages] = useState<ExperienceImage[]>([]);
   const [removedImageIds, setRemovedImageIds] = useState<number[]>([]);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -517,13 +524,17 @@ export const HostExperiences = () => {
     setShowForm(true);
   };
 
-  const closeForm = () => {
-    if (submitting) return;
+  const finishClosingForm = () => {
     setShowForm(false);
     setEditingId(null);
     setOpenItineraryIndex(null);
     setFormError(null);
     resetImages();
+  };
+
+  const closeForm = () => {
+    if (submitting) return;
+    finishClosingForm();
   };
 
   const addItineraryStep = () => {
@@ -635,7 +646,7 @@ export const HostExperiences = () => {
         ? 'La experiencia volvió a borrador después de guardar los cambios.'
         : 'La experiencia fue creada como borrador. Envíala cuando esté lista.');
       setRetryCount((current) => current + 1);
-      closeForm();
+      finishClosingForm();
     } catch (requestError: unknown) {
       const apiError = toApiError(requestError);
       if (saved) {
@@ -675,6 +686,23 @@ export const HostExperiences = () => {
       toast.error(apiError.message);
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const changeVisibility = async (experience: ManagedExperience, isHidden: boolean) => {
+    setBusyId(experience.id);
+    setError(null);
+    try {
+      const updated = await hostExperienceService.setVisibility(experience.id, isHidden);
+      setExperiences((current) => current.map((item) => item.id === updated.id ? updated : item));
+      toast.success(isHidden
+        ? 'La experiencia ya no aparece en el catálogo.'
+        : 'La experiencia volvió al catálogo.');
+    } catch (requestError: unknown) {
+      toast.error(toApiError(requestError).message);
+    } finally {
+      setBusyId(null);
+      setExperienceToHide(null);
     }
   };
 
@@ -799,6 +827,7 @@ export const HostExperiences = () => {
                 <input
                   type="checkbox"
                   checked={form.price === 0}
+                  disabled={form.schedulingMode === 'SelfGuided'}
                   onChange={(event) => setForm((current) => ({
                     ...current,
                     price: event.target.checked ? 0 : Math.max(current.price, 1),
@@ -812,12 +841,12 @@ export const HostExperiences = () => {
                 value={form.price}
                 onChange={(event) => setForm((current) => ({ ...current, price: Number(event.target.value) }))}
                 error={formError ? getFieldError(formError, 'Price') : undefined}
-                disabled={form.price === 0}
+                disabled={form.price === 0 || form.schedulingMode === 'SelfGuided'}
               />
               <SelectField
                 label="Disponibilidad"
                 hint={form.schedulingMode === 'SelfGuided'
-                  ? 'El turista elige la fecha que prefiera, sin cupo limitado.'
+                  ? 'El turista elige la fecha que prefiera. Esta modalidad es gratuita y sin cupo limitado.'
                   : 'Defines las fechas y el cupo de cada una desde el Calendario.'}
                 value={form.schedulingMode}
                 onChange={(event) => {
@@ -825,6 +854,7 @@ export const HostExperiences = () => {
                   setForm((current) => ({
                     ...current,
                     schedulingMode,
+                    price: schedulingMode === 'SelfGuided' ? 0 : current.price,
                     isUnlimitedCapacity: schedulingMode === 'SelfGuided' ? true : current.isUnlimitedCapacity,
                   }));
                 }}
@@ -982,16 +1012,6 @@ export const HostExperiences = () => {
                   exclusiveOption={ANY_LANGUAGE_OPTION}
                   onChange={(languages) => setForm((current) => ({ ...current, languages }))}
                 />
-                <SelectField
-                  label="Cancelación"
-                  value={form.cancellationPolicy}
-                  onChange={(event) => setForm((current) => ({ ...current, cancellationPolicy: event.target.value }))}
-                >
-                  <option value="">Selecciona una política</option>
-                  <option value="Flexible">Flexible</option>
-                  <option value="Moderate">Moderada</option>
-                  <option value="Strict">Estricta</option>
-                </SelectField>
                 <Input
                   label="Etiquetas"
                   hint="Separa cada etiqueta con una coma."
@@ -1166,16 +1186,19 @@ export const HostExperiences = () => {
               <div className="management-card__content">
                 <div className="management-card__header">
                   <div>
-                    <span className="management-card__reference">Experiencia #{experience.id}</span>
+                    <span className="management-card__reference">Tu experiencia</span>
                     <h2>{experience.title}</h2>
                     <p>
                       <MapPin size={16} aria-hidden="true" />
                       {experience.location ? formatLocationLabel(experience.location) : 'Lugar por definir'}
                     </p>
                   </div>
-                  <StatusBadge tone={getModerationTone(experience.approvalStatus)}>
-                    {getModerationLabel(experience.approvalStatus)}
-                  </StatusBadge>
+                  <div className="management-card__badges">
+                    <StatusBadge tone={getModerationTone(experience.approvalStatus)}>
+                      {getModerationLabel(experience.approvalStatus)}
+                    </StatusBadge>
+                    {experience.isHidden && <StatusBadge tone="neutral">Oculta</StatusBadge>}
+                  </div>
                 </div>
                 {experience.rejectionReason && (
                   <Alert tone="error"><strong>Motivo:</strong> {experience.rejectionReason}</Alert>
@@ -1187,7 +1210,7 @@ export const HostExperiences = () => {
                     <dt>Cupos</dt>
                     <dd>{experience.isUnlimitedCapacity ? 'Sin límite' : `${experience.availableSpots} de ${experience.capacity}`}</dd>
                   </div>
-                  <div><dt>Galería</dt><dd>{experience.images.length} de {MAX_IMAGES}</dd></div>
+                  <div><dt>Galería</dt><dd>{experience.images.length} {experience.images.length === 1 ? 'foto' : 'fotos'}</dd></div>
                 </dl>
                 <div className="management-actions">
                   {experience.approvalStatus === 'Approved' && experience.schedulingMode !== 'SelfGuided' && (
@@ -1205,7 +1228,26 @@ export const HostExperiences = () => {
                       <Send size={17} aria-hidden="true" />Enviar a revisión
                     </Button>
                   )}
-                  {experience.approvalStatus === 'Draft' && (
+                  {experience.approvalStatus === 'Approved' && (
+                    experience.isHidden ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => void changeVisibility(experience, false)}
+                        isLoading={busyId === experience.id}
+                      >
+                        <Eye size={17} aria-hidden="true" />Mostrar
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => setExperienceToHide(experience)}
+                        disabled={busyId === experience.id}
+                      >
+                        <EyeOff size={17} aria-hidden="true" />Ocultar
+                      </Button>
+                    )
+                  )}
+                  {!experience.hasReservations && (
                     <Button
                       variant="danger"
                       onClick={() => setExperienceToDelete(experience)}
@@ -1242,9 +1284,31 @@ export const HostExperiences = () => {
       )}
       {drawer}
       <ConfirmDialog
+        open={experienceToHide !== null}
+        title="Ocultar experiencia"
+        message={experienceToHide ? (
+          <>
+            “{experienceToHide.title}” dejará de aparecer en el catálogo y no aceptará nuevas
+            reservas. Las reservas ya confirmadas siguen en pie y puedes volver a mostrarla cuando
+            quieras.
+          </>
+        ) : ''}
+        confirmLabel="Ocultar experiencia"
+        isConfirming={busyId !== null}
+        onClose={() => setExperienceToHide(null)}
+        onConfirm={() => {
+          if (experienceToHide) void changeVisibility(experienceToHide, true);
+        }}
+      />
+      <ConfirmDialog
         open={experienceToDelete !== null}
         title="Eliminar experiencia"
-        message={experienceToDelete ? <>¿Quieres eliminar el borrador “{experienceToDelete.title}”?</> : ''}
+        message={experienceToDelete ? (
+          <>
+            ¿Quieres eliminar “{experienceToDelete.title}”? Se borran también sus fotos y horarios,
+            y no se puede deshacer.
+          </>
+        ) : ''}
         confirmLabel="Eliminar experiencia"
         isConfirming={busyId !== null}
         onClose={() => setExperienceToDelete(null)}

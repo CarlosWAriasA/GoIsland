@@ -18,5 +18,22 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'AssignmentExpression[left.type="MemberExpression"][left.property.name="innerHTML"]',
+          message: 'Construye contenido visible con nodos seguros y textContent; no asignes innerHTML.',
+        },
+        {
+          selector: 'CallExpression[callee.property.name="insertAdjacentHTML"]',
+          message: 'No insertes HTML dinámico sin un sanitizador aprobado.',
+        },
+        {
+          selector: 'JSXAttribute[name.name="dangerouslySetInnerHTML"]',
+          message: 'No renderices HTML dinámico sin un sanitizador aprobado.',
+        },
+      ],
+    },
   },
 ])

@@ -49,6 +49,7 @@ export const HostDashboard = () => {
   if (error || !dashboard) {
     return <div className="container"><ErrorState description={error || 'No pudimos cargar tu panel.'}
       onRetry={() => {
+        setError(null);
         setLoading(true);
         setRetry((current) => current + 1);
       }} /></div>;

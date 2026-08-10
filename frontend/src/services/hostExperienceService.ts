@@ -47,6 +47,13 @@ export const hostExperienceService = {
     return response.data;
   },
 
+  setVisibility: async (id: number, isHidden: boolean): Promise<ManagedExperience> => {
+    const response = await api.post<ManagedExperience>(
+      `/host/experiences/${id}/${isHidden ? 'hide' : 'unhide'}`,
+    );
+    return response.data;
+  },
+
   remove: async (id: number): Promise<void> => {
     await api.delete(`/host/experiences/${id}`);
   },

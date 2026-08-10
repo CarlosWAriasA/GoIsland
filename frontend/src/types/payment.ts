@@ -1,4 +1,4 @@
-export type PaymentStatus = 'Pending' | 'Paid' | 'Failed' | 'Refunded';
+export type PaymentStatus = 'Pending' | 'Paid' | 'Failed' | 'RefundPending' | 'Refunded';
 
 export interface Payment {
   id: number;
@@ -20,4 +20,13 @@ export interface Payment {
 export interface PaymentCheckout {
   payment: Payment;
   clientSecret: string | null;
+}
+
+export interface PaymentQuote {
+  currency: string;
+  unitPrice: number;
+  quantity: number;
+  subtotalAmount: number;
+  serviceFeeAmount: number;
+  totalAmount: number;
 }

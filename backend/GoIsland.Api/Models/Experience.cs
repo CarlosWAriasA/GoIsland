@@ -33,6 +33,9 @@ public class Experience
     public string SchedulingMode { get; set; } = ExperienceSchedulingModes.HostScheduled;
     public bool IsApproved { get; set; }
     public string ApprovalStatus { get; set; } = ExperienceApprovalStatuses.Draft;
+    // Visibilidad que controla el anfitrion, aparte de la moderacion: una experiencia oculta sale
+    // del catalogo y deja de aceptar reservas, pero conserva su historial y puede volver.
+    public bool IsHidden { get; set; }
     public string? RejectionReason { get; set; }
     public DateTime? ReviewedAt { get; set; }
     public int? ReviewedByAdminId { get; set; }

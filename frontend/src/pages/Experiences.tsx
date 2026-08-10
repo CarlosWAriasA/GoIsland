@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Filter, Search, X } from 'lucide-react';
+import { ChevronDown, Filter, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -141,6 +141,15 @@ const getPriceChipLabel = (form: SearchForm) => {
 
 type ChipKey = 'name' | 'location' | 'category' | 'price' | 'language' | 'difficulty' | 'accessible';
 
+// Ubicación, categoría y orden quedan siempre visibles; el resto vive en el panel plegable
+// para que la primera pantalla no muestre siete controles a la vez.
+const countAdvancedFilters = (form: SearchForm) => [
+  form.minPrice.trim() || form.maxPrice.trim(),
+  form.language.trim(),
+  form.difficulty,
+  form.accessible,
+].filter(Boolean).length;
+
 const SkeletonLoader = () => (
   <div className="experience-grid" aria-hidden="true">
     {[1, 2, 3, 4].map((item) => (
@@ -175,6 +184,11 @@ export const Experiences = () => {
       form: restored ?? fromUrlSearchParams(searchParams),
     };
   });
+  // Se abre solo cuando la búsqueda inicial ya trae filtros avanzados, para no esconderlos. A
+  // partir de ahí manda el usuario: los chips de abajo siguen mostrando lo que está activo.
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(
+    () => countAdvancedFilters(draft.form) > 0,
+  );
   const catalogQuery = useQuery({
     queryKey: experienceKeys.search(searchFilters),
     queryFn: ({ signal }) => experienceService.searchExperiences(searchFilters, signal),
@@ -191,6 +205,10 @@ export const Experiences = () => {
   const form = draft.source === queryString ? draft.form : urlForm;
   const loading = catalogQuery.isPending;
   const priceError = getPriceError(form);
+  const advancedFilterCount = countAdvancedFilters(form);
+  // Un precio inválido bloquea la búsqueda, así que el panel no puede quedar cerrado sobre el
+  // campo que hay que corregir.
+  const advancedOpen = showAdvancedFilters || Boolean(priceError);
   const currentPage = searchFilters.page ?? 1;
   const knownCategories = Array.from(new Set(
     queryClient
@@ -262,6 +280,7 @@ export const Experiences = () => {
 
   const clearSearch = () => {
     setDraft({ source: queryString, form: emptySearch });
+    setShowAdvancedFilters(false);
     setSearchParams(new URLSearchParams(), { replace: true });
   };
 
@@ -332,51 +351,6 @@ export const Experiences = () => {
                 <option key={category} value={category}>{category}</option>
               ))}
             </SelectField>
-            <fieldset className="experience-search__price">
-              <legend>Precio (USD)</legend>
-              <div className="experience-search__price-range">
-                <PriceField
-                  aria-label="Precio mínimo en dólares"
-                  placeholder="Mín."
-                  value={form.minPrice}
-                  onChange={(event) => updateForm('minPrice', event.target.value)}
-                  aria-invalid={priceError ? true : undefined}
-                />
-                <span className="experience-search__price-separator" aria-hidden="true">–</span>
-                <PriceField
-                  aria-label="Precio máximo en dólares"
-                  placeholder="Máx."
-                  value={form.maxPrice}
-                  onChange={(event) => updateForm('maxPrice', event.target.value)}
-                  aria-invalid={priceError ? true : undefined}
-                />
-              </div>
-            </fieldset>
-            <Input
-              label="Idioma"
-              placeholder="Ej. Español"
-              maxLength={80}
-              value={form.language}
-              onChange={(event) => updateForm('language', event.target.value)}
-            />
-            <SelectField
-              label="Dificultad"
-              value={form.difficulty}
-              onChange={(event) => updateForm('difficulty', event.target.value)}
-            >
-              <option value="">Cualquier dificultad</option>
-              <option value="Easy">Fácil</option>
-              <option value="Moderate">Moderada</option>
-              <option value="Demanding">Exigente</option>
-            </SelectField>
-            <SelectField
-              label="Accesibilidad"
-              value={form.accessible}
-              onChange={(event) => updateForm('accessible', event.target.value)}
-            >
-              <option value="">Todas las experiencias</option>
-              <option value="true">Con información de accesibilidad</option>
-            </SelectField>
             <SelectField
               label="Ordenar por"
               value={form.sort}
@@ -389,6 +363,79 @@ export const Experiences = () => {
               <option value="rating">Mejor valoración</option>
             </SelectField>
           </div>
+
+          <button
+            type="button"
+            className="experience-search__toggle"
+            onClick={() => setShowAdvancedFilters((current) => !current)}
+            aria-expanded={advancedOpen}
+            aria-controls="experience-advanced-filters"
+          >
+            <SlidersHorizontal size={16} aria-hidden="true" />
+            <span>{advancedOpen ? 'Menos filtros' : 'Más filtros'}</span>
+            {!advancedOpen && advancedFilterCount > 0 && (
+              <span className="experience-search__toggle-count">
+                {advancedFilterCount}
+                <span className="visually-hidden">
+                  {advancedFilterCount === 1 ? ' filtro activo' : ' filtros activos'}
+                </span>
+              </span>
+            )}
+            <ChevronDown className="experience-search__toggle-chevron" size={16} aria-hidden="true" />
+          </button>
+
+          {advancedOpen && (
+            <div
+              className="experience-search__fields experience-search__fields--advanced"
+              id="experience-advanced-filters"
+            >
+              <fieldset className="experience-search__price">
+                <legend>Precio (USD)</legend>
+                <div className="experience-search__price-range">
+                  <PriceField
+                    aria-label="Precio mínimo en dólares"
+                    placeholder="Mín."
+                    value={form.minPrice}
+                    onChange={(event) => updateForm('minPrice', event.target.value)}
+                    aria-invalid={priceError ? true : undefined}
+                  />
+                  <span className="experience-search__price-separator" aria-hidden="true">–</span>
+                  <PriceField
+                    aria-label="Precio máximo en dólares"
+                    placeholder="Máx."
+                    value={form.maxPrice}
+                    onChange={(event) => updateForm('maxPrice', event.target.value)}
+                    aria-invalid={priceError ? true : undefined}
+                  />
+                </div>
+              </fieldset>
+              <Input
+                label="Idioma"
+                placeholder="Ej. Español"
+                maxLength={80}
+                value={form.language}
+                onChange={(event) => updateForm('language', event.target.value)}
+              />
+              <SelectField
+                label="Dificultad"
+                value={form.difficulty}
+                onChange={(event) => updateForm('difficulty', event.target.value)}
+              >
+                <option value="">Cualquier dificultad</option>
+                <option value="Easy">Fácil</option>
+                <option value="Moderate">Moderada</option>
+                <option value="Demanding">Exigente</option>
+              </SelectField>
+              <SelectField
+                label="Accesibilidad"
+                value={form.accessible}
+                onChange={(event) => updateForm('accessible', event.target.value)}
+              >
+                <option value="">Todas las experiencias</option>
+                <option value="true">Con información de accesibilidad</option>
+              </SelectField>
+            </div>
+          )}
 
           {priceError && <p className="field-error experience-search__error" role="alert">{priceError}</p>}
         </form>

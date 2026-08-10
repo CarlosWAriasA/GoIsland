@@ -19,6 +19,7 @@ import ErrorState from '../components/ErrorState';
 import Input from '../components/Input';
 import Skeleton from '../components/Skeleton';
 import Typewriter from '../components/Typewriter';
+import { useAuth } from '../hooks/useAuth';
 import { useRevealOnScroll } from '../hooks/useRevealOnScroll';
 import { toApiError } from '../services/apiError';
 import { experienceService } from '../services/experienceService';
@@ -98,6 +99,8 @@ const FeaturedSkeleton = () => (
 export const Home = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, isAuthenticated } = useAuth();
+  const canBecomeHost = isAuthenticated && user?.role !== 'Host';
   const [term, setTerm] = useState('');
   const featuredQuery = useQuery({
     queryKey: experienceKeys.featured(),
@@ -294,15 +297,25 @@ export const Home = () => {
       <section className="container home-section" data-reveal aria-labelledby="host-cta-title">
         <div className="surface-panel home-cta">
           <div className="home-cta__text">
-            <h2 id="host-cta-title">¿Tienes algo que enseñar de tu zona?</h2>
+            <h2 id="host-cta-title">
+              {canBecomeHost ? '¿Tienes algo que enseñar de tu zona?' : 'Sigue descubriendo la isla'}
+            </h2>
             <p>
-              Publica tu experiencia, define tus horarios y recibe reservas con el pago ya resuelto.
-              Revisamos cada perfil antes de publicarlo.
+              {canBecomeHost
+                ? 'Publica tu experiencia, define tus horarios y recibe reservas con el pago ya resuelto. Revisamos cada perfil antes de publicarlo.'
+                : 'Explora el catálogo completo y encuentra tu próxima actividad en República Dominicana.'}
             </p>
           </div>
           <div className="home-cta__actions">
-            <Link className="button-link button-link--primary" to="/host-profile">Quiero ser anfitrión</Link>
-            <Link className="button-link button-link--outline" to="/experiences">Explorar experiencias</Link>
+            {canBecomeHost && (
+              <Link className="button-link button-link--primary" to="/host-profile">Quiero ser anfitrión</Link>
+            )}
+            <Link
+              className={`button-link ${canBecomeHost ? 'button-link--outline' : 'button-link--primary'}`}
+              to="/experiences"
+            >
+              Explorar experiencias
+            </Link>
           </div>
         </div>
       </section>

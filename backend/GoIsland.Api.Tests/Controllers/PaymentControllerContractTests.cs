@@ -2,8 +2,10 @@ using System.Security.Claims;
 using GoIsland.Api.Controllers;
 using GoIsland.Api.DTOs.Payments;
 using GoIsland.Api.Services.Payments;
+using GoIsland.Api.Services.Reservations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace GoIsland.Api.Tests.Controllers;
 
@@ -16,7 +18,8 @@ public class PaymentControllerContractTests
         var controller = new ReservationsController(
             null!,
             new SuccessfulPaymentService(payment),
-            null!)
+            null!,
+            Options.Create(new ReservationExpirationOptions()))
         {
             ControllerContext = new ControllerContext
             {
@@ -76,5 +79,14 @@ public class PaymentControllerContractTests
 
         public Task<PaymentOperationResult> RefundByHostAsync(int id, int hostUserId, string reason) =>
             throw new NotSupportedException();
+
+        public Task LockReservationAsync(int reservationId, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task ClosePendingForReservationAsync(
+            int reservationId,
+            int actorUserId,
+            string reason,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

@@ -63,7 +63,7 @@ public class ExperiencesController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<ExperienceResponse>> GetById(int id)
     {
-        var experience = await _experienceService.GetByIdAsync(id);
+        var experience = await _experienceService.GetByIdAsync(id, GetViewerUserId());
         if (experience is null)
         {
             return NotFound(new { message = "No se encontro la experiencia." });
@@ -76,7 +76,7 @@ public class ExperiencesController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<ExperienceResponse>> GetBySlug(string slug)
     {
-        var experience = await _experienceService.GetBySlugAsync(slug);
+        var experience = await _experienceService.GetBySlugAsync(slug, GetViewerUserId());
         if (experience is null)
         {
             return NotFound(new { message = "No se encontro la experiencia." });
@@ -125,4 +125,8 @@ public class ExperiencesController : ControllerBase
             new { id = result.Experience!.Id },
             result.Experience);
     }
+
+    // Permite que quien ya reservó siga viendo la experiencia aunque salga del catálogo público.
+    private int? GetViewerUserId() =>
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
 }

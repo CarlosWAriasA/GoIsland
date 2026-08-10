@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CheckCheck, Inbox } from 'lucide-react';
+import { Check, CheckCheck, Inbox } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toApiError } from '../services/apiError';
 import { notificationService } from '../services/notificationService';
@@ -20,6 +20,7 @@ export const AccountNotifications = ({ onNavigate }: AccountNotificationsProps) 
   const [items, setItems] = useState<NotificationItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
+  const [markingIds, setMarkingIds] = useState<number[]>([]);
   const [reloadCount, setReloadCount] = useState(0);
 
   useEffect(() => {
@@ -55,6 +56,26 @@ export const AccountNotifications = ({ onNavigate }: AccountNotificationsProps) 
     }
 
     if (item.actionUrl?.startsWith('/')) onNavigate(item.actionUrl);
+  };
+
+  // Permite dejar de ver el aviso como pendiente sin tener que abrirlo y salir del panel.
+  const markOneRead = async (item: NotificationItem) => {
+    if (item.readAt || markingIds.includes(item.id)) return;
+    setMarkingIds((current) => [...current, item.id]);
+    try {
+      const updated = await notificationService.markRead(item.id);
+      setItems((current) => current?.map(
+        (entry) => entry.id === updated.id ? updated : entry,
+      ) ?? current);
+      setError(null);
+    } catch (requestError: unknown) {
+      setError(toApiError(
+        requestError,
+        'No fue posible marcar la notificación como leída.',
+      ).message);
+    } finally {
+      setMarkingIds((current) => current.filter((id) => id !== item.id));
+    }
   };
 
   const markAllRead = async () => {
@@ -122,10 +143,13 @@ export const AccountNotifications = ({ onNavigate }: AccountNotificationsProps) 
       ) : (
         <ul className="account-notifications__list">
           {items.map((item) => (
-            <li key={item.id}>
+            <li
+              className={`account-notifications__row${item.readAt ? '' : ' account-notifications__row--unread'}`}
+              key={item.id}
+            >
               <button
                 type="button"
-                className={`account-notifications__item${item.readAt ? '' : ' account-notifications__item--unread'}`}
+                className="account-notifications__item"
                 onClick={() => void openNotification(item)}
               >
                 <span className="account-notifications__item-heading">
@@ -135,6 +159,18 @@ export const AccountNotifications = ({ onNavigate }: AccountNotificationsProps) 
                 <span className="account-notifications__message">{item.message}</span>
                 <time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time>
               </button>
+              {!item.readAt && (
+                <button
+                  type="button"
+                  className="account-notifications__mark-one"
+                  onClick={() => void markOneRead(item)}
+                  disabled={markingAll || markingIds.includes(item.id)}
+                  title="Marcar como leída"
+                  aria-label={`Marcar como leída: ${item.title}`}
+                >
+                  <Check size={16} aria-hidden="true" />
+                </button>
+              )}
             </li>
           ))}
         </ul>

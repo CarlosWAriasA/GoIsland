@@ -2,6 +2,7 @@ using GoIsland.Api.DTOs.Experiences;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Experiences;
 using GoIsland.Api.Tests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace GoIsland.Api.Tests.Integration;
 
@@ -14,7 +15,7 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         var publicService = GetRequiredService<IExperienceService>();
         var marker = Guid.NewGuid().ToString("N");
         var host = await CreateApprovedHostAsync(marker);
-        var admin = await CreateUserAsync($"admin-{marker}@goisland.test", UserRoles.Admin);
+        var admin = await CreateUserAsync($"admin-{marker}@goisland.test", UserRoles.Tourist, isAdmin: true);
         var location = $"Ubicacion-{marker}";
         var category = $"Categoria-{marker}";
 
@@ -58,7 +59,7 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         var publicService = GetRequiredService<IExperienceService>();
         var marker = Guid.NewGuid().ToString("N");
         var host = await CreateApprovedHostAsync(marker);
-        var admin = await CreateUserAsync($"admin-search-{marker}@goisland.test", UserRoles.Admin);
+        var admin = await CreateUserAsync($"admin-search-{marker}@goisland.test", UserRoles.Tourist, isAdmin: true);
 
         foreach (var (title, price, language, difficulty) in new[]
         {
@@ -136,7 +137,7 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         var marker = Guid.NewGuid().ToString("N");
         var owner = await CreateApprovedHostAsync($"owner-{marker}");
         var otherHost = await CreateApprovedHostAsync($"other-{marker}");
-        var admin = await CreateUserAsync($"admin-{marker}@goisland.test", UserRoles.Admin);
+        var admin = await CreateUserAsync($"admin-{marker}@goisland.test", UserRoles.Tourist, isAdmin: true);
 
         var incomplete = await service.CreateAsync(owner.Id, new CreateExperienceRequest
         {
@@ -210,6 +211,242 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         Assert.Equal(string.Empty, submitted.Experience.CancellationPolicy);
     }
 
+    [Fact]
+    public async Task Management_RejectsPaidSelfGuidedExperience()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"self-guided-{marker}");
+        var request = CreateRequest(
+            $"Autoguiada de pago {marker}",
+            $"Lugar-{marker}",
+            $"Tipo-{marker}",
+            25m);
+        request.SchedulingMode = ExperienceSchedulingModes.SelfGuided;
+
+        var result = await GetRequiredService<IExperienceManagementService>().CreateAsync(host.Id, request);
+
+        Assert.Equal(ExperienceManagementStatus.Incomplete, result.Status);
+        Assert.Contains(nameof(CreateExperienceRequest.Price), result.Errors!.Keys);
+        Assert.False(await Context.Experiences.AnyAsync(item => item.Title == request.Title));
+    }
+
+    [Fact]
+    public async Task Delete_WithSchedulesButNoReservations_RemovesBoth()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"delete-{marker}");
+        var created = await GetRequiredService<IExperienceManagementService>().CreateAsync(
+            host.Id,
+            CreateRequest($"Con horario {marker}", $"Lugar-{marker}", $"Tipo-{marker}", 30m));
+        Context.ExperienceSchedules.Add(BuildSchedule(created.Experience!.Id));
+        await Context.SaveChangesAsync();
+
+        var result = await GetRequiredService<IExperienceManagementService>()
+            .DeleteAsync(host.Id, created.Experience.Id);
+
+        Context.ChangeTracker.Clear();
+        Assert.Equal(ExperienceManagementStatus.Success, result.Status);
+        Assert.False(await Context.Experiences.AnyAsync(item => item.Id == created.Experience.Id));
+        Assert.False(await Context.ExperienceSchedules.AnyAsync(
+            item => item.ExperienceId == created.Experience.Id));
+    }
+
+    [Fact]
+    public async Task Delete_WithReservations_KeepsExperienceAndSuggestsHiding()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"delete-booked-{marker}");
+        var tourist = await CreateUserAsync($"turista-{marker}@goisland.test", UserRoles.Tourist);
+        var created = await GetRequiredService<IExperienceManagementService>().CreateAsync(
+            host.Id,
+            CreateRequest($"Con reserva {marker}", $"Lugar-{marker}", $"Tipo-{marker}", 30m));
+        var schedule = BuildSchedule(created.Experience!.Id);
+        Context.ExperienceSchedules.Add(schedule);
+        await Context.SaveChangesAsync();
+        Context.Reservations.Add(new Reservation
+        {
+            UserId = tourist.Id,
+            ExperienceId = created.Experience.Id,
+            ScheduleId = schedule.Id,
+            Quantity = 1,
+            Status = ReservationStatuses.Confirmed,
+            TotalAmount = 30m,
+            ReservationDate = DateTime.UtcNow
+        });
+        await Context.SaveChangesAsync();
+
+        var result = await GetRequiredService<IExperienceManagementService>()
+            .DeleteAsync(host.Id, created.Experience.Id);
+
+        Assert.Equal(ExperienceManagementStatus.Conflict, result.Status);
+        Assert.Contains("ocúltala", result.Message!, StringComparison.OrdinalIgnoreCase);
+        Assert.True(result.Experience!.HasReservations);
+        Assert.True(await Context.Experiences.AnyAsync(item => item.Id == created.Experience.Id));
+    }
+
+    [Fact]
+    public async Task Hiding_TakesTheExperienceOutOfTheCatalogWithoutLosingItsBookings()
+    {
+        var service = GetRequiredService<IExperienceManagementService>();
+        var publicService = GetRequiredService<IExperienceService>();
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"hide-{marker}");
+        var admin = await CreateUserAsync($"admin-hide-{marker}@goisland.test", UserRoles.Tourist, isAdmin: true);
+        var tourist = await CreateUserAsync($"turista-hide-{marker}@goisland.test", UserRoles.Tourist);
+        var location = $"Ubicacion-{marker}";
+
+        var created = await service.CreateAsync(host.Id, CreateRequest(
+            $"Experiencia visible {marker}", location, $"Categoria-{marker}", 40m));
+        var experienceId = created.Experience!.Id;
+        await AddCoverAsync(experienceId, $"{marker}-{experienceId}");
+        await service.SubmitAsync(host.Id, experienceId);
+        await service.ReviewAsync(experienceId, admin.Id, ExperienceReviewAction.Approve, null);
+
+        var schedule = BuildSchedule(experienceId);
+        Context.ExperienceSchedules.Add(schedule);
+        await Context.SaveChangesAsync();
+        Context.Reservations.Add(new Reservation
+        {
+            UserId = tourist.Id,
+            ExperienceId = experienceId,
+            ScheduleId = schedule.Id,
+            Quantity = 1,
+            Status = ReservationStatuses.Confirmed,
+            TotalAmount = 40m,
+            ReservationDate = DateTime.UtcNow
+        });
+        await Context.SaveChangesAsync();
+
+        Assert.Single((await publicService.SearchAsync(new SearchExperiencesRequest { Location = location })).Items);
+
+        var hidden = await service.SetVisibilityAsync(host.Id, experienceId, isHidden: true);
+
+        Context.ChangeTracker.Clear();
+        Assert.Equal(ExperienceManagementStatus.Success, hidden.Status);
+        Assert.True(hidden.Experience!.IsHidden);
+        Assert.Empty((await publicService.SearchAsync(new SearchExperiencesRequest { Location = location })).Items);
+        Assert.Null(await publicService.GetByIdAsync(experienceId));
+        // Quien ya reservó conserva el acceso a la ficha para consultar su visita.
+        Assert.NotNull(await publicService.GetByIdAsync(experienceId, tourist.Id));
+
+        var shown = await service.SetVisibilityAsync(host.Id, experienceId, isHidden: false);
+
+        Context.ChangeTracker.Clear();
+        Assert.Equal(ExperienceManagementStatus.Success, shown.Status);
+        Assert.False(shown.Experience!.IsHidden);
+        Assert.NotNull(await publicService.GetByIdAsync(experienceId));
+    }
+
+    [Fact]
+    public async Task Hiding_ADraftIsNotAllowed()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"hide-draft-{marker}");
+        var created = await GetRequiredService<IExperienceManagementService>().CreateAsync(
+            host.Id,
+            CreateRequest($"Borrador {marker}", $"Lugar-{marker}", $"Tipo-{marker}", 20m));
+
+        var result = await GetRequiredService<IExperienceManagementService>()
+            .SetVisibilityAsync(host.Id, created.Experience!.Id, isHidden: true);
+
+        Assert.Equal(ExperienceManagementStatus.InvalidTransition, result.Status);
+        Assert.False(result.Experience!.IsHidden);
+    }
+
+    private static ExperienceSchedule BuildSchedule(int experienceId) => new()
+    {
+        ExperienceId = experienceId,
+        StartsAt = DateTime.UtcNow.AddDays(5),
+        EndsAt = DateTime.UtcNow.AddDays(5).AddHours(2),
+        Capacity = 10,
+        AvailableSpots = 10,
+        Status = ScheduleStatuses.Scheduled
+    };
+
+    [Fact]
+    public async Task EditingImage_ReturnsApprovedExperienceToDraft()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"image-{marker}");
+        var experience = new Experience
+        {
+            HostId = host.Id,
+            Title = $"Imagen aprobada {marker}",
+            Description = "Experiencia aprobada cuya imagen será actualizada.",
+            Location = "Santo Domingo",
+            Category = "Cultura",
+            Price = 30m,
+            Capacity = 10,
+            AvailableSpots = 10,
+            IsApproved = true,
+            ApprovalStatus = ExperienceApprovalStatuses.Approved
+        };
+        Context.Experiences.Add(experience);
+        await Context.SaveChangesAsync();
+        await AddCoverAsync(experience.Id, marker);
+        var image = await Context.ExperienceImages.SingleAsync(item => item.ExperienceId == experience.Id);
+
+        var result = await GetRequiredService<IExperienceImageService>().UpdateAsync(
+            host.Id,
+            experience.Id,
+            image.Id,
+            new UpdateExperienceImageRequest { AltText = "Nueva descripción de la portada", IsCover = true });
+
+        Context.ChangeTracker.Clear();
+        Assert.Equal(ExperienceImageStatus.Success, result.Status);
+        var stored = await Context.Experiences.SingleAsync(item => item.Id == experience.Id);
+        Assert.False(stored.IsApproved);
+        Assert.Equal(ExperienceApprovalStatuses.Draft, stored.ApprovalStatus);
+    }
+
+    [Fact]
+    public async Task PublicExperience_UsesCapacityFromNextReservableSchedule()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var host = await CreateApprovedHostAsync($"availability-{marker}");
+        var experience = new Experience
+        {
+            HostId = host.Id,
+            Title = $"Disponibilidad real {marker}",
+            Description = "Experiencia con capacidad diferente en cada fecha.",
+            Location = "Samaná",
+            Category = "Naturaleza",
+            Price = 30m,
+            Capacity = 20,
+            AvailableSpots = 20,
+            IsApproved = true,
+            ApprovalStatus = ExperienceApprovalStatuses.Approved
+        };
+        Context.Experiences.Add(experience);
+        await Context.SaveChangesAsync();
+        Context.ExperienceSchedules.AddRange(
+            new ExperienceSchedule
+            {
+                ExperienceId = experience.Id,
+                StartsAt = DateTime.UtcNow.AddDays(2),
+                EndsAt = DateTime.UtcNow.AddDays(2).AddHours(2),
+                Capacity = 6,
+                AvailableSpots = 2,
+                Status = ScheduleStatuses.Scheduled
+            },
+            new ExperienceSchedule
+            {
+                ExperienceId = experience.Id,
+                StartsAt = DateTime.UtcNow.AddDays(3),
+                EndsAt = DateTime.UtcNow.AddDays(3).AddHours(2),
+                Capacity = 12,
+                AvailableSpots = 12,
+                Status = ScheduleStatuses.Scheduled
+            });
+        await Context.SaveChangesAsync();
+
+        var result = await GetRequiredService<IExperienceService>().GetByIdAsync(experience.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(6, result.Capacity);
+        Assert.Equal(2, result.AvailableSpots);
+    }
+
     private async Task<User> CreateApprovedHostAsync(string marker)
     {
         var user = await CreateUserAsync($"host-{marker}@goisland.test", UserRoles.Host);
@@ -245,14 +482,15 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         await Context.SaveChangesAsync();
     }
 
-    private async Task<User> CreateUserAsync(string email, string role)
+    private async Task<User> CreateUserAsync(string email, string role, bool isAdmin = false)
     {
         var user = new User
         {
             FullName = "Usuario Integracion",
             Email = email,
             PasswordHash = "hash-no-usado",
-            Role = role
+            Role = role,
+            IsAdmin = isAdmin
         };
         Context.Users.Add(user);
         await Context.SaveChangesAsync();
@@ -300,7 +538,7 @@ public class ExperienceIntegrationTests : PostgresIntegrationTestBase
         var service = GetRequiredService<IExperienceManagementService>();
         var marker = Guid.NewGuid().ToString("N");
         var host = await CreateApprovedHostAsync(marker);
-        var admin = await CreateUserAsync($"admin-accents-{marker}@goisland.test", UserRoles.Admin);
+        var admin = await CreateUserAsync($"admin-accents-{marker}@goisland.test", UserRoles.Tourist, isAdmin: true);
 
         var created = await service.CreateAsync(host.Id, CreateRequest(
             $"Bahía de Samaná {marker}",

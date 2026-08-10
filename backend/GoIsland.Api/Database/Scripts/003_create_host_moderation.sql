@@ -44,16 +44,18 @@ begin
     select id into legacy_owner_id
     from users
     where role in ('Host', 'Admin')
-    order by case when role = 'Admin' then 0 else 1 end, id
+    order by case when role = 'Host' then 0 else 1 end, id
     limit 1;
 
     if legacy_owner_id is null and exists (select 1 from experiences where host_id is null) then
+        -- La cuenta solo sostiene contenido sin dueño, asi que es anfitriona y no administradora:
+        -- 023 elimina 'Admin' de los roles permitidos.
         insert into users (full_name, email, password_hash, role)
         values (
             'Contenido legado GoIsland',
             'legacy-content@goisland.invalid',
             'ACCOUNT_LOCKED_NO_LOGIN',
-            'Admin'
+            'Host'
         )
         on conflict do nothing;
 

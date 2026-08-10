@@ -70,8 +70,9 @@ public class HostReservationsController : ControllerBase
     public async Task<IActionResult> ReviewChangeRequest(int id, ReviewChangeRequestRequest request)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
-        if (!TryGetIdempotencyKey(out _)) return MissingIdempotencyKey();
-        return MapChangeRequest(await _changeRequestService.ReviewAsync(userId, id, request.Approve, request.DecisionReason));
+        if (!TryGetIdempotencyKey(out var key)) return MissingIdempotencyKey();
+        return MapChangeRequest(await _changeRequestService.ReviewAsync(
+            userId, id, request.Approve, request.DecisionReason, key));
     }
 
     private IActionResult MapChangeRequest(ReservationChangeRequestResult result) => result.Status switch
@@ -90,6 +91,8 @@ public class HostReservationsController : ControllerBase
             new { message = "El horario solicitado no tiene suficientes cupos." }),
         ReservationChangeRequestOperationStatus.RefundFailed => StatusCode(StatusCodes.Status502BadGateway,
             new { message = "No pudimos procesar el reembolso. Inténtalo nuevamente." }),
+        ReservationChangeRequestOperationStatus.IdempotencyConflict => Conflict(
+            new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
         ReservationChangeRequestOperationStatus.ConcurrencyConflict => Conflict(
             new { message = "La disponibilidad cambió. Intenta nuevamente." }),
         _ => StatusCode(StatusCodes.Status500InternalServerError)

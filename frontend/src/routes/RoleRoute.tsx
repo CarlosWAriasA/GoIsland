@@ -21,7 +21,11 @@ export const RoleRoute = ({ allowedRoles }: RoleRouteProps) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowedRoles.includes(user.role)) {
+  // Administrar es un permiso aparte del rol, así que quien administra también conserva el
+  // acceso que le corresponde como turista o anfitrión.
+  const hasAccess = allowedRoles.includes(user.role)
+    || (allowedRoles.includes('Admin') && user.isAdmin);
+  if (!hasAccess) {
     return <Navigate to="/profile" replace />;
   }
 

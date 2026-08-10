@@ -42,7 +42,7 @@ export const ReservationExpirationCountdown = ({
   }, [expiresAt, onExpired]);
 
   return (
-    <div className="reservation-expiration" aria-live="polite">
+    <div className="reservation-expiration">
       <Alert tone="warning">
         {remaining > 0 ? (
           <>Completa el pago en <strong>{formatRemaining(remaining)}</strong> para conservar tus cupos.</>
@@ -50,6 +50,7 @@ export const ReservationExpirationCountdown = ({
           <>El tiempo para pagar terminó.</>
         )}
       </Alert>
+      {remaining === 0 && <span className="visually-hidden" role="status">El tiempo para pagar terminó.</span>}
     </div>
   );
 };

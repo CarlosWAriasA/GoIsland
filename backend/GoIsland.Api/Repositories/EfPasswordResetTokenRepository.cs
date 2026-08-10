@@ -21,6 +21,19 @@ public class EfPasswordResetTokenRepository : IPasswordResetTokenRepository
             && token.ExpiresAt > now);
     }
 
+    public Task<PasswordResetToken?> LockValidByHashAsync(string tokenHash, DateTime now)
+    {
+        return _context.PasswordResetTokens
+            .FromSqlInterpolated($@"
+                select *
+                from password_reset_tokens
+                where token_hash = {tokenHash}
+                  and used_at is null
+                  and expires_at > {now}
+                for update")
+            .SingleOrDefaultAsync();
+    }
+
     public async Task<PasswordResetToken> AddAsync(PasswordResetToken token)
     {
         await _context.PasswordResetTokens.AddAsync(token);

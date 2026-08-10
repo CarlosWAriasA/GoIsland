@@ -76,6 +76,10 @@ public class PasswordIntegrationTests : PostgresIntegrationTestBase
         const string oldPassword = "Password123";
         const string newPassword = "Restaurada789";
         var registration = await RegisterAsync(authService, email, oldPassword);
+        var lockedUser = await Context.Users.SingleAsync(item => item.Id == registration.User.Id);
+        lockedUser.FailedLoginAttempts = 6;
+        lockedUser.LockoutEnd = DateTime.UtcNow.AddHours(1);
+        await Context.SaveChangesAsync();
         var generatedToken = tokenGenerator.CreateToken();
         var storedToken = new PasswordResetToken
         {
@@ -115,7 +119,11 @@ public class PasswordIntegrationTests : PostgresIntegrationTestBase
         Context.ChangeTracker.Clear();
         var persistedToken = await Context.PasswordResetTokens.AsNoTracking()
             .SingleAsync(token => token.Id == storedToken.Id);
+        var persistedUser = await Context.Users.AsNoTracking()
+            .SingleAsync(user => user.Id == registration.User.Id);
         Assert.NotNull(persistedToken.UsedAt);
+        Assert.Equal(0, persistedUser.FailedLoginAttempts);
+        Assert.Null(persistedUser.LockoutEnd);
     }
 
     [Fact]

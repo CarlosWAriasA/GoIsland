@@ -20,6 +20,8 @@ public class ReviewService : IReviewService
                            where reservation.Id == reservationId && reservation.UserId == userId
                            select new { Reservation = reservation, Experience = experience }).SingleOrDefaultAsync();
         if (match is null) return new(ReviewMutationStatus.NotFound);
+        if (match.Experience.HostId == userId)
+            return new(ReviewMutationStatus.OwnExperience);
         if (match.Reservation.Status != ReservationStatuses.Completed)
             return new(ReviewMutationStatus.ReservationNotCompleted);
         if (await _context.Reviews.AnyAsync(item => item.ReservationId == reservationId))

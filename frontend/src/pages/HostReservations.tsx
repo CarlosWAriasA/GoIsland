@@ -2,6 +2,7 @@ import { Check, CalendarDays, CheckCheck, MapPin, UsersRound, X } from 'lucide-r
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Button from '../components/Button';
+import ConfirmDialog from '../components/ConfirmDialog';
 import PromptDialog from '../components/PromptDialog';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
@@ -62,6 +63,7 @@ export const HostReservations = () => {
   const [crRetry, setCrRetry] = useState(0);
   const [crBusyId, setCrBusyId] = useState<number | null>(null);
   const [requestToReject, setRequestToReject] = useState<ReservationChangeRequest | null>(null);
+  const [requestToApprove, setRequestToApprove] = useState<ReservationChangeRequest | null>(null);
 
   const setTab = (nextTab: 'reservations' | 'requests') => {
     const next = new URLSearchParams();
@@ -124,6 +126,7 @@ export const HostReservations = () => {
       await reservationService.reviewChangeRequest(request.id, true);
       setSuccess('Solicitud aprobada.');
       setCrRetry((value) => value + 1);
+      setRequestToApprove(null);
     } catch (requestError: unknown) {
       setCrError(toApiError(requestError, 'No fue posible aprobar la solicitud.').message);
     } finally {
@@ -137,11 +140,11 @@ export const HostReservations = () => {
       await reservationService.reviewChangeRequest(request.id, false, reason.trim());
       setSuccess('Solicitud rechazada.');
       setCrRetry((value) => value + 1);
+      setRequestToReject(null);
     } catch (requestError: unknown) {
       setCrError(toApiError(requestError, 'No fue posible rechazar la solicitud.').message);
     } finally {
       setCrBusyId(null);
-      setRequestToReject(null);
     }
   };
 
@@ -152,10 +155,10 @@ export const HostReservations = () => {
       setReservations((current) => current.map((item) => item.id === updated.id ? updated : item));
       setSuccess('Reserva cancelada; los cupos fueron liberados.');
       setRetry((value) => value + 1);
+      setReservationToCancel(null);
     } catch (requestError: unknown) { setError(toApiError(requestError).message); }
     finally {
       setBusyId(null);
-      setReservationToCancel(null);
     }
   };
 
@@ -201,7 +204,7 @@ export const HostReservations = () => {
               <article className="operations-row operations-row--reservations" key={request.id}>
                 <div className="operations-row__main">
                   <div className="operations-row__primary">
-                    <span className="operations-row__reference">Reserva #{request.reservationId} · Turista #{request.requestedByUserId}</span>
+                    <span className="operations-row__reference">Solicitud de cambio</span>
                     <h2>{request.experienceTitle}</h2>
                     <small><CalendarDays size={14} aria-hidden="true" />{formatDate(request.reservationStartsAt)}</small>
                   </div>
@@ -220,7 +223,7 @@ export const HostReservations = () => {
                     {getChangeRequestStatusLabel(request.status)}
                   </StatusBadge>
                   <div className="operations-row__actions">
-                    <Button size="sm" onClick={() => void approveRequest(request)} isLoading={crBusyId === request.id}
+                    <Button size="sm" onClick={() => setRequestToApprove(request)} isLoading={crBusyId === request.id}
                       disabled={crBusyId !== null}>
                       <Check size={15} aria-hidden="true" />Aprobar
                     </Button>
@@ -244,6 +247,20 @@ export const HostReservations = () => {
           onConfirm={async (reason) => {
             if (requestToReject) await rejectRequest(requestToReject, reason);
           }}
+        />
+        <ConfirmDialog
+          open={requestToApprove !== null}
+          title={requestToApprove?.type === 'Cancel' ? 'Aprobar cancelación' : 'Aprobar nueva fecha'}
+          message={requestToApprove?.type === 'Cancel'
+            ? 'La reserva se cancelará y, si fue pagada, se iniciará el reembolso correspondiente.'
+            : requestToApprove
+              ? `La reserva cambiará a ${requestToApprove.requestedScheduleStartsAt ? formatDate(requestToApprove.requestedScheduleStartsAt) : 'la fecha solicitada'}.`
+              : ''}
+          confirmLabel="Aprobar solicitud"
+          confirmVariant="primary"
+          isConfirming={crBusyId !== null}
+          onClose={() => setRequestToApprove(null)}
+          onConfirm={() => { if (requestToApprove) void approveRequest(requestToApprove); }}
         />
       </>
     ) : (
@@ -279,7 +296,7 @@ export const HostReservations = () => {
           return <article className="operations-row operations-row--reservations" key={reservation.id}>
             <div className="operations-row__main">
               <div className="operations-row__primary">
-                <span className="operations-row__reference">Reserva #{reservation.id} · Turista #{reservation.userId}</span>
+                <span className="operations-row__reference">Reserva recibida</span>
                 <h2>{reservation.experienceTitle}</h2>
                 <small><MapPin size={14} aria-hidden="true" />{reservation.experienceLocation}</small>
               </div>
@@ -319,7 +336,9 @@ export const HostReservations = () => {
     <PromptDialog
       open={reservationToCancel !== null}
       title="Cancelar reserva"
-      description="El turista recibirá este motivo junto con la actualización de la reserva."
+      description={reservationToCancel && reservationToCancel.totalAmount > 0
+        ? 'El turista recibirá el motivo y se iniciará el reembolso del pago.'
+        : 'El turista recibirá este motivo y los cupos volverán a estar disponibles.'}
       label="Motivo de cancelación"
       placeholder="Escribe el motivo para el turista"
       confirmLabel="Cancelar reserva"

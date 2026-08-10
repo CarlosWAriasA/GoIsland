@@ -70,6 +70,7 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IExperienceService, ExperienceService>();
         services.AddScoped<IExperienceManagementService, ExperienceManagementService>();
+        services.AddScoped<IExperienceImageService, ExperienceImageService>();
         services.AddSingleton<IImageStorage, FakeImageStorage>();
         services.AddScoped<IHostService, HostService>();
         services.AddScoped<IHostDashboardService, HostDashboardService>();
@@ -83,14 +84,21 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
         services.AddSingleton<IOptions<ReservationExpirationOptions>>(
             Options.Create(new ReservationExpirationOptions()));
         services.AddScoped<IReservationExpirationService, ReservationExpirationService>();
+        services.AddScoped<IReservationCompletionService, ReservationCompletionService>();
         services.AddScoped<IReservationObserver, EmailNotificationObserver>();
         services.AddScoped<IReservationObserver, PushNotificationObserver>();
         services.AddScoped<IReservationObserver, CapacityManagerObserver>();
         services.AddScoped<IReservationObserver, DashboardObserver>();
         services.AddScoped<IReservationService, ReservationService>();
+        services.AddScoped<IReservationChangeRequestService, ReservationChangeRequestService>();
         services.AddScoped<IScheduleService, ScheduleService>();
         services.AddSingleton<IPaymentGateway, MockPaymentGateway>();
+        services.AddSingleton<IOptions<PaymentPricingOptions>>(
+            Options.Create(configuration.GetSection(PaymentPricingOptions.SectionName)
+                .Get<PaymentPricingOptions>() ?? new PaymentPricingOptions()));
+        services.AddSingleton<IPaymentPricingService, PaymentPricingService>();
         services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IRefundRecoveryService, RefundRecoveryService>();
 
         _serviceProvider = services.BuildServiceProvider(validateScopes: true);
         _scope = _serviceProvider.CreateScope();

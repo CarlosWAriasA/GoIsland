@@ -16,6 +16,7 @@ public enum ReservationChangeRequestOperationStatus
     InsufficientSpots,
     ReasonRequired,
     RefundFailed,
+    IdempotencyConflict,
     ConcurrencyConflict
 }
 

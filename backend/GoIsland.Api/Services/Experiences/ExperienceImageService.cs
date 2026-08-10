@@ -42,12 +42,21 @@ public class ExperienceImageService : IExperienceImageService
         IReadOnlyCollection<string>? altTexts = null,
         int? coverIndex = null)
     {
+        if (!await IsApprovedHostAsync(hostUserId))
+        {
+            return new(ExperienceImageStatus.Forbidden);
+        }
+
         var experience = await _context.Experiences
             .Include(item => item.Images)
             .SingleOrDefaultAsync(item => item.Id == experienceId && item.HostId == hostUserId);
         if (experience is null)
         {
             return new(ExperienceImageStatus.NotFound);
+        }
+        if (experience.ApprovalStatus == ExperienceApprovalStatuses.Suspended)
+        {
+            return new(ExperienceImageStatus.InvalidTransition);
         }
 
         if (files.Count == 0)
@@ -155,7 +164,7 @@ public class ExperienceImageService : IExperienceImageService
                 experience.Images.Add(image);
             }
 
-            experience.UpdatedAt = DateTime.UtcNow;
+            ReturnToDraft(experience);
             await _context.SaveChangesAsync();
             return new(ExperienceImageStatus.Success, ToResponses(experience));
         }
@@ -176,6 +185,11 @@ public class ExperienceImageService : IExperienceImageService
         int imageId,
         UpdateExperienceImageRequest request)
     {
+        if (!await IsApprovedHostAsync(hostUserId))
+        {
+            return new(ExperienceImageStatus.Forbidden);
+        }
+
         var image = await _context.ExperienceImages
             .Include(candidate => candidate.Experience)
             .SingleOrDefaultAsync(candidate =>
@@ -186,9 +200,15 @@ public class ExperienceImageService : IExperienceImageService
         {
             return new(ExperienceImageStatus.NotFound);
         }
+        if (image.Experience.ApprovalStatus == ExperienceApprovalStatuses.Suspended)
+        {
+            return new(ExperienceImageStatus.InvalidTransition);
+        }
 
         var normalizedAltText = request.AltText.Trim();
-        await using var transaction = await _context.Database.BeginTransactionAsync();
+        await using var transaction = _context.Database.CurrentTransaction is null
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
 
         image.AltText = normalizedAltText;
         if (request.IsCover && !image.IsCover)
@@ -221,9 +241,12 @@ public class ExperienceImageService : IExperienceImageService
             }
         }
 
-        image.Experience.UpdatedAt = DateTime.UtcNow;
+        ReturnToDraft(image.Experience);
         await _context.SaveChangesAsync();
-        await transaction.CommitAsync();
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync();
+        }
 
         return new(
             ExperienceImageStatus.Success,
@@ -235,6 +258,11 @@ public class ExperienceImageService : IExperienceImageService
         int experienceId,
         int imageId)
     {
+        if (!await IsApprovedHostAsync(hostUserId))
+        {
+            return new(ExperienceImageStatus.Forbidden);
+        }
+
         var image = await _context.ExperienceImages
             .Include(candidate => candidate.Experience)
             .SingleOrDefaultAsync(candidate =>
@@ -245,17 +273,22 @@ public class ExperienceImageService : IExperienceImageService
         {
             return new(ExperienceImageStatus.NotFound);
         }
-
-        if (image.Provider == ImageStorageProviders.Cloudinary
-            && !string.IsNullOrWhiteSpace(image.PublicId))
+        if (image.Experience.ApprovalStatus == ExperienceApprovalStatuses.Suspended)
         {
-            await _storage.DeleteAsync(image.PublicId);
+            return new(ExperienceImageStatus.InvalidTransition);
         }
 
-        await using var transaction = await _context.Database.BeginTransactionAsync();
+        var externalPublicId = image.Provider == ImageStorageProviders.Cloudinary
+            && !string.IsNullOrWhiteSpace(image.PublicId)
+            ? image.PublicId
+            : null;
+
+        await using var transaction = _context.Database.CurrentTransaction is null
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
         var wasCover = image.IsCover;
         _context.ExperienceImages.Remove(image);
-        image.Experience.UpdatedAt = DateTime.UtcNow;
+        ReturnToDraft(image.Experience);
         await _context.SaveChangesAsync();
 
         if (wasCover)
@@ -271,7 +304,25 @@ public class ExperienceImageService : IExperienceImageService
             }
         }
 
-        await transaction.CommitAsync();
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync();
+        }
+        if (externalPublicId is not null)
+        {
+            try
+            {
+                await _storage.DeleteAsync(externalPublicId);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(exception,
+                    "La imagen {ImageId} se elimino de la experiencia {ExperienceId}, pero el archivo externo {PublicId} requiere limpieza.",
+                    imageId,
+                    experienceId,
+                    externalPublicId);
+            }
+        }
         return new(
             ExperienceImageStatus.Success,
             await ToResponsesAsync(experienceId));
@@ -290,6 +341,21 @@ public class ExperienceImageService : IExperienceImageService
                 "Could not compensate Cloudinary upload {PublicId}.",
                 publicId);
         }
+    }
+
+    private Task<bool> IsApprovedHostAsync(int userId) =>
+        _context.HostProfiles.AnyAsync(profile =>
+            profile.UserId == userId
+            && profile.VerificationStatus == HostVerificationStatuses.Approved);
+
+    private static void ReturnToDraft(Experience experience)
+    {
+        experience.IsApproved = false;
+        experience.ApprovalStatus = ExperienceApprovalStatuses.Draft;
+        experience.RejectionReason = null;
+        experience.ReviewedAt = null;
+        experience.ReviewedByAdminId = null;
+        experience.UpdatedAt = DateTime.UtcNow;
     }
 
     private async Task<IReadOnlyCollection<ExperienceImageResponse>> ToResponsesAsync(int experienceId)

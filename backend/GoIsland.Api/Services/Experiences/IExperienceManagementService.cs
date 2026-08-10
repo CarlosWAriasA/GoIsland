@@ -36,6 +36,7 @@ public interface IExperienceManagementService
     Task<HostExperienceResponse?> GetMineByIdAsync(int hostUserId, int id);
     Task<ExperienceManagementResult> UpdateAsync(int hostUserId, int id, UpdateExperienceRequest request);
     Task<ExperienceManagementResult> DeleteAsync(int hostUserId, int id);
+    Task<ExperienceManagementResult> SetVisibilityAsync(int hostUserId, int id, bool isHidden);
     Task<ExperienceManagementResult> SubmitAsync(int hostUserId, int id);
     Task<PagedResponse<HostExperienceResponse>> GetForAdminAsync(
         ManagedExperienceListRequest request);

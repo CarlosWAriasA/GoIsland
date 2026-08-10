@@ -60,6 +60,10 @@ public class GoIslandDbContext : DbContext
             entity.Property(user => user.Email).HasColumnName("email").HasMaxLength(254).IsRequired();
             entity.Property(user => user.PasswordHash).HasColumnName("password_hash").IsRequired();
             entity.Property(user => user.Role).HasColumnName("role").HasMaxLength(40).IsRequired();
+            entity.Property(user => user.IsAdmin)
+                .HasColumnName("is_admin")
+                .HasDefaultValue(false)
+                .IsRequired();
             entity.Property(user => user.FailedLoginAttempts)
                 .HasColumnName("failed_login_attempts")
                 .HasDefaultValue(0)
@@ -131,6 +135,7 @@ public class GoIslandDbContext : DbContext
                 .IsRequired();
             entity.Property(experience => experience.IsApproved).HasColumnName("is_approved").IsRequired();
             entity.Property(experience => experience.ApprovalStatus).HasColumnName("approval_status").HasMaxLength(40).IsRequired();
+            entity.Property(experience => experience.IsHidden).HasColumnName("is_hidden").IsRequired();
             entity.Property(experience => experience.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
             entity.Property(experience => experience.ReviewedAt).HasColumnName("reviewed_at");
             entity.Property(experience => experience.ReviewedByAdminId).HasColumnName("reviewed_by_admin_id");
@@ -364,8 +369,11 @@ public class GoIslandDbContext : DbContext
             entity.Property(refund => refund.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
             entity.Property(refund => refund.Provider).HasColumnName("provider").HasMaxLength(40).IsRequired();
             entity.Property(refund => refund.ProviderRefundId).HasColumnName("provider_refund_id").HasMaxLength(120);
+            entity.Property(refund => refund.FailureCode).HasColumnName("failure_code").HasMaxLength(80);
+            entity.Property(refund => refund.AttemptCount).HasColumnName("attempt_count").IsRequired();
             entity.Property(refund => refund.RequestedByUserId).HasColumnName("requested_by_user_id").IsRequired();
             entity.Property(refund => refund.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(refund => refund.UpdatedAt).HasColumnName("updated_at").IsRequired();
             entity.HasIndex(refund => refund.PaymentId).IsUnique();
             entity.HasOne(refund => refund.Payment)
                 .WithMany()

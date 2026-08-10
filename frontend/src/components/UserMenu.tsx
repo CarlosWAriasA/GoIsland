@@ -34,11 +34,10 @@ export const UserMenu = ({ user, onLogout }: UserMenuProps) => {
 
   const firstName = user?.fullName ? user.fullName.split(' ')[0] : '';
   const initial = firstName ? firstName.charAt(0).toUpperCase() : '';
-  const roleLabel = user?.role === 'Admin'
-    ? 'Administrador'
-    : user?.role === 'Host'
-      ? 'Anfitrión'
-      : 'Viajero';
+  const participationLabel = user?.role === 'Host' ? 'Anfitrión' : 'Viajero';
+  const roleLabel = user?.isAdmin
+    ? `${participationLabel} · Administrador`
+    : participationLabel;
 
   const refreshUnreadCount = useCallback(async () => {
     try {

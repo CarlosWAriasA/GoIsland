@@ -18,6 +18,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authenticationMethod, setAuthenticationMethod] = useState<AuthenticationMethod | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
 
   const clearAuthentication = useCallback((expired: boolean) => {
     setToken(null);
@@ -53,10 +54,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const currentUser = await authService.getMe();
+        const refreshed = await authService.refreshSession();
         if (!cancelled) {
-          setUser(currentUser);
-          saveAuthSession({ ...session, user: currentUser });
+          setAuthToken(refreshed.token);
+          setToken(refreshed.token);
+          setExpiresAt(refreshed.expiresAt);
+          setAuthenticationMethod(refreshed.authenticationMethod);
+          setUser(refreshed.user);
+          saveAuthSession(refreshed);
         }
       } catch {
         // Un 401 se procesa en el interceptor. Ante un fallo de red se conserva
@@ -77,13 +82,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!expiresAt) return;
 
-    const remainingMilliseconds = Date.parse(expiresAt) - Date.now();
-    const expirationTimer = window.setTimeout(
-      () => clearAuthentication(true),
-      Math.max(0, remainingMilliseconds),
-    );
-    return () => window.clearTimeout(expirationTimer);
+    // Con sesiones largas un setTimeout no sirve: desborda el máximo de 24,8 días y además no
+    // avanza mientras el equipo está suspendido. Se comprueba la caducidad periódicamente.
+    const expiration = Date.parse(expiresAt);
+    const checkExpiration = () => {
+      if (Date.now() >= expiration) clearAuthentication(true);
+    };
+
+    checkExpiration();
+    const expirationTimer = window.setInterval(checkExpiration, 30_000);
+    return () => window.clearInterval(expirationTimer);
   }, [clearAuthentication, expiresAt]);
+
+  useEffect(() => {
+    if (!token) return;
+    let lastRefreshAt = Date.now();
+    let refreshing = false;
+
+    const refreshVisibleSession = async () => {
+      if (refreshing || document.visibilityState !== 'visible'
+        || Date.now() - lastRefreshAt < 60_000) return;
+      refreshing = true;
+      lastRefreshAt = Date.now();
+      try {
+        const refreshed = await authService.refreshSession();
+        setAuthToken(refreshed.token);
+        setToken(refreshed.token);
+        setExpiresAt(refreshed.expiresAt);
+        setAuthenticationMethod(refreshed.authenticationMethod);
+        setUser(refreshed.user);
+        saveAuthSession(refreshed);
+      } catch {
+        // Un 401 cierra la sesión mediante el interceptor. Los fallos temporales de red
+        // conservan la sesión y se reintentan cuando la persona vuelve a la aplicación.
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    const onFocus = () => void refreshVisibleSession();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [token]);
 
   const applyAuthResponse = (response: AuthResponse) => {
     setAuthToken(response.token);
@@ -92,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthenticationMethod(response.authenticationMethod);
     setUser(response.user);
     setSessionExpired(false);
+    setSignedOut(false);
     saveAuthSession(response);
   };
 
@@ -121,9 +166,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // La navegación de salida se procesa como transición, así que las rutas protegidas todavía
+  // pueden renderizarse con la sesión ya cerrada. La marca evita que pidan iniciar sesión a
+  // quien acaba de cerrarla a propósito.
   const logout = () => {
+    setSignedOut(true);
     clearAuthentication(false);
   };
+
+  const acknowledgeSignOut = useCallback(() => setSignedOut(false), []);
 
   const loginWithGoogle = async (credential: string) => {
     setIsLoading(true);
@@ -152,13 +203,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshUser = useCallback(async () => {
-    const currentUser = await authService.getMe();
-    setUser(currentUser);
-    if (token && expiresAt) {
-      saveAuthSession({ token, expiresAt, authenticationMethod, user: currentUser });
-    }
-    return currentUser;
-  }, [authenticationMethod, expiresAt, token]);
+    const refreshed = await authService.refreshSession();
+    setAuthToken(refreshed.token);
+    setToken(refreshed.token);
+    setExpiresAt(refreshed.expiresAt);
+    setAuthenticationMethod(refreshed.authenticationMethod);
+    setUser(refreshed.user);
+    saveAuthSession(refreshed);
+    return refreshed.user;
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -169,10 +222,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!token,
         isLoading,
         sessionExpired,
+        signedOut,
         login,
         register,
         loginWithGoogle,
         logout,
+        acknowledgeSignOut,
         updateUser,
         refreshUser,
       }}

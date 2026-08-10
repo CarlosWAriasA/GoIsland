@@ -59,6 +59,54 @@ public class ScheduleIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
+    public async Task Update_WithActiveReservation_OnlyAllowsClosingWithoutMaterialChanges()
+    {
+        var (host, experience) = await SeedApprovedHostAndExperienceAsync();
+        var startsAt = DateTime.UtcNow.AddDays(5);
+        var schedule = NewSchedule(experience.Id, startsAt, 9, ScheduleStatuses.Scheduled);
+        var tourist = new User
+        {
+            FullName = "Turista con reserva",
+            Email = $"schedule-tourist-{Guid.NewGuid():N}@goisland.test",
+            PasswordHash = "hash-integracion",
+            Role = UserRoles.Tourist
+        };
+        Context.Users.Add(tourist);
+        Context.ExperienceSchedules.Add(schedule);
+        await Context.SaveChangesAsync();
+        Context.Reservations.Add(new Reservation
+        {
+            UserId = tourist.Id,
+            ExperienceId = experience.Id,
+            ScheduleId = schedule.Id,
+            Quantity = 1,
+            Status = ReservationStatuses.Confirmed,
+            TotalAmount = experience.Price
+        });
+        await Context.SaveChangesAsync();
+        var service = GetRequiredService<IScheduleService>();
+
+        var changed = await service.UpdateAsync(host.Id, schedule.Id, new UpdateScheduleRequest
+        {
+            StartsAt = startsAt.AddHours(1),
+            EndsAt = startsAt.AddHours(3),
+            Capacity = 10,
+            Status = ScheduleStatuses.Scheduled
+        });
+        var closed = await service.UpdateAsync(host.Id, schedule.Id, new UpdateScheduleRequest
+        {
+            StartsAt = startsAt,
+            EndsAt = startsAt.AddHours(2),
+            Capacity = 10,
+            Status = ScheduleStatuses.Closed
+        });
+
+        Assert.Equal(ScheduleOperationStatus.HasReservations, changed.Status);
+        Assert.Equal(ScheduleOperationStatus.Success, closed.Status);
+        Assert.Equal(ScheduleStatuses.Closed, closed.Schedule!.Status);
+    }
+
+    [Fact]
     public async Task PublicAvailability_HidesClosedPastAndInsufficientSchedules()
     {
         var (_, experience) = await SeedApprovedHostAndExperienceAsync();

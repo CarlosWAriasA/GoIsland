@@ -6,6 +6,8 @@ public enum ExperienceImageStatus
 {
     Success,
     NotFound,
+    Forbidden,
+    InvalidTransition,
     InvalidFile,
     LimitExceeded
 }

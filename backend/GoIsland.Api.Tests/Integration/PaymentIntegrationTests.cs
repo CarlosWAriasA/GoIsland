@@ -171,6 +171,121 @@ public class PaymentIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
+    public async Task CancelPendingPayment_ClosesPaymentAndCheckout()
+    {
+        var seed = await SeedReservationAsync(quantity: 2, price: 50m);
+        var payments = GetRequiredService<IPaymentService>();
+        var created = await payments.CreateAsync(
+            seed.Tourist.Id, seed.Reservation.Id, $"pay-{Guid.NewGuid():N}");
+        var paymentId = created.Payment!.Id;
+        var reservations = GetRequiredService<IReservationService>();
+
+        var cancelled = await reservations.CancelAsync(
+            seed.Reservation.Id,
+            seed.Tourist.Id,
+            new CancelReservationRequest { Reason = "Cambio de planes" },
+            $"cancel-{Guid.NewGuid():N}");
+
+        Assert.Equal(ReservationCreationStatus.Success, cancelled.Status);
+        Assert.Equal(ReservationStatuses.CancelledByTourist, cancelled.Reservation!.Status);
+        Assert.Equal(PaymentStatuses.Failed,
+            await Context.Payments.Where(item => item.Id == paymentId)
+                .Select(item => item.Status).SingleAsync());
+        Assert.Equal(PaymentOperationStatus.InvalidTransition,
+            (await payments.GetCheckoutAsync(paymentId, seed.Tourist.Id)).Status);
+    }
+
+    [Fact]
+    public async Task PaymentSucceededAfterCancellation_IsRefundedOnceWithoutReleasingCapacityTwice()
+    {
+        var seed = await SeedReservationAsync(quantity: 2, price: 50m);
+        var payments = GetRequiredService<IPaymentService>();
+        var created = await payments.CreateAsync(
+            seed.Tourist.Id, seed.Reservation.Id, $"pay-{Guid.NewGuid():N}");
+        var reservations = GetRequiredService<IReservationService>();
+        await reservations.CancelAsync(
+            seed.Reservation.Id,
+            seed.Tourist.Id,
+            new CancelReservationRequest { Reason = "Cambio de planes" },
+            $"cancel-{Guid.NewGuid():N}");
+
+        var succeeded = new GatewayWebhookEvent(
+            MockPaymentGateway.Provider,
+            $"evt-success-{Guid.NewGuid():N}",
+            created.Payment!.ProviderPaymentId!,
+            GatewayWebhookEventKind.PaymentSucceeded);
+        Assert.Equal(WebhookProcessingStatus.Processed, await payments.ProcessWebhookAsync(succeeded));
+        Assert.Equal(WebhookProcessingStatus.Duplicate, await payments.ProcessWebhookAsync(succeeded));
+
+        Assert.Equal(PaymentStatuses.Refunded,
+            await Context.Payments.Where(item => item.Id == created.Payment.Id)
+                .Select(item => item.Status).SingleAsync());
+        Assert.Equal(ReservationStatuses.Refunded,
+            await Context.Reservations.Where(item => item.Id == seed.Reservation.Id)
+                .Select(item => item.Status).SingleAsync());
+        Assert.Equal(10,
+            await Context.ExperienceSchedules.Where(item => item.Id == seed.Schedule.Id)
+                .Select(item => item.AvailableSpots).SingleAsync());
+        Assert.Equal(1, await Context.Refunds.CountAsync(item => item.PaymentId == created.Payment.Id));
+    }
+
+    [Fact]
+    public async Task HostCancelPaidReservation_RefundsPaymentAndReservation()
+    {
+        var seed = await SeedReservationAsync(quantity: 2, price: 50m);
+        var payments = GetRequiredService<IPaymentService>();
+        var created = await payments.CreateAsync(
+            seed.Tourist.Id, seed.Reservation.Id, $"pay-{Guid.NewGuid():N}");
+        await payments.MockConfirmAsync(created.Payment!.Id, seed.Tourist.Id, isAdmin: false);
+        var reservations = GetRequiredService<IReservationService>();
+
+        var cancelled = await reservations.CancelByHostAsync(
+            seed.Reservation.Id,
+            seed.Host.Id,
+            new CancelReservationRequest { Reason = "No podré realizar la experiencia" },
+            $"host-cancel-{Guid.NewGuid():N}");
+
+        Assert.Equal(ReservationCreationStatus.Success, cancelled.Status);
+        Assert.Equal(ReservationStatuses.Refunded, cancelled.Reservation!.Status);
+        Assert.Equal(PaymentStatuses.Refunded,
+            await Context.Payments.Where(item => item.Id == created.Payment.Id)
+                .Select(item => item.Status).SingleAsync());
+        Assert.Equal(10,
+            await Context.ExperienceSchedules.Where(item => item.Id == seed.Schedule.Id)
+                .Select(item => item.AvailableSpots).SingleAsync());
+    }
+
+    [Fact]
+    public async Task ApproveCancellationRequest_ReusesIdempotencyKeyWithoutDuplicatingRefund()
+    {
+        var seed = await SeedReservationAsync(quantity: 1, price: 50m);
+        var payments = GetRequiredService<IPaymentService>();
+        var created = await payments.CreateAsync(
+            seed.Tourist.Id, seed.Reservation.Id, $"pay-{Guid.NewGuid():N}");
+        await payments.MockConfirmAsync(created.Payment!.Id, seed.Tourist.Id, isAdmin: false);
+        var requests = GetRequiredService<IReservationChangeRequestService>();
+        await requests.RequestCancellationAsync(
+            seed.Tourist.Id, seed.Reservation.Id, "Ya no podré asistir");
+        var requestId = await Context.ReservationChangeRequests
+            .Where(item => item.ReservationId == seed.Reservation.Id)
+            .Select(item => item.Id)
+            .SingleAsync();
+        var key = $"review-{Guid.NewGuid():N}";
+
+        var first = await requests.ReviewAsync(seed.Host.Id, requestId, true, null, key);
+        var repeated = await requests.ReviewAsync(seed.Host.Id, requestId, true, null, key);
+        var conflict = await requests.ReviewAsync(seed.Host.Id, requestId, false, "Otro resultado", key);
+
+        Assert.Equal(ReservationChangeRequestOperationStatus.Success, first.Status);
+        Assert.Equal(ReservationChangeRequestOperationStatus.Success, repeated.Status);
+        Assert.Equal(ReservationChangeRequestOperationStatus.IdempotencyConflict, conflict.Status);
+        Assert.Equal(1, await Context.Refunds.CountAsync(item => item.PaymentId == created.Payment.Id));
+        Assert.Equal(ReservationChangeRequestStatuses.Approved,
+            await Context.ReservationChangeRequests.Where(item => item.Id == requestId)
+                .Select(item => item.Status).SingleAsync());
+    }
+
+    [Fact]
     public async Task Webhook_RejectionKeepsReservationPendingAndDoesNotDuplicateAttempts()
     {
         var seed = await SeedReservationAsync(quantity: 1, price: 50m);
@@ -428,9 +543,21 @@ public class PaymentIntegrationTests : PostgresIntegrationTestBase
             FullName = "Administrador Pagos",
             Email = $"pagos-admin-{marker}@goisland.test",
             PasswordHash = "hash-integracion",
-            Role = UserRoles.Admin
+            Role = UserRoles.Tourist,
+            IsAdmin = true
         };
         Context.Users.AddRange(host, admin);
+        await Context.SaveChangesAsync();
+        Context.HostProfiles.Add(new HostProfile
+        {
+            UserId = host.Id,
+            DisplayName = host.FullName,
+            Description = "Anfitrión para pruebas de pagos.",
+            PhoneNumber = "8095550101",
+            VerificationStatus = HostVerificationStatuses.Approved,
+            ReviewedAt = DateTime.UtcNow,
+            ReviewedByAdminId = admin.Id
+        });
         await Context.SaveChangesAsync();
 
         var experience = new Experience
@@ -473,11 +600,12 @@ public class PaymentIntegrationTests : PostgresIntegrationTestBase
 
         // El pago ocurre en una solicitud posterior y, por tanto, con un tracker nuevo.
         Context.ChangeTracker.Clear();
-        return new PaymentSeed(tourist, admin, schedule, creation.Reservation!);
+        return new PaymentSeed(tourist, host, admin, schedule, creation.Reservation!);
     }
 
     private record PaymentSeed(
         User Tourist,
+        User Host,
         User Admin,
         ExperienceSchedule Schedule,
         ReservationResponse Reservation);

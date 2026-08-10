@@ -14,13 +14,16 @@ public class ExperienceManagementService : IExperienceManagementService
 {
     private readonly GoIslandDbContext _context;
     private readonly IImageStorage _imageStorage;
+    private readonly ILogger<ExperienceManagementService> _logger;
 
     public ExperienceManagementService(
         GoIslandDbContext context,
-        IImageStorage imageStorage)
+        IImageStorage imageStorage,
+        ILogger<ExperienceManagementService> logger)
     {
         _context = context;
         _imageStorage = imageStorage;
+        _logger = logger;
     }
 
     public async Task<ExperienceManagementResult> CreateAsync(
@@ -30,6 +33,14 @@ public class ExperienceManagementService : IExperienceManagementService
         if (!await IsApprovedHostAsync(hostUserId))
         {
             return new(ExperienceManagementStatus.Forbidden);
+        }
+        if (!HasValidSchedulingPrice(request.SchedulingMode, request.Price))
+        {
+            return InvalidSchedulingPrice();
+        }
+        if (!HasValidTimeZone(request.TimeZoneId))
+        {
+            return InvalidTimeZone();
         }
 
         var now = DateTime.UtcNow;
@@ -84,6 +95,14 @@ public class ExperienceManagementService : IExperienceManagementService
         {
             return new(ExperienceManagementStatus.Forbidden);
         }
+        if (!HasValidSchedulingPrice(request.SchedulingMode, request.Price))
+        {
+            return InvalidSchedulingPrice();
+        }
+        if (!HasValidTimeZone(request.TimeZoneId))
+        {
+            return InvalidTimeZone();
+        }
 
         var experience = await _context.Experiences
             .Include(item => item.Images)
@@ -104,21 +123,6 @@ public class ExperienceManagementService : IExperienceManagementService
         var capacity = isUnlimitedCapacity
             ? ExperienceCapacity.UnlimitedValue
             : request.Capacity;
-        var schedules = await _context.ExperienceSchedules
-            .Where(schedule => schedule.ExperienceId == id)
-            .ToArrayAsync();
-        var reservedBySchedule = await _context.Reservations
-            .Where(reservation => reservation.ExperienceId == id
-                && (reservation.Status == ReservationStatuses.PendingPayment
-                    || reservation.Status == ReservationStatuses.Confirmed))
-            .GroupBy(reservation => reservation.ScheduleId)
-            .Select(group => new { ScheduleId = group.Key, Reserved = group.Sum(item => item.Quantity) })
-            .ToDictionaryAsync(item => item.ScheduleId, item => item.Reserved);
-        if (!isUnlimitedCapacity
-            && reservedBySchedule.Values.Any(reserved => reserved > capacity))
-        {
-            return new(ExperienceManagementStatus.Conflict, await ToResponseAsync(id));
-        }
 
         ApplyRequest(experience, request);
         ReplaceItinerary(experience, request.Itinerary);
@@ -132,14 +136,6 @@ public class ExperienceManagementService : IExperienceManagementService
         experience.ReviewedAt = null;
         experience.ReviewedByAdminId = null;
         experience.UpdatedAt = DateTime.UtcNow;
-
-        foreach (var schedule in schedules)
-        {
-            var reservedSpots = reservedBySchedule.GetValueOrDefault(schedule.Id);
-            schedule.Capacity = capacity;
-            schedule.AvailableSpots = capacity - reservedSpots;
-            schedule.UpdatedAt = DateTime.UtcNow;
-        }
 
         await _context.SaveChangesAsync();
         return new(ExperienceManagementStatus.Success, await ToResponseAsync(id));
@@ -160,21 +156,81 @@ public class ExperienceManagementService : IExperienceManagementService
             return new(ExperienceManagementStatus.NotFound);
         }
 
+        // Las reservas son el historial de otras personas: si existen, la experiencia se oculta,
+        // no se borra.
         if (await _context.Reservations.AnyAsync(reservation => reservation.ExperienceId == id))
         {
-            return new(ExperienceManagementStatus.Conflict, await ToResponseAsync(id));
+            return new(
+                ExperienceManagementStatus.Conflict,
+                await ToResponseAsync(id),
+                "Esta experiencia tiene reservas y no se puede eliminar. Ocúltala para retirarla del catálogo.");
         }
 
-        foreach (var image in experience.Images.Where(image =>
-            image.Provider == ImageStorageProviders.Cloudinary
-            && !string.IsNullOrWhiteSpace(image.PublicId)))
+        // Sin reservas, los horarios son andamiaje del anfitrión y se van con la experiencia.
+        var schedules = await _context.ExperienceSchedules
+            .Where(schedule => schedule.ExperienceId == id)
+            .ToArrayAsync();
+        if (schedules.Length > 0)
         {
-            await _imageStorage.DeleteAsync(image.PublicId!);
+            _context.ExperienceSchedules.RemoveRange(schedules);
         }
+
+        var externalImageIds = experience.Images.Where(image =>
+            image.Provider == ImageStorageProviders.Cloudinary
+            && !string.IsNullOrWhiteSpace(image.PublicId))
+            .Select(image => image.PublicId!)
+            .ToArray();
 
         _context.Experiences.Remove(experience);
         await _context.SaveChangesAsync();
+
+        foreach (var publicId in externalImageIds)
+        {
+            try
+            {
+                await _imageStorage.DeleteAsync(publicId);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(exception,
+                    "La experiencia {ExperienceId} se elimino, pero la imagen externa {PublicId} requiere limpieza.",
+                    id,
+                    publicId);
+            }
+        }
         return new(ExperienceManagementStatus.Success);
+    }
+
+    public async Task<ExperienceManagementResult> SetVisibilityAsync(int hostUserId, int id, bool isHidden)
+    {
+        if (!await IsApprovedHostAsync(hostUserId))
+        {
+            return new(ExperienceManagementStatus.Forbidden);
+        }
+
+        var experience = await _context.Experiences
+            .SingleOrDefaultAsync(item => item.Id == id && item.HostId == hostUserId);
+        if (experience is null)
+        {
+            return new(ExperienceManagementStatus.NotFound);
+        }
+
+        // Solo lo publicado tiene visibilidad que administrar: un borrador o una experiencia
+        // suspendida ya está fuera del catálogo por otras razones.
+        if (experience.ApprovalStatus != ExperienceApprovalStatuses.Approved)
+        {
+            return new(ExperienceManagementStatus.InvalidTransition, await ToResponseAsync(id));
+        }
+
+        if (experience.IsHidden == isHidden)
+        {
+            return new(ExperienceManagementStatus.Success, await ToResponseAsync(id));
+        }
+
+        experience.IsHidden = isHidden;
+        experience.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return new(ExperienceManagementStatus.Success, await ToResponseAsync(id));
     }
 
     public async Task<ExperienceManagementResult> SubmitAsync(int hostUserId, int id)
@@ -268,10 +324,25 @@ public class ExperienceManagementService : IExperienceManagementService
         ExperienceReviewAction action,
         string? reason)
     {
-        var experience = await _context.Experiences.SingleOrDefaultAsync(item => item.Id == id);
+        await using var transaction = _context.Database.CurrentTransaction is null
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
+        var experience = await _context.Experiences
+            .FromSqlInterpolated($@"
+                select * from experiences
+                where id = {id}
+                for update")
+            .SingleOrDefaultAsync();
         if (experience is null)
         {
             return new(ExperienceManagementStatus.NotFound);
+        }
+
+        // Un administrador tambien puede publicar experiencias, asi que las suyas las modera otra
+        // persona.
+        if (experience.HostId == adminUserId)
+        {
+            return new(ExperienceManagementStatus.Forbidden, await ToResponseAsync(id));
         }
 
         var normalizedReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
@@ -291,6 +362,19 @@ public class ExperienceManagementService : IExperienceManagementService
         if (!validTransition)
         {
             return new(ExperienceManagementStatus.InvalidTransition, await ToResponseAsync(id));
+        }
+        if (action == ExperienceReviewAction.Approve
+            && !HasValidSchedulingPrice(experience.SchedulingMode, experience.Price))
+        {
+            return new(
+                ExperienceManagementStatus.Incomplete,
+                await ToResponseAsync(id),
+                "La modalidad y el precio no son compatibles.",
+                new Dictionary<string, string[]>
+                {
+                    [nameof(Experience.Price)] = ["Las experiencias con fechas libres deben ser gratuitas."],
+                    [nameof(Experience.SchedulingMode)] = ["Las experiencias con fechas libres deben ser gratuitas."]
+                });
         }
 
         var now = DateTime.UtcNow;
@@ -317,6 +401,10 @@ public class ExperienceManagementService : IExperienceManagementService
             CreatedAt = now
         });
         await _context.SaveChangesAsync();
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync();
+        }
         return new(ExperienceManagementStatus.Success, await ToResponseAsync(id));
     }
 
@@ -391,6 +479,9 @@ public class ExperienceManagementService : IExperienceManagementService
                        })
                        .ToArray(),
                    ApprovalStatus = experience.ApprovalStatus,
+                   IsHidden = experience.IsHidden,
+                   HasReservations = _context.Reservations.Any(
+                       reservation => reservation.ExperienceId == experience.Id),
                    RejectionReason = experience.RejectionReason,
                    ReviewedAt = experience.ReviewedAt,
                    ReviewedByAdminId = experience.ReviewedByAdminId,
@@ -483,6 +574,13 @@ public class ExperienceManagementService : IExperienceManagementService
             errors[nameof(Experience.Location)] = ["Indica dónde se realiza la experiencia."];
         if (!experience.Images.Any(image => image.IsCover))
             errors["CoverImage"] = ["Agrega una foto de portada."];
+        if (!HasValidSchedulingPrice(experience.SchedulingMode, experience.Price))
+        {
+            errors[nameof(Experience.Price)] = ["Las experiencias con fechas libres deben ser gratuitas."];
+            errors[nameof(Experience.SchedulingMode)] = ["Las experiencias con fechas libres deben ser gratuitas."];
+        }
+        if (!HasValidTimeZone(experience.TimeZoneId))
+            errors[nameof(Experience.TimeZoneId)] = ["Selecciona una zona horaria válida."];
 
         var itinerary = experience.Itinerary.OrderBy(candidate => candidate.SortOrder).ToArray();
         for (var index = 0; index < itinerary.Length; index++)
@@ -507,6 +605,40 @@ public class ExperienceManagementService : IExperienceManagementService
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static bool HasValidSchedulingPrice(string schedulingMode, decimal price) =>
+        schedulingMode != ExperienceSchedulingModes.SelfGuided || price == 0m;
+
+    private static bool HasValidTimeZone(string timeZoneId)
+    {
+        if (string.IsNullOrWhiteSpace(timeZoneId)) return false;
+        try
+        {
+            _ = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId.Trim());
+            return true;
+        }
+        catch (Exception exception) when (exception is TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            return false;
+        }
+    }
+
+    private static ExperienceManagementResult InvalidSchedulingPrice() => new(
+        ExperienceManagementStatus.Incomplete,
+        Message: "Las experiencias con fechas libres deben ser gratuitas.",
+        Errors: new Dictionary<string, string[]>
+        {
+            [nameof(Experience.Price)] = ["Las experiencias con fechas libres deben ser gratuitas."],
+            [nameof(Experience.SchedulingMode)] = ["Las experiencias con fechas libres deben ser gratuitas."]
+        });
+
+    private static ExperienceManagementResult InvalidTimeZone() => new(
+        ExperienceManagementStatus.Incomplete,
+        Message: "Selecciona una zona horaria válida.",
+        Errors: new Dictionary<string, string[]>
+        {
+            [nameof(CreateExperienceRequest.TimeZoneId)] = ["Selecciona una zona horaria válida."]
+        });
 
     private static string EscapeLikePattern(string value) => value
         .Replace("\\", "\\\\", StringComparison.Ordinal)

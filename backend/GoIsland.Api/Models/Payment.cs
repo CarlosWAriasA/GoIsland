@@ -55,8 +55,11 @@ public class Refund
     public string Status { get; set; } = RefundStatuses.Completed;
     public string Provider { get; set; } = string.Empty;
     public string? ProviderRefundId { get; set; }
+    public string? FailureCode { get; set; }
+    public int AttemptCount { get; set; }
     public int RequestedByUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public Payment Payment { get; set; } = null!;
 }
 
@@ -65,6 +68,7 @@ public static class PaymentStatuses
     public const string Pending = "Pending";
     public const string Paid = "Paid";
     public const string Failed = "Failed";
+    public const string RefundPending = "RefundPending";
     public const string Refunded = "Refunded";
 }
 
@@ -73,10 +77,16 @@ public static class PaymentGatewayAttemptOutcomes
     public const string Created = "Created";
     public const string Approved = "Approved";
     public const string Rejected = "Rejected";
+    public const string Cancelled = "Cancelled";
+    public const string RefundRequested = "RefundRequested";
+    public const string RefundFailed = "RefundFailed";
     public const string Refunded = "Refunded";
 }
 
 public static class RefundStatuses
 {
+    public const string Pending = "Pending";
+    public const string Failed = "Failed";
+    public const string Partial = "Partial";
     public const string Completed = "Completed";
 }

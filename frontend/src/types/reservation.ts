@@ -47,6 +47,7 @@ export interface Reservation {
   latitude: number | null;
   longitude: number | null;
   schedulingMode: string;
+  experienceTimeZoneId: string;
   startsAt: string;
   endsAt: string;
   quantity: number;
@@ -56,6 +57,7 @@ export interface Reservation {
   expiresAt: string | null;
   updatedAt: string;
   cancelledAt: string | null;
+  hasReview: boolean;
   statusHistory: ReservationStatusHistory[];
   pendingChangeRequest: ReservationChangeRequest | null;
 }

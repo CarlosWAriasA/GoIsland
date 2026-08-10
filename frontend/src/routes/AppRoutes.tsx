@@ -1,28 +1,29 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
-import Experiences from '../pages/Experiences';
-import Login from '../pages/Login';
-import Register from '../pages/Register';
-import Profile from '../pages/Profile';
-import ChangePassword from '../pages/ChangePassword';
-import ForgotPassword from '../pages/ForgotPassword';
-import ResetPassword from '../pages/ResetPassword';
-import ExperienceDetail from '../pages/ExperienceDetail';
-import Home from '../pages/Home';
-import Reservations from '../pages/Reservations';
-import ReservationDetail from '../pages/ReservationDetail';
-import HostProfile from '../pages/HostProfile';
-import HostExperiences from '../pages/HostExperiences';
-import HostSchedules from '../pages/HostSchedules';
-import HostReservations from '../pages/HostReservations';
-import AdminModeration from '../pages/AdminModeration';
 import RoleRoute from './RoleRoute';
-import Notifications from '../pages/Notifications';
-import PublicInfoPage from '../pages/PublicInfoPage';
 
+const Home = React.lazy(() => import('../pages/Home'));
+const Experiences = React.lazy(() => import('../pages/Experiences'));
 const ExperienceMapPage = React.lazy(() => import('../pages/ExperienceMapPage'));
+const ExperienceDetail = React.lazy(() => import('../pages/ExperienceDetail'));
+const PublicInfoPage = React.lazy(() => import('../pages/PublicInfoPage'));
+const Login = React.lazy(() => import('../pages/Login'));
+const Register = React.lazy(() => import('../pages/Register'));
+const ForgotPassword = React.lazy(() => import('../pages/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('../pages/ResetPassword'));
+const Profile = React.lazy(() => import('../pages/Profile'));
+const ChangePassword = React.lazy(() => import('../pages/ChangePassword'));
+const Reservations = React.lazy(() => import('../pages/Reservations'));
+const ReservationDetail = React.lazy(() => import('../pages/ReservationDetail'));
+const HostProfile = React.lazy(() => import('../pages/HostProfile'));
+const Notifications = React.lazy(() => import('../pages/Notifications'));
 const HostDashboard = React.lazy(() => import('../pages/HostDashboard'));
+const HostExperiences = React.lazy(() => import('../pages/HostExperiences'));
+const HostSchedules = React.lazy(() => import('../pages/HostSchedules'));
+const HostReservations = React.lazy(() => import('../pages/HostReservations'));
+const AdminModeration = React.lazy(() => import('../pages/AdminModeration'));
+const NotFound = React.lazy(() => import('../pages/NotFound'));
 
 const pageFallback = (
   <div className="container route-loading" role="status">
@@ -32,12 +33,10 @@ const pageFallback = (
 
 export const AppRoutes: React.FC = () => {
   return (
-    <Routes>
+    <React.Suspense fallback={pageFallback}><Routes>
       <Route path="/" element={<Home />} />
       <Route path="/experiences" element={<Experiences />} />
-      <Route path="/experiences/map" element={
-        <React.Suspense fallback={pageFallback}><ExperienceMapPage /></React.Suspense>
-      } />
+      <Route path="/experiences/map" element={<ExperienceMapPage />} />
       <Route path="/experiences/:identifier" element={<ExperienceDetail />} />
       <Route path="/contacto" element={<PublicInfoPage page="contact" />} />
       <Route path="/privacidad" element={<PublicInfoPage page="privacy" />} />
@@ -57,9 +56,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/notifications" element={<Notifications />} />
 
         <Route element={<RoleRoute allowedRoles={['Host']} />}>
-          <Route path="/host/dashboard" element={
-            <React.Suspense fallback={pageFallback}><HostDashboard /></React.Suspense>
-          } />
+          <Route path="/host/dashboard" element={<HostDashboard />} />
           <Route path="/host/experiences" element={<HostExperiences />} />
           <Route path="/host/experiences/:id/schedules" element={<HostSchedules />} />
           <Route path="/host/reservations" element={<HostReservations />} />
@@ -70,8 +67,8 @@ export const AppRoutes: React.FC = () => {
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      <Route path="*" element={<NotFound />} />
+    </Routes></React.Suspense>
   );
 };
 

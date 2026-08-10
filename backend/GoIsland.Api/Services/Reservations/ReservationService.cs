@@ -5,6 +5,7 @@ using GoIsland.Api.DTOs.Common;
 using GoIsland.Api.DTOs.Reservations;
 using GoIsland.Api.Models;
 using GoIsland.Api.Services.Notifications;
+using GoIsland.Api.Services.Payments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -18,6 +19,7 @@ public class ReservationService : IReservationService
     private readonly ILogger<ReservationService> _logger;
     private readonly IOutboxWriter _outbox;
     private readonly IReservationExpirationService _expiration;
+    private readonly IPaymentService _payments;
     private readonly ReservationExpirationOptions _expirationOptions;
     private readonly List<IReservationObserver> _observers = [];
 
@@ -26,6 +28,7 @@ public class ReservationService : IReservationService
         IEnumerable<IReservationObserver> observers,
         IOutboxWriter outbox,
         IReservationExpirationService expiration,
+        IPaymentService payments,
         IOptions<ReservationExpirationOptions> expirationOptions,
         ILogger<ReservationService> logger)
     {
@@ -33,6 +36,7 @@ public class ReservationService : IReservationService
         _logger = logger;
         _outbox = outbox;
         _expiration = expiration;
+        _payments = payments;
         _expirationOptions = expirationOptions.Value;
         foreach (var observer in observers) Subscribe(observer);
     }
@@ -81,17 +85,31 @@ public class ReservationService : IReservationService
 
         var match = await (from schedule in _context.ExperienceSchedules
                            join experience in _context.Experiences on schedule.ExperienceId equals experience.Id
+                           join profile in _context.HostProfiles on experience.HostId equals profile.UserId
                            where schedule.Id == request.ScheduleId
+                               && profile.VerificationStatus == HostVerificationStatuses.Approved
                            select new { Schedule = schedule, Experience = experience })
             .SingleOrDefaultAsync();
-        if (match is null || match.Experience.ApprovalStatus != ExperienceApprovalStatuses.Approved)
+        if (match is null
+            || match.Experience.ApprovalStatus != ExperienceApprovalStatuses.Approved
+            || match.Experience.IsHidden)
         {
             return new(ReservationCreationStatus.ScheduleNotFound);
         }
+        if (match.Experience.HostId == userId)
+        {
+            return new(ReservationCreationStatus.Forbidden);
+        }
 
-        if (match.Schedule.Status != ScheduleStatuses.Scheduled || match.Schedule.StartsAt <= DateTime.UtcNow)
+        var now = DateTime.UtcNow;
+        var bookingDeadline = match.Schedule.StartsAt - _expirationOptions.BookingCutoff;
+        if (match.Schedule.Status != ScheduleStatuses.Scheduled)
         {
             return new(ReservationCreationStatus.ScheduleUnavailable);
+        }
+        if (now >= bookingDeadline)
+        {
+            return new(ReservationCreationStatus.OutsideBookingWindow);
         }
 
         if (match.Schedule.AvailableSpots < request.Quantity)
@@ -104,7 +122,6 @@ public class ReservationService : IReservationService
             return new(ReservationCreationStatus.AmountOutOfRange);
         }
 
-        var now = DateTime.UtcNow;
         var isFree = match.Experience.Price == 0;
         var previousSpots = match.Schedule.AvailableSpots;
         match.Schedule.AvailableSpots -= request.Quantity;
@@ -118,7 +135,9 @@ public class ReservationService : IReservationService
             Status = isFree ? ReservationStatuses.Confirmed : ReservationStatuses.PendingPayment,
             TotalAmount = match.Experience.Price * request.Quantity,
             ReservationDate = now,
-            ExpiresAt = isFree ? null : now.Add(_expirationOptions.HoldDuration),
+            ExpiresAt = isFree
+                ? null
+                : Min(now.Add(_expirationOptions.HoldDuration), bookingDeadline),
             UpdatedAt = now
         };
         await _context.Reservations.AddAsync(reservation);
@@ -175,14 +194,21 @@ public class ReservationService : IReservationService
         }
 
         var experience = await _context.Experiences
-            .FirstOrDefaultAsync(e => e.Id == request.ExperienceId);
+            .FirstOrDefaultAsync(e => e.Id == request.ExperienceId
+                && _context.HostProfiles.Any(profile => profile.UserId == e.HostId
+                    && profile.VerificationStatus == HostVerificationStatuses.Approved));
 
         if (experience is null
             || !experience.IsApproved
             || experience.ApprovalStatus != ExperienceApprovalStatuses.Approved
+            || experience.IsHidden
             || experience.SchedulingMode != ExperienceSchedulingModes.SelfGuided)
         {
             return new(ReservationCreationStatus.ExperienceNotFound);
+        }
+        if (experience.HostId == userId)
+        {
+            return new(ReservationCreationStatus.Forbidden);
         }
 
         if (experience.Price > 0)
@@ -639,6 +665,17 @@ public class ReservationService : IReservationService
         var repeated = await FindRepeatedAsync(actorUserId, operation, key, requestHash);
         if (repeated is not null) return repeated;
 
+        await using var transaction = _context.Database.CurrentTransaction is null
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
+        await _payments.LockReservationAsync(id);
+        repeated = await FindRepeatedAsync(actorUserId, operation, key, requestHash);
+        if (repeated is not null)
+        {
+            if (transaction is not null) await transaction.CommitAsync();
+            return repeated;
+        }
+
         await _expiration.ExpireReservationAsync(id);
 
         Reservation? reservation;
@@ -691,6 +728,26 @@ public class ReservationService : IReservationService
             reservation, byHost ? null : "/host/reservations");
         await _outbox.CancelPendingByReservationAsync(id, "VisitReminder", "VisitFollowUp");
 
+        var paidPayment = await _context.Payments
+            .Where(item => item.ReservationId == reservation.Id
+                && (item.Status == PaymentStatuses.Paid || item.Status == PaymentStatuses.RefundPending))
+            .OrderByDescending(item => item.Id)
+            .FirstOrDefaultAsync();
+        if (paidPayment is not null && byHost)
+        {
+            var refund = await _payments.RefundByHostAsync(paidPayment.Id, actorUserId,
+                reason ?? "Cancelación realizada por el anfitrión.");
+            if (refund.Status is not (PaymentOperationStatus.Success or PaymentOperationStatus.GatewayRejected))
+                return new(ReservationCreationStatus.ConcurrencyConflict);
+        }
+        else
+        {
+            await _payments.ClosePendingForReservationAsync(
+                reservation.Id,
+                actorUserId,
+                reason ?? (byHost ? "Cancelación realizada por el anfitrión." : "Cancelación realizada por el turista."));
+        }
+
         try
         {
             await _context.SaveChangesAsync();
@@ -699,6 +756,8 @@ public class ReservationService : IReservationService
         {
             return new(ReservationCreationStatus.ConcurrencyConflict);
         }
+
+        if (transaction is not null) await transaction.CommitAsync();
 
         var response = await BuildResponseAsync(id);
         await NotifyAsync(new ReservationEvent(ReservationEventType.Cancelled, response!, schedule.AvailableSpots, now));
@@ -736,7 +795,7 @@ public class ReservationService : IReservationService
         }
         catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
         {
-            timeZone = TimeZoneInfo.Utc;
+            return new(null, ReservationCreationStatus.ScheduleUnavailable);
         }
 
         var localStart = DateTime.SpecifyKind(startsAtLocal, DateTimeKind.Unspecified);
@@ -746,9 +805,9 @@ public class ReservationService : IReservationService
         }
 
         var startsAt = TimeZoneInfo.ConvertTimeToUtc(localStart, timeZone);
-        if (startsAt <= now || startsAt > now.AddMonths(12))
+        if (startsAt <= now.Add(_expirationOptions.BookingCutoff) || startsAt > now.AddMonths(12))
         {
-            return new(null, ReservationCreationStatus.ScheduleUnavailable);
+            return new(null, ReservationCreationStatus.OutsideBookingWindow);
         }
 
         var durationMinutes = experience.DurationMinutes ?? 120;
@@ -756,6 +815,11 @@ public class ReservationService : IReservationService
 
         var schedule = await _context.ExperienceSchedules
             .FirstOrDefaultAsync(s => s.ExperienceId == experience.Id && s.StartsAt == startsAt);
+
+        if (schedule is not null && schedule.Status != ScheduleStatuses.Scheduled)
+        {
+            return new(null, ReservationCreationStatus.ScheduleUnavailable);
+        }
 
         if (schedule is null)
         {
@@ -787,6 +851,8 @@ public class ReservationService : IReservationService
 
         return new(schedule, null);
     }
+
+    private static DateTime Min(DateTime first, DateTime second) => first <= second ? first : second;
 
     private async Task<(Reservation Reservation, ExperienceSchedule Schedule)?> FindForHostTrackingAsync(
         int id,
@@ -901,6 +967,7 @@ public class ReservationService : IReservationService
             Latitude = experience.Latitude,
             Longitude = experience.Longitude,
             SchedulingMode = experience.SchedulingMode,
+            ExperienceTimeZoneId = experience.TimeZoneId,
             StartsAt = schedule.StartsAt,
             EndsAt = schedule.EndsAt,
             Quantity = reservation.Quantity,
@@ -909,7 +976,9 @@ public class ReservationService : IReservationService
             ReservationDate = reservation.ReservationDate,
             ExpiresAt = reservation.ExpiresAt,
             UpdatedAt = reservation.UpdatedAt,
-            CancelledAt = reservation.CancelledAt
+            CancelledAt = reservation.CancelledAt,
+            HasReview = _context.Reviews.Any(review => review.ReservationId == reservation.Id
+                && review.ModerationStatus != ReviewModerationStatuses.Deleted)
         };
 
     private async Task AddHistoryAsync(

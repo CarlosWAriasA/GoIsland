@@ -276,7 +276,9 @@ export const ExperienceMapPage = () => {
       )}
 
       {!loading && !error && (
-        <div className="map-page__filters surface-panel">
+        <div
+          className={`map-page__filters surface-panel${hasActiveFilters ? ' map-page__filters--with-reset' : ''}`}
+        >
           <div className="map-page__search-col">
             <Input
               label="Buscar"
@@ -347,7 +349,11 @@ export const ExperienceMapPage = () => {
                   ? 'Sin resultados'
                   : `${filteredExperiences.length} ${filteredExperiences.length === 1 ? 'experiencia' : 'experiencias'}`}
               </h2>
-              <p>Selecciona una para centrarla en el mapa.</p>
+              <p>
+                {filteredExperiences.length !== catalogExperiences.length && filteredExperiences.length > 0
+                  ? `De ${catalogExperiences.length} en el catálogo. Selecciona una para centrarla en el mapa.`
+                  : 'Selecciona una para centrarla en el mapa.'}
+              </p>
             </div>
             {filteredExperiences.length === 0 ? (
               <EmptyState

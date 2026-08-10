@@ -35,10 +35,7 @@ public class HostExperiencesController : ControllerBase
         var result = await _service.CreateAsync(userId, request);
         return result.Status == ExperienceManagementStatus.Success
             ? CreatedAtAction(nameof(GetById), new { id = result.Experience!.Id }, result.Experience)
-            : StatusCode(StatusCodes.Status403Forbidden, new
-            {
-                message = "Tu perfil de anfitrión no está aprobado o fue suspendido."
-            });
+            : ToActionResult(result);
     }
 
     [HttpGet]
@@ -146,6 +143,28 @@ public class HostExperiencesController : ControllerBase
         return ToImageActionResult(await _imageService.DeleteAsync(userId, id, imageId));
     }
 
+    [HttpPost("{id:int}/hide")]
+    public async Task<IActionResult> Hide(int id)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        }
+
+        return ToActionResult(await _service.SetVisibilityAsync(userId, id, isHidden: true));
+    }
+
+    [HttpPost("{id:int}/unhide")]
+    public async Task<IActionResult> Unhide(int id)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(new { message = "Tu sesión ya no es válida. Inicia sesión nuevamente." });
+        }
+
+        return ToActionResult(await _service.SetVisibilityAsync(userId, id, isHidden: false));
+    }
+
     [HttpPost("{id:int}/submit")]
     public async Task<IActionResult> Submit(int id)
     {
@@ -169,7 +188,7 @@ public class HostExperiencesController : ControllerBase
             }),
             ExperienceManagementStatus.Conflict => Conflict(new
             {
-                message = "La operacion entra en conflicto con reservas o cupos existentes."
+                message = result.Message ?? "La operación entra en conflicto con reservas, horarios o cupos existentes."
             }),
             ExperienceManagementStatus.InvalidTransition => Conflict(new
             {
@@ -193,6 +212,14 @@ public class HostExperiencesController : ControllerBase
             ExperienceImageStatus.NotFound => NotFound(new
             {
                 message = "No se encontró la experiencia o la imagen."
+            }),
+            ExperienceImageStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Tu perfil de anfitrión no está aprobado o fue suspendido."
+            }),
+            ExperienceImageStatus.InvalidTransition => Conflict(new
+            {
+                message = "No puedes modificar las imágenes de una experiencia suspendida."
             }),
             ExperienceImageStatus.LimitExceeded => Conflict(new { message = result.Message }),
             ExperienceImageStatus.InvalidFile => BadRequest(new { message = result.Message }),

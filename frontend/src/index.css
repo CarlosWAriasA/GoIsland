@@ -758,29 +758,78 @@ textarea {
   scrollbar-width: thin;
 }
 
-.account-notifications__item {
+/* El borde y el fondo viven en la fila para que el botón de "marcar leída" quede dentro de la
+   misma tarjeta y no como una caja aparte. */
+/* La columna de la acción se reserva siempre, también en las leídas: si solo existiera en las
+   no leídas, el texto de unas terminaría 42px más a la derecha que el de las otras. */
+.account-notifications__row {
   position: relative;
   display: grid;
-  gap: 0.3rem;
-  width: 100%;
-  padding: 0.85rem 0.85rem 0.85rem 1rem;
+  grid-template-columns: minmax(0, 1fr) 3.25rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.82);
-  color: var(--color-text);
-  cursor: pointer;
-  text-align: left;
   transition: border-color var(--transition-fast), background-color var(--transition-fast);
 }
 
-.account-notifications__item:hover {
+.account-notifications__row:hover {
   border-color: var(--color-border-hover);
   background: var(--color-primary-soft);
 }
 
-.account-notifications__item--unread {
+.account-notifications__row--unread {
   border-left: 4px solid var(--color-primary);
   background: rgba(234, 242, 248, 0.68);
+}
+
+.account-notifications__item {
+  display: grid;
+  min-width: 0;
+  gap: 0.3rem;
+  padding: 0.85rem 0 0.85rem 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.account-notifications__mark-one {
+  display: grid;
+  place-items: center;
+  align-self: center;
+  justify-self: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-white);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.account-notifications__mark-one:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.account-notifications__mark-one:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+@media (pointer: coarse) {
+  .account-notifications__row {
+    grid-template-columns: minmax(0, 1fr) 3.75rem;
+  }
+
+  .account-notifications__mark-one {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 .account-notifications__item-heading {
@@ -1910,6 +1959,13 @@ textarea {
 
 .profile-summary h2 { margin-bottom: 0.6rem; font-size: 1.45rem; }
 
+.profile-summary__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
 .profile-details {
   display: grid;
   width: 100%;
@@ -2573,6 +2629,78 @@ textarea {
     grid-template-columns: 1fr 1fr 1fr;
     align-items: start;
     gap: var(--space-4);
+  }
+}
+
+.experience-search__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.5rem;
+  margin-top: var(--space-3);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-caribe-200);
+  border-radius: 999px;
+  background: var(--color-white);
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.experience-search__toggle:hover {
+  border-color: var(--color-primary);
+  background: var(--color-caribe-100);
+}
+
+.experience-search__toggle-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: var(--text-xs);
+}
+
+.experience-search__toggle-chevron {
+  transition: transform var(--transition-fast);
+}
+
+.experience-search__toggle[aria-expanded='true'] .experience-search__toggle-chevron {
+  transform: rotate(180deg);
+}
+
+.experience-search__fields--advanced {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  animation: experienceFiltersIn var(--transition-fast) ease-out;
+}
+
+@keyframes experienceFiltersIn {
+  from {
+    opacity: 0;
+    transform: translateY(-0.35rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .experience-search__fields--advanced {
+    animation: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .experience-search__toggle {
+    min-height: 44px;
   }
 }
 
@@ -3799,6 +3927,13 @@ input[type='number']::-webkit-inner-spin-button {
   align-items: flex-start;
 }
 
+.management-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
 .management-card__header p {
   display: flex;
   margin-top: 0.4rem;
@@ -4552,6 +4687,14 @@ input[type='number']::-webkit-inner-spin-button {
   padding: 1.5rem;
 }
 
+.review-form {
+  margin-top: 1.5rem;
+}
+
+.review-form h2 {
+  font-size: 1.2rem;
+}
+
 .notification-toggle {
   align-items: center;
   border: 1px solid var(--color-border);
@@ -5011,6 +5154,41 @@ input[type='number']::-webkit-inner-spin-button {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.8fr);
   gap: var(--space-5);
+}
+
+.map-page__results {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.map-results__summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-mist-50);
+}
+
+.map-results__summary strong {
+  color: var(--color-ocean-700);
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.map-results__summary span {
+  color: var(--color-ink-900);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.map-results__summary small {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
 }
 
 .map-results {
@@ -7171,22 +7349,11 @@ input[type='number']::-webkit-inner-spin-button {
   box-shadow: inset 3px 0 0 var(--color-ocean-700);
 }
 
-.map-page__filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  margin-bottom: 1.25rem;
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-panel);
-  border: 1px solid var(--color-border);
-}
-
+/* La columna del botón solo existe cuando el botón se muestra; si no, el hueco y su
+   separación quedaban vacíos al final de la fila. */
 .map-page__filters {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr;
   align-items: flex-end;
   gap: 1.25rem;
   padding: 1.25rem;
@@ -7200,8 +7367,12 @@ input[type='number']::-webkit-inner-spin-button {
   margin-bottom: 0;
 }
 
+.map-page__filters--with-reset {
+  grid-template-columns: 2fr 1fr 1fr auto;
+}
+
 .map-page__reset-col {
-  padding-bottom: 0.4rem;
+  padding-bottom: 0;
 }
 
 @media (max-width: 900px) {

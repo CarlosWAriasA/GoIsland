@@ -14,7 +14,7 @@ import { getFieldError, toApiError } from '../services/apiError';
 import { isGoogleAuthConfigured } from '../services/googleAuthConfig';
 
 export const Login = () => {
-  const { login, loginWithGoogle, isAuthenticated, isLoading, sessionExpired } = useAuth();
+  const { login, loginWithGoogle, isAuthenticated, isLoading, sessionExpired, acknowledgeSignOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -36,6 +36,12 @@ export const Login = () => {
   useEffect(() => {
     if (isAuthenticated && !loggedOut) navigate(requestedPath, { replace: true });
   }, [isAuthenticated, loggedOut, navigate, requestedPath]);
+
+  // El cierre de sesión ya llegó a su destino. A partir de aquí, volver a una página privada
+  // vuelve a ser un acceso sin sesión y merece el aviso correspondiente.
+  useEffect(() => {
+    acknowledgeSignOut();
+  }, [acknowledgeSignOut]);
 
   const validate = () => {
     const errors: { email?: string; password?: string } = {};

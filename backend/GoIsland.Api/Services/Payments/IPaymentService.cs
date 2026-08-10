@@ -15,4 +15,10 @@ public interface IPaymentService
     Task<PaymentOperationResult> MockRejectAsync(int id, int actorUserId, bool isAdmin, string? failureCode);
     Task<PaymentOperationResult> RefundAsync(int id, int adminUserId, string reason);
     Task<PaymentOperationResult> RefundByHostAsync(int id, int hostUserId, string reason);
+    Task LockReservationAsync(int reservationId, CancellationToken cancellationToken = default);
+    Task ClosePendingForReservationAsync(
+        int reservationId,
+        int actorUserId,
+        string reason,
+        CancellationToken cancellationToken = default);
 }
