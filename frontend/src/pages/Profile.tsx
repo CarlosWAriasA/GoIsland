@@ -64,7 +64,7 @@ export const Profile = () => {
       <header className="page-heading">
         <span className="page-heading__eyebrow">Tu cuenta</span>
         <h1>Mi perfil</h1>
-        <p>Consulta tu identidad y mantén actualizado tu nombre.</p>
+        <p>Mantén actualizados tus datos.</p>
       </header>
 
       <div className="profile-grid">
@@ -98,7 +98,6 @@ export const Profile = () => {
 
         <section className="profile-form surface-panel" aria-labelledby="profile-form-title">
           <h2 id="profile-form-title">Datos personales</h2>
-          <p>El correo identifica tu cuenta y no puede modificarse.</p>
           <ToastFeedback message={success} tone="success" />
           <ToastFeedback message={error} tone="error" />
 

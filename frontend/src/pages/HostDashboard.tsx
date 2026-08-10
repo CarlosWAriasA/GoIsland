@@ -72,7 +72,7 @@ export const HostDashboard = () => {
       <header className="page-heading">
         <span className="page-heading__eyebrow">Tu actividad</span>
         <h1>Resumen del anfitrión</h1>
-        <p>Datos actualizados de tus publicaciones, reservas y pagos.</p>
+        <p>Tus publicaciones, reservas y pagos de un vistazo.</p>
       </header>
       <section className="dashboard-metrics" aria-label="Resumen de actividad">
         {metrics.map(({ label, value, icon: Icon }) => (

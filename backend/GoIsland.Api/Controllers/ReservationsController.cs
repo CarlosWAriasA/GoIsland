@@ -53,11 +53,11 @@ public class ReservationsController : ControllerBase
             ReservationCreationStatus.ExperienceNotFound or ReservationCreationStatus.ScheduleNotFound => NotFound(
                 new { message = "No encontramos ese horario disponible. Elige otra fecha e inténtalo nuevamente." }),
             ReservationCreationStatus.ScheduleUnavailable => Conflict(
-                new { message = "El horario ya no esta disponible para nuevas reservas." }),
+                new { message = "El horario ya no está disponible para nuevas reservas." }),
             ReservationCreationStatus.InsufficientSpots => Conflict(
                 new { message = "La experiencia no tiene suficientes cupos disponibles." }),
             ReservationCreationStatus.AmountOutOfRange => BadRequest(
-                new { message = "El monto total de la reserva excede el limite permitido." }),
+                new { message = "El monto total de la reserva supera el límite permitido." }),
             ReservationCreationStatus.ConcurrencyConflict => Conflict(
                 new { message = "Los cupos cambiaron mientras se procesaba la reserva. Intenta nuevamente." }),
             ReservationCreationStatus.IdempotencyConflict => Conflict(
@@ -157,7 +157,11 @@ public class ReservationsController : ControllerBase
         ReservationChangeRequestOperationStatus.DifferentExperience => Conflict(
             new { message = "Solo puedes solicitar una reprogramación dentro de la misma experiencia." }),
         ReservationChangeRequestOperationStatus.ScheduleUnavailable => Conflict(
+<<<<<<< HEAD
             new { message = "El horario ya no esta disponible." }),
+=======
+            new { message = "El horario ya no está disponible." }),
+>>>>>>> 6640fdd59f4b26b3fe39013ac2d3eb99a1dacb49
         ReservationChangeRequestOperationStatus.InsufficientSpots => Conflict(
             new { message = "El horario no tiene suficientes cupos." }),
         _ => StatusCode(StatusCodes.Status500InternalServerError)
@@ -177,11 +181,11 @@ public class ReservationsController : ControllerBase
         ReservationCreationStatus.Success => Ok(result.Reservation),
         ReservationCreationStatus.ExperienceNotFound or ReservationCreationStatus.ScheduleNotFound =>
             NotFound(new { message = "No se encontro la reserva o el horario." }),
-        ReservationCreationStatus.ScheduleUnavailable => Conflict(new { message = "El horario ya no esta disponible." }),
+        ReservationCreationStatus.ScheduleUnavailable => Conflict(new { message = "El horario ya no está disponible." }),
         ReservationCreationStatus.InsufficientSpots => Conflict(new { message = "El horario no tiene suficientes cupos." }),
         ReservationCreationStatus.DifferentExperience => Conflict(new { message = "Solo puedes reprogramar dentro de la misma experiencia." }),
-        ReservationCreationStatus.InvalidTransition => Conflict(new { message = "La reserva no admite esa operacion en su estado o fecha actual." }),
-        ReservationCreationStatus.ConcurrencyConflict => Conflict(new { message = "La disponibilidad cambio. Intenta nuevamente." }),
+        ReservationCreationStatus.InvalidTransition => Conflict(new { message = "La reserva no admite esa acción en su estado o fecha actual." }),
+        ReservationCreationStatus.ConcurrencyConflict => Conflict(new { message = "La disponibilidad cambió. Intenta nuevamente." }),
         ReservationCreationStatus.IdempotencyConflict => Conflict(new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
         ReservationCreationStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { message = "Esta acción no está disponible para esta reserva." }),
         ReservationCreationStatus.RequiresHostApproval => Conflict(new {
@@ -224,7 +228,7 @@ public class ReservationsController : ControllerBase
             PaymentOperationStatus.IdempotencyConflict => Conflict(
                 new { message = "Esta acción ya fue procesada con información diferente. Actualiza la página antes de intentarlo nuevamente." }),
             PaymentOperationStatus.ConcurrencyConflict => Conflict(
-                new { message = "El pago cambio mientras se procesaba. Consulta su estado antes de reintentar." }),
+                new { message = "El pago cambió mientras se procesaba. Actualiza la página e inténtalo nuevamente." }),
             PaymentOperationStatus.GatewayRejected => StatusCode(
                 StatusCodes.Status502BadGateway,
                 new { message = "No pudimos iniciar el pago. Inténtalo nuevamente." }),

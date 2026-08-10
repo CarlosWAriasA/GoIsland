@@ -8,7 +8,7 @@ public sealed class StrongPasswordAttribute : ValidationAttribute
     public const int MinimumLength = 12;
     public const int MaximumLength = 128;
     public const string PolicyMessage =
-        "La contrasena debe tener entre 12 y 128 caracteres e incluir mayuscula, minuscula y numero.";
+        "La contraseña debe tener entre 12 y 128 caracteres e incluir mayúscula, minúscula y número.";
 
     public StrongPasswordAttribute()
         : base(PolicyMessage)

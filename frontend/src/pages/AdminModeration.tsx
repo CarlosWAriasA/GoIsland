@@ -401,7 +401,7 @@ export const AdminModeration = () => {
       <header className="page-heading">
         <span className="page-heading__eyebrow">Administración</span>
         <h1>Moderación</h1>
-        <p>Valida identidad operativa, propiedad y contenido antes de publicar.</p>
+        <p>Revisa las solicitudes de anfitrión y las experiencias antes de publicarlas.</p>
       </header>
 
       <ToastFeedback message={success} tone="success" />

@@ -30,7 +30,7 @@ public class AuthController : ControllerBase
         var response = await _authService.RegisterAsync(request);
         if (response is null)
         {
-            return Conflict(new { message = "Ya existe un usuario con este correo electronico." });
+            return Conflict(new { message = "Ya existe una cuenta con este correo electrónico." });
         }
 
         return CreatedAtAction(nameof(Me), response.User, response);
@@ -44,7 +44,7 @@ public class AuthController : ControllerBase
         var response = await _authService.LoginAsync(request);
         if (response is null)
         {
-            return Unauthorized(new { message = "Correo electronico o contrasena incorrectos." });
+            return Unauthorized(new { message = "Correo o contraseña incorrectos." });
         }
 
         return Ok(response);
@@ -69,7 +69,7 @@ public class AuthController : ControllerBase
             }),
             GoogleAuthStatus.AccountConflict => Conflict(new
             {
-                message = "Esta cuenta local ya esta vinculada a otra cuenta de Google."
+                message = "Esta cuenta ya está vinculada a otra cuenta de Google."
             }),
             _ => Unauthorized(new { message = "No pudimos validar tu acceso con Google. Inténtalo nuevamente." })
         };
@@ -91,9 +91,9 @@ public class AuthController : ControllerBase
             ChangePasswordStatus.PasswordNotAvailable => BadRequest(
                 new { message = "Esta cuenta utiliza Google para iniciar sesión y no tiene una contraseña de GoIsland." }),
             ChangePasswordStatus.InvalidCurrentPassword => BadRequest(
-                new { message = "La contrasena actual no es correcta." }),
+                new { message = "La contraseña actual no es correcta." }),
             ChangePasswordStatus.NewPasswordMatchesCurrent => BadRequest(
-                new { message = "La nueva contrasena debe ser diferente a la actual." }),
+                new { message = "La nueva contraseña debe ser diferente a la actual." }),
             _ => Unauthorized(new { message = "No fue posible identificar al usuario." })
         };
     }
@@ -114,7 +114,7 @@ public class AuthController : ControllerBase
 
         return Accepted(new
         {
-            message = "Si el correo esta registrado, recibira instrucciones para restablecer la contrasena."
+            message = "Si el correo está registrado, recibirás instrucciones para restablecer la contraseña."
         });
     }
 
@@ -128,7 +128,7 @@ public class AuthController : ControllerBase
         {
             ResetPasswordStatus.Success => NoContent(),
             ResetPasswordStatus.NewPasswordMatchesCurrent => BadRequest(
-                new { message = "La nueva contrasena debe ser diferente a la anterior." }),
+                new { message = "La nueva contraseña debe ser diferente a la anterior." }),
             _ => BadRequest(new { message = "Este enlace de recuperación no es válido o ya venció." })
         };
     }

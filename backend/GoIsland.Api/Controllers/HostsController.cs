@@ -32,11 +32,11 @@ public class HostsController : ControllerBase
             HostOperationStatus.Success => CreatedAtAction(nameof(Me), result.Profile),
             HostOperationStatus.Conflict => Conflict(new
             {
-                message = "Ya existe una solicitud de anfitrion activa para este usuario."
+                message = "Ya tienes una solicitud de anfitrión en curso."
             }),
             HostOperationStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new
             {
-                message = "Solamente una cuenta de turista puede solicitar ser anfitrion."
+                message = "Solamente una cuenta de turista puede solicitar ser anfitrión."
             }),
             _ => NotFound(new { message = "No se encontro el usuario." })
         };
@@ -52,7 +52,7 @@ public class HostsController : ControllerBase
 
         var profile = await _hostService.GetMineAsync(userId);
         return profile is null
-            ? NotFound(new { message = "Todavia no has enviado una solicitud de anfitrion." })
+            ? NotFound(new { message = "Todavía no has enviado una solicitud de anfitrión." })
             : Ok(profile);
     }
 
@@ -67,7 +67,7 @@ public class HostsController : ControllerBase
         var result = await _hostService.UpdateMineAsync(userId, request);
         return result.Status == HostOperationStatus.Success
             ? Ok(result.Profile)
-            : NotFound(new { message = "Todavia no has enviado una solicitud de anfitrion." });
+            : NotFound(new { message = "Todavía no has enviado una solicitud de anfitrión." });
     }
 
     private bool TryGetUserId(out int userId)

@@ -84,14 +84,14 @@ public class HostService : IHostService
             query = query.Where(profile => profile.VerificationStatus == status);
         }
 
-        var search = Normalize(request.Query);
+        var search = SearchText.NormalizeTerm(request.Query);
         if (search is not null)
         {
-            var pattern = $"%{EscapeLikePattern(search)}%";
+            var pattern = SearchText.ToContainsPattern(search);
             query = query.Where(profile =>
-                EF.Functions.ILike(profile.DisplayName, pattern, "\\")
-                || EF.Functions.ILike(profile.UserFullName, pattern, "\\")
-                || EF.Functions.ILike(profile.UserEmail, pattern, "\\"));
+                EF.Functions.Like(GoIslandDbContext.Normalize(profile.DisplayName), pattern, "\\")
+                || EF.Functions.Like(GoIslandDbContext.Normalize(profile.UserFullName), pattern, "\\")
+                || EF.Functions.Like(GoIslandDbContext.Normalize(profile.UserEmail), pattern, "\\"));
         }
 
         var totalItems = await query.CountAsync();

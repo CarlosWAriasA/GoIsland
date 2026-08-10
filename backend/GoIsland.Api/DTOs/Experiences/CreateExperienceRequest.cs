@@ -50,6 +50,8 @@ public abstract class ExperienceRequestBase : IValidatableObject
     public decimal Price { get; set; }
     public int Capacity { get; set; } = 1;
     public bool IsUnlimitedCapacity { get; set; }
+    [StringLength(20)]
+    public string SchedulingMode { get; set; } = ExperienceSchedulingModes.HostScheduled;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -57,8 +59,10 @@ public abstract class ExperienceRequestBase : IValidatableObject
             yield return new("Selecciona un punto completo en el mapa.", [nameof(Latitude), nameof(Longitude)]);
         if (!string.IsNullOrWhiteSpace(Category) && !ExperienceCategories.All.Contains(Category.Trim()))
             yield return new("Selecciona una categoría válida.", [nameof(Category)]);
-        if (!IsUnlimitedCapacity && Capacity < 1)
+        if (!IsUnlimitedCapacity && SchedulingMode == ExperienceSchedulingModes.HostScheduled && Capacity < 1)
             yield return new("La capacidad debe ser mayor que cero.", [nameof(Capacity)]);
+        if (!ExperienceSchedulingModes.All.Contains(SchedulingMode))
+            yield return new("Selecciona una opción de disponibilidad válida.", [nameof(SchedulingMode)]);
         if (!string.IsNullOrWhiteSpace(Difficulty) && !ExperienceDifficulties.All.Contains(Difficulty))
             yield return new("Selecciona una dificultad válida.", [nameof(Difficulty)]);
         if (!string.IsNullOrWhiteSpace(CancellationPolicy)

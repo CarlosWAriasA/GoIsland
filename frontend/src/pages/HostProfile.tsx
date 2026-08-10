@@ -123,7 +123,7 @@ export const HostProfile = () => {
       <header className="page-heading">
         <span className="page-heading__eyebrow">Comunidad local</span>
         <h1>{profile ? 'Mi perfil de anfitrión' : 'Conviértete en anfitrión'}</h1>
-        <p>Comparte experiencias auténticas después de una revisión administrativa.</p>
+        <p>Comparte lo que mejor conoces de tu zona.</p>
       </header>
 
       {profile && (

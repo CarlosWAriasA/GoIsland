@@ -26,7 +26,7 @@ const HostDashboard = React.lazy(() => import('../pages/HostDashboard'));
 
 const pageFallback = (
   <div className="container route-loading" role="status">
-    Cargando...
+    Cargando…
   </div>
 );
 

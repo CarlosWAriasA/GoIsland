@@ -123,6 +123,54 @@ experiencia aprobada. Por eso la API debe estar disponible durante el despliegue
 del catálogo debe completarse antes del build definitivo. `frontend/vercel.json` conserva la
 reescritura de la SPA para rutas que todavía no existían durante el último build.
 
+## Despliegue continuo
+
+Cada commit a `main` publica automáticamente. El frontend lo despliega Vercel con su propia
+integración de Git; el backend lo despliega `.github/workflows/deploy-backend.yml`.
+
+### Backend (GitHub Actions → Azure App Service)
+
+El workflow corre las pruebas contra un PostgreSQL efímero del runner y solo despliega si pasan.
+Al terminar comprueba `/api/health/ready` y falla si la API no responde.
+
+En **Settings → Secrets and variables → Actions** del repositorio:
+
+| Tipo | Nombre | Valor |
+|---|---|---|
+| Variable | `AZURE_WEBAPP_NAME` | Nombre del Web App, por ejemplo `goisland-api-carlos` |
+| Secreto | `AZURE_WEBAPP_PUBLISH_PROFILE` | Contenido del publish profile |
+
+El publish profile se obtiene en el portal de Azure, en el Web App → **Descargar perfil de
+publicación**, y se pega completo como valor del secreto. Contiene credenciales de publicación:
+no debe versionarse ni compartirse fuera de los secretos del repositorio. Si se filtra, se
+regenera desde el mismo menú, lo que invalida el anterior.
+
+Las variables de aplicación del backend no las gestiona el workflow. Se suben una sola vez con
+`backend/deploy-appsettings.ps1`, que las lee de `appsettings.Development.json` local:
+
+```text
+./backend/deploy-appsettings.ps1 -AppName <web-app> -ResourceGroup <grupo> -FrontendUrl https://<frontend-publico>
+```
+
+### Frontend (Vercel)
+
+En el panel de Vercel, **Add New → Project**, se importa el repositorio y se configura con los
+valores de la sección anterior. Con eso Vercel despliega cada commit a `main` y genera vistas
+previas por cada pull request. Las variables `VITE_*` se cargan en **Settings → Environment
+Variables**; ninguna es secreta, pero `VITE_API_URL` debe apuntar a la API ya desplegada.
+
+### Orden al desplegar cambios de esquema
+
+Los scripts SQL no se ejecutan solos, y el orden importa:
+
+1. Aplicar los scripts pendientes de `backend/GoIsland.Api/Database/Scripts/` con
+   `ApplyDatabaseScript.ps1`.
+2. Confirmar `/api/health/ready` sobre la revisión activa.
+3. Empujar a `main` para que el workflow despliegue el código que depende del esquema nuevo.
+
+Invertir el orden deja la API desplegada consultando objetos que aún no existen. Por ejemplo, la
+búsqueda sin tildes depende de la función `goisland_normalize` que crea el script `020`.
+
 ## Stripe Sandbox
 
 En el ambiente público, configurar `Payments__Provider=Stripe`, `Payments__Mode=Sandbox` y las

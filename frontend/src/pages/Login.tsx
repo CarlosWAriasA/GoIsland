@@ -40,7 +40,7 @@ export const Login = () => {
   const validate = () => {
     const errors: { email?: string; password?: string } = {};
     if (!email) errors.email = 'El correo electrónico es obligatorio.';
-    else if (!/\S+@\S+\.\S+/.test(email)) errors.email = 'Introduce un formato de correo válido.';
+    else if (!/\S+@\S+\.\S+/.test(email)) errors.email = 'Introduce un correo electrónico válido.';
     if (!password) errors.password = 'La contraseña es obligatoria.';
     else if (password.length < 6) errors.password = 'La contraseña debe tener al menos 6 caracteres.';
     setFieldErrors(errors);
@@ -54,12 +54,12 @@ export const Login = () => {
 
     try {
       await login({ email, password });
-      toast.success('Sesión iniciada correctamente');
+      toast.success('Sesión iniciada.');
       navigate(requestedPath, { replace: true });
     } catch (error: unknown) {
       const apiError = toApiError(
         error,
-        'Error al iniciar sesión. Por favor, verifica tus credenciales.',
+        'Correo o contraseña incorrectos.',
       );
       setFieldErrors({
         email: getFieldError(apiError, 'Email'),

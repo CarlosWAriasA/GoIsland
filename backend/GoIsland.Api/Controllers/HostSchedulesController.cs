@@ -118,7 +118,7 @@ public class HostSchedulesController : ControllerBase
         ScheduleOperationStatus.Success when created => StatusCode(StatusCodes.Status201Created, result.Schedule),
         ScheduleOperationStatus.Success => Ok(result.Schedule),
         ScheduleOperationStatus.NotFound => NotFound(new { message = "No se encontro el horario o la experiencia." }),
-        ScheduleOperationStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrion no esta aprobado o fue suspendido." }),
+        ScheduleOperationStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { message = "Tu perfil de anfitrión no está aprobado o fue suspendido." }),
         ScheduleOperationStatus.InvalidDates => BadRequest(new { message = "Elige fechas futuras y asegúrate de que la hora de finalización sea posterior al inicio." }),
         ScheduleOperationStatus.InvalidStatus => Conflict(new { message = "El horario solo puede estar abierto o cerrado." }),
         ScheduleOperationStatus.CapacityConflict => Conflict(new { message = "La capacidad no puede ser menor que los cupos ya reservados." }),

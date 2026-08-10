@@ -11,7 +11,10 @@ public class LocationAndDashboardIntegrationTests : PostgresIntegrationTestBase
     [Fact]
     public async Task Nearby_ReturnsOnlyApprovedExperiencesInsideRadiusOrderedByDistance()
     {
+        // El catálogo base ya está sembrado, así que las aserciones se limitan a las
+        // experiencias creadas por este anfitrión.
         var host = await SeedApprovedHostAsync();
+        var seededTitles = new[] { "Zona Colonial", "Santiago", "Borrador cercano", "Sin ubicación" };
         Context.Experiences.AddRange(
             NewExperience(host.Id, "Zona Colonial", 18.4727m, -69.8838m, approved: true),
             NewExperience(host.Id, "Santiago", 19.4517m, -70.6970m, approved: true),
@@ -26,11 +29,14 @@ public class LocationAndDashboardIntegrationTests : PostgresIntegrationTestBase
             RadiusKm = 25m
         });
 
-        var result = Assert.Single(results.Items);
-        Assert.Equal(1, results.TotalItems);
+        var result = Assert.Single(results.Items.Where(item => seededTitles.Contains(item.Title)));
         Assert.Equal("Zona Colonial", result.Title);
         Assert.NotNull(result.DistanceKm);
         Assert.InRange(result.DistanceKm!.Value, 4m, 7m);
+
+        var distances = results.Items.Where(item => item.DistanceKm.HasValue).Select(item => item.DistanceKm!.Value).ToList();
+        Assert.Equal(distances.OrderBy(distance => distance), distances);
+        Assert.All(distances, distance => Assert.True(distance <= 25m));
     }
 
     [Fact]

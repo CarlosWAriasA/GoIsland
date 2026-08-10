@@ -15,6 +15,7 @@ import { resolveApiAssetUrl } from '../services/api';
 import { experienceService } from '../services/experienceService';
 import { formatLocationLabel } from '../services/googleMapsService';
 import { experienceKeys, queryRefresh } from '../queries/queryKeys';
+import { matchesSearch, normalizeSearchText } from '../utils/searchText';
 import type { Experience } from '../types';
 
 const formatPrice = (price: number) => price === 0
@@ -68,10 +69,10 @@ export const ExperienceMapPage = () => {
       if (item.latitude === null || item.longitude === null) return false;
 
       if (searchTerm.trim()) {
-        const query = searchTerm.toLowerCase().trim();
-        const matchesTitle = item.title.toLowerCase().includes(query);
-        const matchesLoc = item.location?.toLowerCase().includes(query);
-        const matchesCat = item.category?.toLowerCase().includes(query);
+        const query = normalizeSearchText(searchTerm.trim());
+        const matchesTitle = matchesSearch(item.title, query);
+        const matchesLoc = matchesSearch(item.location, query);
+        const matchesCat = matchesSearch(item.category, query);
         if (!matchesTitle && !matchesLoc && !matchesCat) return false;
       }
 

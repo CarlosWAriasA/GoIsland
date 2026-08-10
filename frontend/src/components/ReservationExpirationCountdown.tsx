@@ -47,7 +47,7 @@ export const ReservationExpirationCountdown = ({
         {remaining > 0 ? (
           <>Completa el pago en <strong>{formatRemaining(remaining)}</strong> para conservar tus cupos.</>
         ) : (
-          <>El tiempo para pagar terminó. Estamos actualizando tu reserva.</>
+          <>El tiempo para pagar terminó.</>
         )}
       </Alert>
     </div>

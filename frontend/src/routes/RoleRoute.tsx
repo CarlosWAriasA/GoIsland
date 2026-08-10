@@ -12,7 +12,7 @@ export const RoleRoute = ({ allowedRoles }: RoleRouteProps) => {
     return (
       <div className="route-loading" role="status">
         <span className="route-loading__spinner" aria-hidden="true" />
-        <p>Verificando permisos...</p>
+        <p>Cargando…</p>
       </div>
     );
   }

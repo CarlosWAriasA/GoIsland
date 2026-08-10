@@ -24,6 +24,11 @@ jobs:
           --health-retries 10
     env:
       ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=goisland_tests;Username=postgres;Password=postgres
+      # Clave de firma solo para la ejecucion efimera de pruebas. No es un secreto: no protege
+      # ningun ambiente real y se descarta al terminar el job.
+      Jwt__Key: clave-de-pruebas-sin-valor-en-produccion-0123456789abcdef
+      Jwt__Issuer: goisland-tests
+      Jwt__Audience: goisland-tests
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4

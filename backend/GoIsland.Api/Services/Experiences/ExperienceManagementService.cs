@@ -33,7 +33,9 @@ public class ExperienceManagementService : IExperienceManagementService
         }
 
         var now = DateTime.UtcNow;
-        var capacity = request.IsUnlimitedCapacity
+        var isUnlimitedCapacity = request.IsUnlimitedCapacity
+            || request.SchedulingMode == ExperienceSchedulingModes.SelfGuided;
+        var capacity = isUnlimitedCapacity
             ? ExperienceCapacity.UnlimitedValue
             : request.Capacity;
         var experience = new Experience
@@ -42,7 +44,8 @@ public class ExperienceManagementService : IExperienceManagementService
             Slug = await CreateUniqueSlugAsync(request.Title),
             Capacity = capacity,
             AvailableSpots = capacity,
-            IsUnlimitedCapacity = request.IsUnlimitedCapacity,
+            IsUnlimitedCapacity = isUnlimitedCapacity,
+            SchedulingMode = request.SchedulingMode,
             IsApproved = false,
             ApprovalStatus = ExperienceApprovalStatuses.Draft,
             CreatedAt = now,
@@ -96,7 +99,9 @@ public class ExperienceManagementService : IExperienceManagementService
             return new(ExperienceManagementStatus.InvalidTransition, await ToResponseAsync(id));
         }
 
-        var capacity = request.IsUnlimitedCapacity
+        var isUnlimitedCapacity = request.IsUnlimitedCapacity
+            || request.SchedulingMode == ExperienceSchedulingModes.SelfGuided;
+        var capacity = isUnlimitedCapacity
             ? ExperienceCapacity.UnlimitedValue
             : request.Capacity;
         var schedules = await _context.ExperienceSchedules
@@ -109,7 +114,7 @@ public class ExperienceManagementService : IExperienceManagementService
             .GroupBy(reservation => reservation.ScheduleId)
             .Select(group => new { ScheduleId = group.Key, Reserved = group.Sum(item => item.Quantity) })
             .ToDictionaryAsync(item => item.ScheduleId, item => item.Reserved);
-        if (!request.IsUnlimitedCapacity
+        if (!isUnlimitedCapacity
             && reservedBySchedule.Values.Any(reserved => reserved > capacity))
         {
             return new(ExperienceManagementStatus.Conflict, await ToResponseAsync(id));
@@ -119,7 +124,8 @@ public class ExperienceManagementService : IExperienceManagementService
         ReplaceItinerary(experience, request.Itinerary);
         experience.Capacity = capacity;
         experience.AvailableSpots = capacity;
-        experience.IsUnlimitedCapacity = request.IsUnlimitedCapacity;
+        experience.IsUnlimitedCapacity = isUnlimitedCapacity;
+        experience.SchedulingMode = request.SchedulingMode;
         experience.IsApproved = false;
         experience.ApprovalStatus = ExperienceApprovalStatuses.Draft;
         experience.RejectionReason = null;
@@ -229,15 +235,15 @@ public class ExperienceManagementService : IExperienceManagementService
             query = query.Where(experience => experience.ApprovalStatus == status);
         }
 
-        var search = NormalizeOptional(request.Query);
+        var search = SearchText.NormalizeTerm(request.Query);
         if (search is not null)
         {
-            var pattern = $"%{EscapeLikePattern(search)}%";
+            var pattern = SearchText.ToContainsPattern(search);
             query = query.Where(experience =>
-                EF.Functions.ILike(experience.Title, pattern, "\\")
-                || EF.Functions.ILike(experience.Location, pattern, "\\")
-                || EF.Functions.ILike(experience.Category, pattern, "\\")
-                || EF.Functions.ILike(experience.HostName, pattern, "\\"));
+                EF.Functions.Like(GoIslandDbContext.Normalize(experience.Title), pattern, "\\")
+                || EF.Functions.Like(GoIslandDbContext.Normalize(experience.Location), pattern, "\\")
+                || EF.Functions.Like(GoIslandDbContext.Normalize(experience.Category), pattern, "\\")
+                || EF.Functions.Like(GoIslandDbContext.Normalize(experience.HostName), pattern, "\\"));
         }
 
         var totalItems = await query.CountAsync();

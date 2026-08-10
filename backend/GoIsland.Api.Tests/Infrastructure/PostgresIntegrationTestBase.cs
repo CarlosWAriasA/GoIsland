@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using GoIsland.Api.Data;
 using GoIsland.Api.Repositories;
 using GoIsland.Api.Services.Auth;
@@ -41,8 +42,13 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
+        // TestConnection tiene prioridad para poder apuntar a una base local sin tocar la
+        // configuracion de desarrollo, que suele apuntar al entorno administrado.
+        var connectionString = configuration.GetConnectionString("TestConnection")
+            ?? configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection no esta configurado.");
+
+        GuardAgainstRemoteDatabase(connectionString);
 
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
@@ -70,6 +76,8 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
         services.AddScoped<NotificationService>();
         services.AddScoped<INotificationService>(provider => provider.GetRequiredService<NotificationService>());
         services.AddScoped<IOutboxWriter>(provider => provider.GetRequiredService<NotificationService>());
+        services.AddSingleton<IPushNotificationSender, WebPushSender>();
+        services.AddScoped<IOutboxProcessor, OutboxProcessor>();
         services.AddScoped<IReviewService, ReviewService>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IOptions<ReservationExpirationOptions>>(
@@ -94,121 +102,92 @@ public abstract class PostgresIntegrationTestBase : IAsyncLifetime
 
         _transaction = await Context.Database.BeginTransactionAsync();
 
-        var initialSchemaScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "001_create_initial_schema.sql"));
-        await Context.Database.ExecuteSqlRawAsync(initialSchemaScript);
+        // Aplica todos los scripts de esquema en orden numerico. Al leer el directorio se
+        // garantiza que cualquier script nuevo quede cubierto por las pruebas.
+        var scriptsDirectory = Path.Combine(configurationDirectory, "Database", "Scripts");
+        var scriptFiles = Directory
+            .GetFiles(scriptsDirectory, "*.sql")
+            .OrderBy(Path.GetFileName, StringComparer.Ordinal);
 
-        var passwordResetScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "002_create_password_reset_tokens.sql"));
-        await Context.Database.ExecuteSqlRawAsync(passwordResetScript);
-
-        var hostModerationScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "003_create_host_moderation.sql"));
-        await Context.Database.ExecuteSqlRawAsync(hostModerationScript);
-
-        var externalLoginsScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "004_create_external_logins.sql"));
-        await Context.Database.ExecuteSqlRawAsync(externalLoginsScript);
-
-        var schedulesScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "005_create_schedules_and_reservation_lifecycle.sql"));
-        await Context.Database.ExecuteSqlRawAsync(schedulesScript);
-
-        var paymentsScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "006_create_payments.sql"));
-        await Context.Database.ExecuteSqlRawAsync(paymentsScript);
-
-        var notificationsScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "007_create_notifications_and_reviews.sql"));
-        await Context.Database.ExecuteSqlRawAsync(notificationsScript);
-
-        var webPushScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "008_create_web_push_subscriptions.sql"));
-        await Context.Database.ExecuteSqlRawAsync(webPushScript);
-
-        var locationsScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "009_add_experience_locations.sql"));
-        await Context.Database.ExecuteSqlRawAsync(locationsScript);
-
-        var loginProtectionScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "010_add_login_protection.sql"));
-        await Context.Database.ExecuteSqlRawAsync(loginProtectionScript);
-
-        var experienceMediaScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "011_add_experience_media_and_unlimited_capacity.sql"));
-        await Context.Database.ExecuteSqlRawAsync(experienceMediaScript);
-
-        var cloudinaryMediaScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "012_migrate_experience_images_to_cloudinary.sql"));
-        await Context.Database.ExecuteSqlRawAsync(cloudinaryMediaScript);
-
-        var catalogScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "013_complete_experience_catalog.sql"));
-        await Context.Database.ExecuteSqlRawAsync(catalogScript.Replace("{}", "{{}}"));
-
-        var imageAttributionScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "017_add_image_attribution.sql"));
-        await Context.Database.ExecuteSqlRawAsync(imageAttributionScript);
-
-        var uniqueScheduleScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "015_add_unique_schedule_start.sql"));
-        await Context.Database.ExecuteSqlRawAsync(uniqueScheduleScript);
-
-        var reservationExpirationScript = await File.ReadAllTextAsync(Path.Combine(
-            configurationDirectory,
-            "Database",
-            "Scripts",
-            "016_add_reservation_expiration.sql"));
-        await Context.Database.ExecuteSqlRawAsync(reservationExpirationScript);
+        foreach (var scriptFile in scriptFiles)
+        {
+            var script = await File.ReadAllTextAsync(scriptFile);
+            // ExecuteSqlRawAsync interpreta las llaves como marcadores de formato.
+            await Context.Database.ExecuteSqlRawAsync(StripOwnTransaction(script).Replace("{}", "{{}}"));
+        }
 
         // Fuerza una consulta real y falla temprano si el esquema no esta aplicado.
         await Context.Users.AsNoTracking().AnyAsync();
     }
+
+    private const string AllowRemoteVariable = "GOISLAND_ALLOW_REMOTE_TEST_DB";
+
+    /// <summary>
+    /// Las pruebas reaplican todo el esquema y toman locks exclusivos sobre las tablas, asi que
+    /// no deben ejecutarse contra una base compartida o de produccion. Se exige una base local
+    /// salvo que se autorice explicitamente lo contrario.
+    /// </summary>
+    private static void GuardAgainstRemoteDatabase(string connectionString)
+    {
+        if (string.Equals(
+                Environment.GetEnvironmentVariable(AllowRemoteVariable),
+                "true",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var host = ResolveHost(connectionString);
+        string[] localHosts = ["localhost", "127.0.0.1", "::1", "host.docker.internal", "postgres", "db"];
+        if (localHosts.Contains(host, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Las pruebas de integracion apuntan a '{host}', que no es una base local. " +
+            "Reaplican todo el esquema y bloquean tablas, asi que no deben correr contra una " +
+            "base compartida.\n\n" +
+            "Levanta una base local:\n" +
+            "  docker run -d --name goisland-tests -e POSTGRES_PASSWORD=postgres " +
+            "-e POSTGRES_DB=goisland_tests -p 5432:5432 postgres:16\n\n" +
+            "Y apunta las pruebas a ella:\n" +
+            "  dotnet user-secrets set \"ConnectionStrings:TestConnection\" " +
+            "\"Host=localhost;Port=5432;Database=goisland_tests;Username=postgres;Password=postgres\" " +
+            "--project GoIsland.Api\n\n" +
+            $"Para autorizar una base remota a proposito: {AllowRemoteVariable}=true");
+    }
+
+    /// <summary>Obtiene el host tanto de una cadena clave=valor como de un URI postgresql://.</summary>
+    private static string ResolveHost(string connectionString)
+    {
+        var trimmed = connectionString.TrimStart();
+        if (trimmed.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
+            || trimmed.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        {
+            return Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) ? uri.Host : trimmed;
+        }
+
+        try
+        {
+            return new NpgsqlConnectionStringBuilder(connectionString).Host ?? string.Empty;
+        }
+        catch (ArgumentException)
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Quita el BEGIN/COMMIT propio de un script. Las pruebas ya ejecutan dentro de una
+    /// transaccion que se revierte al terminar, y un COMMIT dentro del script la cerraria
+    /// dejando datos visibles para las demas pruebas.
+    /// </summary>
+    private static string StripOwnTransaction(string script) => Regex.Replace(
+        script,
+        @"^[ \t]*(BEGIN|COMMIT)[ \t]*;[ \t]*\r?$",
+        string.Empty,
+        RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
     public async Task DisposeAsync()
     {

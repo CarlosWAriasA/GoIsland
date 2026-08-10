@@ -351,7 +351,12 @@ public class ReservationIntegrationTests : PostgresIntegrationTestBase
         var earlyResult = await service.CompleteByTouristAsync(reservationId, user.Id, "early-complete");
         Assert.Equal(ReservationCreationStatus.InvalidTransition, earlyResult.Status);
 
+<<<<<<< HEAD
         // Move schedule.EndsAt to past
+=======
+        // Mover el horario completo al pasado, respetando ck_experience_schedules_dates (ends_at > starts_at)
+        schedule.StartsAt = DateTime.UtcNow.AddHours(-3);
+>>>>>>> 6640fdd59f4b26b3fe39013ac2d3eb99a1dacb49
         schedule.EndsAt = DateTime.UtcNow.AddMinutes(-5);
         await Context.SaveChangesAsync();
 

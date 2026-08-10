@@ -32,7 +32,7 @@ public class AdminHostsController : ControllerBase
     {
         var profile = await _hostService.GetByIdForAdminAsync(id);
         return profile is null
-            ? NotFound(new { message = "No se encontro la solicitud de anfitrion." })
+            ? NotFound(new { message = "No encontramos esta solicitud." })
             : Ok(profile);
     }
 
@@ -65,8 +65,8 @@ public class AdminHostsController : ControllerBase
         return result.Status switch
         {
             HostOperationStatus.Success => Ok(result.Profile),
-            HostOperationStatus.NotFound => NotFound(new { message = "No se encontro la solicitud de anfitrion." }),
-            HostOperationStatus.ReasonRequired => BadRequest(new { message = "Debes indicar el motivo de la decision." }),
+            HostOperationStatus.NotFound => NotFound(new { message = "No encontramos esta solicitud." }),
+            HostOperationStatus.ReasonRequired => BadRequest(new { message = "Debes indicar el motivo de la decisión." }),
             HostOperationStatus.InvalidTransition => Conflict(new { message = "No puedes aplicar esa decisión al estado actual de la solicitud." }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
         };
