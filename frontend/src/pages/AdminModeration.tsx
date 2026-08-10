@@ -38,6 +38,7 @@ import type {
   Review,
   ReviewModerationStatus,
 } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import { getModerationLabel, getModerationTone } from '../utils/moderationStatus';
 import { getCancellationPolicyLabel, getDifficultyLabel } from '../utils/experienceLabels';
 import { getReviewModerationLabel, getReviewModerationTone } from '../utils/reviewModerationStatus';
@@ -268,6 +269,7 @@ type PendingReasonAction =
   | { scope: 'experience'; target: ManagedExperience; action: ExperienceAction };
 
 export const AdminModeration = () => {
+  const { user, refreshUser } = useAuth();
   const [applications, setApplications] = useState<HostProfile[]>([]);
   const [experiences, setExperiences] = useState<ManagedExperience[]>([]);
   const [hostFilter, setHostFilter] = useState<HostFilter>('Pending');
@@ -371,6 +373,16 @@ export const AdminModeration = () => {
       setApplications((current) => current.map((item) => item.id === updated.id ? updated : item));
       setSuccess(`La solicitud de ${profile.displayName} fue ${actionPastParticiple[action]}.`);
       setRetryCount((current) => current + 1);
+      // Al resolver la propia solicitud cambia el rol de quien administra, así que la sesión se
+      // renueva para que el menú y las rutas de anfitrión reflejen la decisión sin volver a entrar.
+      if (updated.userId === user?.id) {
+        try {
+          await refreshUser();
+        } catch {
+          // Si la renovación falla la decisión ya quedó guardada: la sesión se actualizará sola
+          // en el siguiente refresco periódico.
+        }
+      }
       return true;
     } catch (requestError: unknown) {
       setError(toApiError(requestError).message);

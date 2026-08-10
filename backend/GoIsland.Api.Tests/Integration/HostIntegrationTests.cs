@@ -153,7 +153,7 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
     }
 
     [Fact]
-    public async Task Administrator_CannotReviewOwnHostApplication()
+    public async Task Administrator_CanReviewOwnHostApplication()
     {
         var hostService = GetRequiredService<IHostService>();
         var marker = Guid.NewGuid().ToString("N");
@@ -171,7 +171,7 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
         var application = await hostService.ApplyAsync(admin.Id, new HostApplicationRequest
         {
             DisplayName = "Admin autorevision",
-            Description = "La solicitud de quien administra debe revisarla otra persona.",
+            Description = "Quien administra puede resolver su propia solicitud de anfitrion.",
             PhoneNumber = "+1 809 555 0166"
         });
         var result = await hostService.ReviewAsync(
@@ -180,10 +180,18 @@ public class HostIntegrationTests : PostgresIntegrationTestBase
             HostReviewAction.Approve,
             null);
 
-        Assert.Equal(HostOperationStatus.Forbidden, result.Status);
+        Assert.Equal(HostOperationStatus.Success, result.Status);
         Assert.Equal(
-            HostVerificationStatuses.Pending,
+            HostVerificationStatuses.Approved,
             (await Context.HostProfiles.FindAsync(application.Profile.Id))!.VerificationStatus);
+
+        var stored = await Context.Users.FindAsync(admin.Id);
+        Assert.Equal(UserRoles.Host, stored!.Role);
+        Assert.True(stored.IsAdmin);
+
+        var audit = await Context.AdminAuditLogs.SingleAsync(log =>
+            log.EntityType == nameof(HostProfile) && log.EntityId == application.Profile.Id);
+        Assert.Equal(admin.Id, audit.AdminUserId);
     }
 
     [Fact]
