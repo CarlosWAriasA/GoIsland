@@ -4380,6 +4380,47 @@ input[type='number']::-webkit-inner-spin-button {
   min-height: 5.5rem;
 }
 
+/* Cada fila repartía su ancho por separado, así que el estado y los botones —que cambian de
+   tamaño según la reserva— movían las columnas de una fila a otra. Con subgrid las columnas se
+   miden una sola vez para toda la lista y quedan alineadas sin reservar anchos fijos. */
+@media (min-width: 48.0625rem) {
+  @supports (grid-template-columns: subgrid) {
+    .operations-list {
+      display: grid;
+      grid-template-columns: minmax(12rem, 2fr) auto auto auto auto;
+      column-gap: 1rem;
+    }
+
+    .operations-row,
+    .operations-row__main {
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: subgrid;
+    }
+
+    .operations-row__cell,
+    .operations-row__primary {
+      flex: none;
+      min-width: 0;
+    }
+
+    /* El estado y las acciones se anclan al final para que una lista con menos columnas
+       intermedias, como la de reseñas, siga cerrando la fila por la derecha. */
+    .operations-row__main > .status-badge {
+      grid-column: -3 / -2;
+      justify-self: start;
+    }
+
+    .operations-row__actions {
+      grid-column: -2 / -1;
+    }
+
+    .operations-row__details {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
 @media (max-width: 48rem) {
   .site-header__inner {
     min-height: 64px;
