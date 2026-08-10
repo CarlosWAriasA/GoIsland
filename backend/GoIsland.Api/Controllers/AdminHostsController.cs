@@ -66,9 +66,6 @@ public class AdminHostsController : ControllerBase
         {
             HostOperationStatus.Success => Ok(result.Profile),
             HostOperationStatus.NotFound => NotFound(new { message = "No encontramos esta solicitud." }),
-            HostOperationStatus.Forbidden => StatusCode(
-                StatusCodes.Status403Forbidden,
-                new { message = "No puedes revisar tu propia solicitud de anfitrión." }),
             HostOperationStatus.ReasonRequired => BadRequest(new { message = "Debes indicar el motivo de la decisión." }),
             HostOperationStatus.InvalidTransition => Conflict(new { message = "No puedes aplicar esa decisión al estado actual de la solicitud." }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
